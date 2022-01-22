@@ -1,0 +1,54 @@
+{
+    "customers": [
+        {
+            "id": 1,
+            "firstname": "Rohit",
+            "lastname": "Saha",
+            "account_type": "free",
+            "currency": "INR",
+            "email": "rohit@gmail.com",
+            "phone": "9887256316",
+            "country_code": "+91"
+        },
+        {
+            "id": 2,
+            "firstname": "Adraha",
+            "lastname": "Chatterjee",
+            "account_type": "free",
+            "currency": "INR",
+            "email": "adraha@gmail.com",
+            "phone": "9412338888",
+            "country_code": "+91"
+        },
+        {
+            "id": 3,
+            "firstname": "Ravi",
+            "lastname": "Agarwal",
+            "account_type": "basic",
+            "currency": "INR",
+            "email": "ravi@gmail.com",
+            "phone": "9730181332",
+            "country_code": "+91"
+        },
+        {
+            "id": 4,
+            "firstname": "Bhargav",
+            "lastname": "Sidagam",
+            "account_type": "growth",
+            "currency": "INR",
+            "email": "bhargav@gmail.com",
+            "phone": "8755899433",
+            "country_code": "+91"
+        },
+        {
+            "id": 5,
+            "firstname": "Jaydeep",
+            "lastname": "Samaddar",
+            "account_type": "professional",
+            "currency": "INR",
+            "email": "jaydeep@gmail.com",
+            "phone": "7021285589",
+            "country_code": "+91"
+        }
+    ]
+}
