@@ -91,7 +91,7 @@ The Response object (res) specifies the HTTP response which is sent by an Expres
 
 ###### Response Object Methods
 
-1. `**res.send()**`
+1. `res.send()`
 The res.send() function sends the HTTP response. The body parameter can be a String, HTML, a Buffer object or an object or an Array.
 
 **Syntax**
@@ -128,7 +128,7 @@ app.get("/account", (req, res) => {
 });
 ```
 
-3. `**res.json()**`
+3. `res.json()`
 The res.json() function sends a JSON response. This method sends a response (with the correct content-type) that is the parameter converted to a JSON string using the JSON.stringify() method.
 
 **Syntax:**
@@ -149,7 +149,7 @@ const customers = require('./data/customers.json').customers;
 app.get(`/api/customers.json`, (req, res) => res.json(customers));
 ```
 
-4. `**res.end()**`
+4. `res.end()`
 The res.end() function is used to end the response process. This method actually comes from the Node core, specifically the response.end() method of HTTP.ServerResponse. Use to quickly end the response without any data.
 
 **Syntax:**
@@ -162,7 +162,7 @@ app.get('/', function(req, res){
 });
 ```
 
-5. `**res.redirect()**`
+5. `res.redirect()`
 The res.redirect() function redirects to the URL derived from the specified path, with specified status, a integer (positive) which corresponds to an HTTP status code. The default status is “302 Found”.
 
 **Syntax:**
@@ -174,7 +174,7 @@ Where,
 - **'path' parameter describes the path**
 
 
-6. `**res.render()**`
+6. `res.render()`
 The res.render() function is used to render a view and sends the rendered HTML string to the client. 
 
 **Syntax:** 
