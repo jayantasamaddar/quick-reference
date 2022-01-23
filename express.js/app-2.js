@@ -9,18 +9,14 @@ const app = express();
 // Assign Environment Variable to PORT or default to Port 5000
 const PORT = process.env.PORT2 || 6000;
 
+// Initialize Middleware - Body Parser (Required to parse req.body as JSON)
+app.use(express.json());
+
+// Initialize Middleware - Body Parser (Required to handle form-data)
+app.use(express.urlencoded( {extended: false} ));
+
 // Initialize Middleware - Must initialize Middleware before routes
 app.use(logger);
-
-/***********************************************************************************************/
-// Basic Homepage Route Handler/Endpoint
-/***********************************************************************************************/
-
-// Create your endpoints/route handlers
-// router.get("/", (req, res) => {
-//     res.send("Hello world");
-//     console.log(`Server running on Port ${PORT}!`);
-// });
 
 /***********************************************************************************************/
 /* Set Static Folder - Useful when we want to serve static pages from a single folder
@@ -30,7 +26,7 @@ app.use(logger);
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// Customers Router
+// Customers API Routes
 app.use('/api/v2/customers', require('./routes/api/customers'));
 
 // Listen on port

@@ -122,5 +122,14 @@ app.get(`/api/v3/customers/:id`, (req, res) => {
     } 
 });
 
+// Initialize Middleware - Body Parser (Required to parse req.body as JSON)
+app.use(express.json());
+
+/* POST Customer Data */
+app.post("/api/v2/customers", (req, res) => {
+    console.log(req.body);
+    res.send(req.body);
+});
+
 // Listen on port
 app.listen(PORT, () => console.log(`Running server at http://localhost:${PORT}`));
