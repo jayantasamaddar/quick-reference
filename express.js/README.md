@@ -357,7 +357,7 @@ Middleware functions are functions that have access to the Request and Response 
 - Application-level middleware
 - Router-level middleware
 - Error-handling middleware
-- Built-in middleware
+- Built-in middleware (E.g. [**Body-Parser**](http://expressjs.com/en/resources/middleware/body-parser.html))
 - Third-party middleware
 
 ### How to use a Middleware with Express.js?
@@ -378,6 +378,14 @@ const logger = (req, res, next) => {
 
 // Initialize Middleware
 app.use(logger);
+
+/* Express in-built Body-Parser Middleware */
+
+// Initialize Middleware - Body Parser (Required to parse req.body as JSON)
+app.use(express.json());
+
+// Initialize Middleware - Body Parser (Required to handle form-data)
+app.use(express.urlencoded( {extended: false} ));
 
 // Static Route
 app.use(express.static(path.join(__dirname, "public")));
@@ -500,4 +508,7 @@ app.listen(PORT, () => console.log(`Running server at http://localhost:${PORT}`)
 
 # References:
 1. [HTTP Request Methods (MDN)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods)
-2. [Express.js API Docs](https://expressjs.com/en/api.html)
+2. [List of HTTP Header fields (Wikipedia)](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields)
+3. [HTTP Messages (MDN)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Messages)
+4. [A typical HTTP Session (MDN)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Session)
+5. [API Docs (Official Express.js)](https://expressjs.com/en/api.html)

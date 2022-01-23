@@ -34,6 +34,20 @@ router.post("/", (req, res) => {
         country_code: req.body.country_code,
         currency: req.body.currency
     };
+    // Disable Bulk add - Check if Array
+    const isArray = Array.isArray(req.body);
+    console.log(isArray);
+    if(isArray) {
+        return res.status(400).json({ error: "Adding Customers in Bulk is not supported." });
+    }
+    // Check if Mandatory fields are present
+    else if(!newCustomer.email) {
+        return res.status(400).json({ error: "Email is a mandatory field" });
+    }
+    // Add to existing list of customers
+    customers.push(newCustomer);
+    console.log(`New Customer added! \n${JSON.stringify(newCustomer)}`);
+    res.json(customers);
 });
 
 // Export router
