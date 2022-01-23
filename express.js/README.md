@@ -120,11 +120,12 @@ req.header('user-agent')    // => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:96
 // http://localhost:5000/api/v2/customers?account_type=free
 
 app.get('/creatures', (req, res) => {
-  console.log(req.protocol)     // "http"
-  console.log(req.hostname)     // "localhost"
-  console.log(req.get("host))   // "localhost:5000
-  console.log(req.path)         // "/api/v2/customers"
-  console.log(req.originalUrl)  // "/api/v2/customers?account_type=free"
+    console.log(req.method)       // "GET"
+    console.log(req.protocol)     // "http"
+    console.log(req.hostname)     // "localhost"
+    console.log(req.get("host))   // "localhost:5000
+    console.log(req.path)         // "/api/v2/customers"
+    console.log(req.originalUrl)  // "/api/v2/customers?account_type=free"
 });
 
 // https://ocean.example.com/creatures?filter=sharks
