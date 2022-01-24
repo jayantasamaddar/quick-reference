@@ -398,22 +398,34 @@ app.use(express.static(path.join(__dirname, "public")));
 
 The top-level express object has a Router() method that creates a new router object to handle requests.
 
-**Syntax:**
-```
-const express = require('express');
-const router = express.Router();
-```
-
 A Router object is an isolated instance of middleware and routes. You can think of it as a “mini-application,” capable only of performing middleware and routing functions. Every Express application has a built-in app router.
 
 A router behaves like middleware itself, so you can use it as an argument to app.use() or as the argument to another router’s use() method.
 
 Once you’ve created a router object, you can add middleware and HTTP method routes (such as get, put, post, and so on) to it just like an application.
 
+------------------------------------------------------------------------------------------------------
+
 ##### Example 1 - Organise all customer related routers on a separate file :-
 
 ###### In customers.js
------------------------
+
+**Syntax:**
+```
+const express = require('express');
+const router = express.Router();
+
+router.METHOD(ENDPOINT, (req, res) => {
+    //process request
+    //send response
+})
+```
+
+Where,
+
+- **METHOD** is a HTTP Method (GET, POST, PUT, DELETE etc)
+- **ENDPOINT** is the API Endpoint that the client sends request to.
+
 ```
 const express = require('express');
 const router = express.Router();
@@ -444,7 +456,15 @@ module.exports = router;
 ```
 
 ###### In app2.js
------------------------
+
+**Syntax:** 
+`app.use(ENDPOINT, ROUTER);`
+
+Where,
+
+- **ENDPOINT** is the root that will be used by the router
+- **ROUTER** is the router imported/required into the app.js
+
 ```
 require('dotenv').config();
 const express = require("express");
