@@ -19,9 +19,32 @@ kitty.save().then(() => console.log('meow'));
 
 ------------------------------------------------------------------------------------------------------
 
-# Connect to MongoDB Database
+# Connect to MongoDB Database (`mongoose.connection`)
 
-The first thing we need to do is include mongoose in our project and open a connection to a `test` database on our locally running instance of MongoDB.
+The first thing we need to do is include mongoose in our project and open a connection to a `test` database on our locally running instance of MongoDB. Mongoose creates a *default connection* when we use the `mongoose.connect()`.
+
+**Syntax:**
+```
+// getting-started.js
+const mongoose = require('mongoose');
+
+main().catch(err => console.log(err));
+
+async function main() {
+  await mongoose.connect('mongodb://localhost:27017/test');
+}
+```
+
+Where,
+
+- For brevity, let's assume that all following code is within the `main()` function.
+
+------------------------------------------------------------------------------------------------------
+
+# Connecting to Multiple MongoDB Databases
+
+Sometimes, we may need to connect to multiple databases
+To connect to multiple databases as per [Docs at Mongoosejs.com](https://mongoosejs.com/docs/connections.html#multiple_connections)
 
 **Syntax:**
 ```
@@ -73,6 +96,7 @@ const userSchema = new mongoose.Schema({
 - Array
 - Decimal128
 - Map
+- [GeoJSON](https://mongoosejs.com/docs/geojson.html)
 
 If you want to add additional keys later, use the Schema#add method.
 
