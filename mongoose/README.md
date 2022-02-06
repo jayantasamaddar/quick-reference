@@ -137,5 +137,89 @@ An instance of a model is called a document. Creating them and saving to the dat
 
 ------------------------------------------------------------------------------------------------------
 
+# Advanced Model Validation
+We can run advanced modelvalidations inline by using the `validate` property and running a `validator` function, or by running a middleware that validates `pre` or `post` a Mongoose query.
+
+## Inline Validation using `validate` property
+
+**Example 1 - With inline `validate` and without a custom `message`. (Uses default error message)**
+```
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+
+const ContactSchema = new Schema({
+    order_date: { type: Date, required: true },
+    invoice_date: { 
+        type: Date,
+        validate: function(date) { return date > this.order_date }
+    }
+});
+```
+
+> **Note:** 
+> - Use the *function()* declaration instead of arrow functions when using `this` keyword.
+> - Function declaration as function() has to be returned using the `return` keyword.
+> - Arrow functions can be used only when `this` references are not made and do not need to be returned.
+
+
+**Example 2 - With `validator` and `message`**
+```
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+
+const ContactSchema = new Schema({
+    order_date: { type: Date, required: true },
+    invoice_date: { 
+        type: Date,
+        validate: {
+          validator: function(date) { return date > this.order_date },
+          message: "'invoice_date' cannot be earlier than 'order_date'"
+        }
+    }
+})
+```
+
+**Example 3 - Arrow function with `validator` and `message`**
+```
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+
+const ContactSchema = new Schema({
+    email: { 
+        type: String, 
+        maxlength: 200, 
+        lowercase: true, 
+        unique: true,
+        validate: {
+        validator: (email) => isEmail(email),
+        message: "Invalid Email"
+      }
+    }
+});
+```
+> **Note:** 
+> - Arrow functions can be used only when `this` references are not made and do not need to be returned.
+
+------------------------------------------------------------------------------------------------------
+
+## Custom Validation using Middleware
+
+**Example 1 - Pre-Validation**
+
+```
+OrderSchema.pre('validate', function(next) {
+    if(this.invoice_date < this.order_created_at) {
+        next(new Error(`'invoice_date' cannot be earlier than 'order_created_at'`));
+    } else next();
+});
+```
+> **Note:** 
+> - Use the *function()* declaration instead of arrow functions when using `this` keyword.
+> - Function declaration as function() has to be returned using the `return` keyword.
+> - As a rule of thumb, when working with mongoose schemas it is preferable to use the *function()* declaration, until `this` becomes local scope for arrow functions.
+> Middleware should have the `next()` function to push the result of the middleware onto the next middleware in the queue.
+
+------------------------------------------------------------------------------------------------------
+
 # References
 1. [Mongoose Official](https://mongoosejs.com/)
