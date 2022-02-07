@@ -109,8 +109,19 @@ Models are fancy constructors compiled from Schema definitions. In Mongoose, a M
 
 ```
 const mongoose = require('mongoose');
-const User = mongoose.model('User', userSchema);     // 'model' is case-sensitive
+const userSchema = new mongoose.Schema({
+  someKey = SchemaType
+})
+const User = mongoose.model('User', userSchema, 'users');     // 'model' is case-sensitive
 ```
+
+> Where,
+> - '**SchemaType**' is a [SchemaType] (https://mongoosejs.com/docs/schematypes.html)
+> - '**User**' is the name used to refer to the model anywhere in the app.
+> - '**userSchema**' is the schema to be followed to validate the model.
+> - '**users**' is an optional parameter that is used to create the collection for the model in the database. It defaults to the lowercase plural of the model name.
+
+
 
 **Example:**
 ```
@@ -126,8 +137,10 @@ const userSchema = new mongoose.Schema({
   country: String
 });
 
-/* Export Mongoose Model */
-module.exports = mongoose.model('User', userSchema);
+User = mongoose.model('User', userSchema, 'users');
+
+// Export Mongoose Model
+module.exports = User
 ```
 
 ------------------------------------------------------------------------------------------------------
@@ -203,6 +216,14 @@ const ContactSchema = new Schema({
 ------------------------------------------------------------------------------------------------------
 
 ## Custom Validation using Middleware
+Middleware are useful for atomizing model logic. 
+
+Here are some other ideas:
+
+- complex validation
+- removing dependent documents (removing a user removes all their blogposts)
+- asynchronous defaults
+- asynchronous tasks that a certain action triggers
 
 **Example 1 - Pre-Validation**
 
