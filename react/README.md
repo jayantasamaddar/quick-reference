@@ -25,6 +25,56 @@ Workflow
 
 # React Hooks
 
+### `useState()`
+
+**Syntax:**
+
+```
+import React from 'react;
+
+const [state, setState] = React.useState("initial_value");
+
+const setterFunction() => {
+  setState("new_state");
+}
+
+<button onClick={setterFunction}>Change State</button>
+```
+
+Where,
+**`state`** is the state variable,
+**`setState`** is a setter function for the state variable
+**`setterFunction`** is a function that executes the setState function onClick of the button
+
+
+### Lazy State
+All state variables initialize, everytime there are any changes to any State in the page as changes in state to any, refreshes the entire page. While this is a key feature of React, sometimes the calls can be expensive.
+
+*For example*: a State that is holding the value after Fetching data from a REST API or localStorage.
+
+We may not want to fetch data everytime there are any changes but once.
+
+For this React has a way to make sure this happens only once. This is called Lazy State initialization.
+This is done by providing a function instead of a value to state
+
+Syntax:
+```
+import React from 'react;
+
+const [state, setState] = React.useState("initial_value");
+
+const [lazyLoad, setLazyLoad] = React.useState(() => console.log("Load during first initialization));
+
+const setterFunction() => {
+  setState("new_state");
+}
+
+<button onClick={setterFunction}>Change State</button>
+```
+
+------------------------------------------------------------------------------------------------------
+
+
 ### `useEffect()`
 
 1. What is a "side effect" in React? What are some examples?

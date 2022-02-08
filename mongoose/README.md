@@ -76,11 +76,14 @@ const mongoose = require('mongoose);
 const userSchema = new mongoose.Schema({
   firstname: String,
   lastname: String,
+  profile_photo: Buffer,
   birthdate: Date,
   email: String,
   phone: String,
   phone_extension: String,
-  country: String
+  country: String,
+  total_orders: Number,
+  is_active: Boolean,
 });
 ```
 
@@ -211,7 +214,7 @@ const ContactSchema = new Schema({
 });
 ```
 > **Note:** 
-> - Arrow functions can be used only when `this` references are not made and do not need to be returned.
+> - Arrow functions can be used only when `this` references are not made and do not need to be returned with the return keyboard (it is implied as long as there are no variable declarations that require multiple statements).
 
 ------------------------------------------------------------------------------------------------------
 
