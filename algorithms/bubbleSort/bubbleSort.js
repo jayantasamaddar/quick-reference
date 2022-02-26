@@ -45,6 +45,7 @@ const bubbleSort3 = array => {
 }
 
 /* Testing */
+const Test = require("../../../RapidTest/Test");
 const testFunctions = [bubbleSort, bubbleSort2, bubbleSort3];
 
 const dataArray = [
@@ -52,23 +53,8 @@ const dataArray = [
     [72, 33, 9, 996, 741, 224, 362, 1201, 42, 112, 233, 112]
 ];
 
-
-const Test = (dataArray, functionsArray) => {
-    const recursiveTest = (arr, indx) => {
-        let i = indx;
-        if(i === arr.length) return;
-        /* Using C-style for loop */
-        // for(let j = 0; j < functionsArray.length; j++) {
-        //     console.log({[functionsArray[j].name] : functionsArray[j](arr[i])});
-        // }
-        /* Using forEach loop */
-        functionsArray.forEach((f, j) => console.log( {[f.name]: f(dataArray[i])} ));
-        i++;
-        return recursiveTest(arr, i);
-    }
-    return recursiveTest(dataArray, 0);
-}
-
 Test(dataArray, testFunctions);
 
-module.exports
+module.exports = {
+    bubbleSort
+}
