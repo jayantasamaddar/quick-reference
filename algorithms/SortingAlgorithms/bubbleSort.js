@@ -45,16 +45,16 @@ const bubbleSort3 = array => {
 }
 
 /* Testing */
-const Test = require("../../../RapidTest/Test");
-const testFunctions = [bubbleSort, bubbleSort2, bubbleSort3];
+// const Test = require("../../../RapidTest/Test");
+// const testFunctions = [bubbleSort, bubbleSort2, bubbleSort3];
 
-const dataArray = [
-    [62, 15, 24, 82, 43, 52, 112, 74, 96, 101, 31, 123],
-    [72, 33, 9, 996, 741, 224, 362, 1201, 42, 112, 233, 112]
-];
+// const dataArray = [
+//     [62, 15, 24, 82, 43, 52, 112, 74, 96, 101, 31, 123],
+//     [72, 33, 9, 996, 741, 224, 362, 1201, 42, 112, 233, 112]
+// ];
 
-Test(dataArray, testFunctions);
+// Test(dataArray, testFunctions);
 
-module.exports = {
-    bubbleSort
-}
+// module.exports = {
+//     bubbleSort
+// }
