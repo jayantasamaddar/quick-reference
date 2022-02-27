@@ -11,7 +11,6 @@ It involves swapping two elements in a list, so first let's declare a very basic
 const swap = (arr, indx1, indx2) => [arr[indx1], arr[indx2]] = [arr[indx2], arr[indx1]];
 ```
 
-
 ## Bubble Sort
 Bubble Sort is the simplest sorting algorithm that works by repeatedly swapping the adjacent elements if they are in wrong order. It does so by comparing in an given list `array` of items, if item at index `i` compares correctly to item at index `i + 1`. If so it does a simple swap operation and continues comparing the next set of items until it reaches the end of the list.
 
