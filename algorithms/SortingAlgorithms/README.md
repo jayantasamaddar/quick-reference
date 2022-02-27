@@ -11,6 +11,10 @@ It involves swapping two elements in a list, so first let's declare a very basic
 const swap = (arr, indx1, indx2) => [arr[indx1], arr[indx2]] = [arr[indx2], arr[indx1]];
 ```
 
+**Note:** *For the examples below, we will be using basic C Style for-loops that are used in almost all programming languages. The same can be done with using `while loop`, `forEach loop`, `recursive function`. For these other implementations, check the `js` files in this repository.*
+
+--------------------------------------------------------------------------------------------------------
+
 ## Bubble Sort
 Bubble Sort is the simplest sorting algorithm that works by repeatedly swapping the adjacent elements if they are in wrong order. It does so by comparing in an given list `array` of items, if item at index `i` compares correctly to item at index `i + 1`. If so it does a simple swap operation and continues comparing the next set of items until it reaches the end of the list.
 
@@ -31,7 +35,9 @@ const bubbleSort = array => {
 ```
 
 ## Selection Sort
-The selection sort algorithm sorts a list `arr` by repeatedly finding the criteria element `min` *(the minimum value, if we are considering ascending order)* from unsorted part and swapping it with the item at the current index `i` and continues comparing the next item at the index `i + 1` to the criteria's first element from next unordered part of the list `Math.min(arr[i + 1], arr.splice(i + 1, arr.length)` *(as per our example of ascending order)*.
+The selection sort algorithm sorts a list `arr` by repeatedly finding the criteria element `min` *(the minimum value, if we are considering ascending order)* from unsorted part and swapping the current item at the current index `i` with the criteria **selection (hence selection sort)** item, `min` at it's **last index** `arr.lastIndexOf(min)` and continues comparing the next item at the index `i + 1` to the criteria's first element from next unordered part of the list `Math.min(arr[i + 1], arr.splice(i + 1, arr.length)` *(as per our example of ascending order)*.
+
+**Note:** Selecting the criteria item at it's last index is crucial as we are moving progressively down the array. In case of duplicate items, finding any index, may make selections from already sorted and swap those, causing an error in the sorting process.
 
 **Syntax:**
 ```
@@ -40,7 +46,7 @@ const selectionSort = array => {
     for(let i = 0; i < arr.length - 1; i++) {
         for(let j = i; j < arr.length; j++) {
             const min = Math.min(arr[j], ...arr.slice(j+1, arr.length));
-            if(min < j) swap(arr, j, arr.lastIndexof(min));
+            if(min < arr[j]) swap(arr, j, arr.lastIndexOf(min));
         }
     }
     return arr;
