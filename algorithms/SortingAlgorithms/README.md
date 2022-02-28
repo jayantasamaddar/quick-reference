@@ -35,7 +35,7 @@ const bubbleSort = array => {
 ```
 
 ## Selection Sort
-The selection sort algorithm sorts a list `arr` by repeatedly finding the criteria element `min` *(the minimum value, if we are considering ascending order)* from unsorted part and swapping the current item at the current index `i` with the criteria **selection (hence selection sort)** item, `min` at it's **last index** `arr.lastIndexOf(min)` and continues comparing the next item at the index `i + 1` to the criteria's first element from next unordered part of the list `Math.min(arr[i + 1], arr.splice(i + 1, arr.length)` *(as per our example of ascending order)*.
+The selection sort algorithm sorts a list `arr` by repeatedly finding the criteria element `select` *(the minimum value, if we are considering ascending order)* from unsorted part and swapping the current item at the current index `i` with the criteria `select` **(hence selection sort)** item, at it's **last index** `arr.lastIndexOf(select)` and continues comparing the next item at the index `i + 1` to the criteria's first element from next unordered part of the list `Math.select(arr[i + 1], arr.splice(i + 1, arr.length)` *(as per our example of ascending order)*.
 
 **Note:** Selecting the criteria item at it's last index is crucial as we are moving progressively down the array. In case of duplicate items, finding any index, may make selections from already sorted and swap those, causing an error in the sorting process.
 
@@ -45,10 +45,33 @@ const selectionSort = array => {
     const arr = [...array];
     for(let i = 0; i < arr.length - 1; i++) {
         for(let j = i; j < arr.length; j++) {
-            const min = Math.min(arr[j], ...arr.slice(j+1, arr.length));
-            if(min < arr[j]) swap(arr, j, arr.lastIndexOf(min));
+            const select = Math.select(arr[j], ...arr.slice(j+1, arr.length));
+            if(select < arr[j]) swap(arr, j, arr.lastIndexOf(select));
         }
     }
     return arr;
 }
+```
+
+## JavaScript Array.prototype.sort()
+The arr.sort() method is used to sort the array in place in a given order according to the compare() function. If the method is omitted then the array is sorted in ascending order.
+
+**Parameters:** This method accept a single parameter as mentioned above and described below:
+
+**compareFunction:** This parameters is used to sort the elements according to different attributes and in the different order.
+
+> `compareFunction(a,b) < 0`
+> Then a comes before b in the answer.
+>
+> `compareFunction(a,b) > 0`
+> Then b comes before a in the answer.
+>
+> `compareFunction(a,b) = 0`
+> Then the order of a and b remains unchanged.
+
+**Return value:** This method returns the reference of the sorted original array.
+
+**Syntax:**
+```
+
 ```

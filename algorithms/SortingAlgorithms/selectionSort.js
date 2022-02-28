@@ -5,16 +5,43 @@ const selectionSort = array => {
     const arr = [...array];
     for(let i = 0; i < arr.length - 1; i++) {
         for(let j = i; j < arr.length - 1; j++) {
-            const min = Math.min(arr[j],...arr.slice(j+1,arr.length));
-            if(min < arr[j]) swap(arr, j, arr.lastIndexOf(min));
+            const select = Math.min(arr[j],...arr.slice(j+1,arr.length));
+            if(select < arr[j]) swap(arr, j, arr.lastIndexOf(select));
         }
     }
     return arr;
 }
 
+/* Method 2 - Using for-in loop */
+const selectionSort2 = array => {
+    const arr = [...array];
+    for(let c in arr) {
+        for(let i = c; i < arr.length - 1; i++) {
+            const select = Math.min(arr[i], ...arr.slice(i+1, array.length));
+            if(select < arr[i]) swap(arr, i, arr.lastIndexOf(select));
+        }
+    }
+    return arr;
+}
+
+/* Method 3 - Using Recursive Function */
+const selectionSort3 = array => {
+    const recursiveSort = (arr, indx) => {
+        let c = indx;
+        if(c === arr.length - 1) return arr;
+        for(let i = c; i < arr.length - 1; i++) {
+            const select = Math.min(arr[i], ...arr.slice(i+1, arr.length));
+            if(select < arr[i]) swap(arr, i, arr.lastIndexOf(select))
+        }
+        c++;
+        return recursiveSort(arr, c);
+    }
+    return recursiveSort([...array], 0);
+}
+
 /* Testing */
 const Test = require("../../../RapidTest/Test");
-const testFunctions = [selectionSort];
+const testFunctions = [selectionSort2];
 
 const dataArray = [
     [62, 15, 24, 82, 43, 52, 112, 74, 96, 101, 31, 123],
