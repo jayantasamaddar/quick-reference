@@ -35,3 +35,25 @@ The event continues to propagate as usual, unless one of its event listeners cal
 As noted below, calling preventDefault() for a non-cancelable event, such as one dispatched via EventTarget.dispatchEvent(), without specifying cancelable: true has no effect. 
 
 This is effective on form submit buttons where we want the form submit button to run an event handler without the form's default way of submitting forms, which refreshes the page.
+
+#### How to manually set an Event to make a click happen somewhere in the DOM
+
+We can do so with the help of Event Constructors. It has two parts :-
+
+- Declare the event constructure,
+- Dispatch it to a DOM element
+
+**Syntax**
+```
+const clickEvent = new MouseEvent("click", {
+    "view": window,
+    "bubbles": true,
+    "cancelable": false
+});
+
+const firstNameInput = document.getElementById("input.firstname");
+
+// Clicks the input field with an id of 'firstname'
+
+firstNameInput.dispatchEvent(clickEvent);
+```
