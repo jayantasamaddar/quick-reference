@@ -245,5 +245,195 @@ OrderSchema.pre('validate', function(next) {
 
 ------------------------------------------------------------------------------------------------------
 
+# Using Middleware to Update a Document, Subdocument or Related Documents (accessed by foreign key)
+
+Mongoose Middleware has plenty of caveats.
+
+### Use Case 1: Run Middleware before Contacts are Saved
+
+**Note:** `updateOne` will not let the document be accessible with `this`. Therefore, we must first retrieve the document in order to update the query before letting it go to the next middleware.
+However, in this case, this particular modification of modifying the count `pre` is a wrong approach as this contact update is happening even before the order is actually created, hence, it will always be one short. We will update it correctly by instead targetting the OrderSchema as in Use Case (3) or (4).
+
+```
+ContactSchema.pre('updateOne', async function(next) {
+    try {
+        const data = this.getUpdate();
+        const doc = await this.model.findOne({acount_id: data["account_id"], email: data.email});
+        this.getUpdate().$set["orders_count"] = doc.orders?.length;
+        this.getUpdate().$set["shipments_count"] = doc.shipments?.length;
+        console.log(this.getUpdate());
+        next();
+    } catch(error) {
+        return next(error);
+    }
+});
+```
+
+### Use Case 2: Run Middleware before Contacts are Updated
+
+**Note:** `updateOne` will not return the updated Document ibut findOneAndUpdate will. Since the `post` middleware has access the the returned response, this is true for it as well.
+
+```
+ContactSchema.post('findOneAndUpdate', async function(doc, next) {
+    try {
+        doc["orders_count"] = doc.orders?.length;
+        doc["shipments_count"] = doc.shipments?.length;
+        await doc.save();
+        next();
+    } catch(error) {
+        return next(error);
+    }
+});
+```
+
+
+### Use Case 3: Run Middleware after Contacts are Updated
+
+**Note:** `updateOne` will not return the updated Document ibut findOneAndUpdate will. Since the `post` middleware has access the the returned response, this is true for it as well.
+
+```
+ContactSchema.post('findOneAndUpdate', async function(doc, next) {
+    try {
+        doc["orders_count"] = doc.orders?.length;
+        doc["shipments_count"] = doc.shipments?.length;
+        await doc.save();
+        next();
+    } catch(error) {
+        return next(error);
+    }
+});
+```
+
+**Use Case 4: Run Middleware just before Order is created to also update the Customer**
+
+Best Solution as it only updates when Order is saved which is usually during creation unless explicitly done elsewhere.
+
+```
+OrderSchema.pre('save', async function(next) {
+    try {
+        const contact = await Contact.findById(this.customer);
+        contact.orders_count = contact.orders?.length;
+        contact.shipments_count = contact.shipments?.length;
+        contact.save();
+        next();
+    }
+    catch(error) {
+        return next(error);
+    }
+});
+```
+
+**Use Case 5: Run Middleware just after Order is deleted to also update the Customer's list of orders**
+
+```
+OrderSchema.post('findOneAndDelete', async function(doc, next) {
+    try {
+        const contact = await Contact.findById(doc.customer);
+        contact.orders.pull(doc._id);
+        contact.orders_count = contact.orders?.length;
+        contact.shipments_count = contact.shipments?.length;
+        contact.save();
+        next();
+    }
+    catch(error) {
+        return next(error);
+    }
+});
+```
+
+**Use Case 5b: Run Middleware just after Order is saved using .save() or create**
+```
+OrderSchema.post('save', async function(doc, next) {
+    try {
+        const existingContact = await Contact.findOne(doc.account_id, doc.email);
+        if(!existingContact) {
+            const customerData = {  
+                account_id: doc.account_id,
+                email: doc.email,
+                phone: doc.billing_address.phone,
+                firstname: doc.billing_address.firstname,
+                lastname: doc.billing_address.lastname,
+                address1: doc.billing_address.address1,
+                address2: doc.billing_address.address2,
+                city: doc.billing_address.city,
+                province: doc.billing_address.province,
+                zip: doc.billing_address.zip,
+                country: doc.billing_address.country,
+                province_code: doc.billing_address.province_code,
+                country_code: doc.billing_address.country_code,
+                orders: [doc._id],
+                orders_count : 1,
+                last_order_id : doc._id,
+                total_spent: doc.total_amount
+            }
+            const contact = await Contact.create(customerData);
+            doc.customer_id = contact._id;
+            await doc.save();
+        } 
+        else {
+            doc.customer = existingContact._id;
+            await doc.save();
+            existingContact.last_order_id = doc._id;
+            existingContact.orders.push(doc._id);
+            existingContact.orders_count = existingContact.orders?.length;
+            existingContact.shipments_count = existingContact.shipments?.length;
+            existingContact.total_spent += doc.total_amount;
+            await existingContact.save();
+        }
+    }
+    catch(error) {
+        console.log(error);
+    }
+    next();
+});
+```
+
+### Use Case 6: The insertMany Middleware
+
+**Note:** `insertMany` as of Mongoose 6.2.0 takes in function arguments in different orders as follows:
+
+
+#### `insertMany` pre-Middleware
+```
+ContactSchema.pre('insertMany', async function(next, docs) {
+    for(let i = 0; i < docs.length; i++) {
+        if(!docs[i].phone_formatted || !docs[i].phone_number) {
+            try {
+                const { phone_formatted, phone_number, dialcode } = await PhoneParser(docs[i].phone, docs[i].country);
+                docs[i].phone_number = phone_number;
+                docs[i].phone_formatted = phone_formatted;
+                docs[i].dialcode = dialcode;
+            }
+            catch(error) {
+                console.log(error);
+            }
+        }
+    }
+    next();
+});
+```
+
+#### `insertMany` post-Middleware
+```
+ContactSchema.post('insertMany', async function(docs, next) {
+    for(let i = 0; i < docs.length; i++) {
+        if(!docs[i].phone_formatted || !docs[i].phone_number) {
+            try {
+                const { phone_formatted, phone_number, dialcode } = await PhoneParser(docs[i].phone, docs[i].country);
+                docs[i].phone_number = phone_number;
+                docs[i].phone_formatted = phone_formatted;
+                docs[i].dialcode = dialcode;
+            }
+            catch(error) {
+                console.log(error);
+            }
+        }
+    }
+    next();
+});
+```
+
+------------------------------------------------------------------------------------------------------
+
 # References
 1. [Mongoose Official](https://mongoosejs.com/)
