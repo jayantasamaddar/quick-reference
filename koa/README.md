@@ -49,3 +49,7 @@ $ node my-koa-app.js
 
 ---
 
+# References
+
+- **Koa.js | [Official Website](https://koajs.com/)** | **[Wiki](https://github.com/koajs/koa/wiki)**
+- **Koa Router | [API Documentation]((https://github.com/koajs/router/blob/master/API.md))**
