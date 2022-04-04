@@ -1,0 +1,8 @@
+<h1><%- title %></h1>
+<ul class="list-group mt-4">
+    <% (items?.split(",") || things).forEach(thing => { %>
+        <li class="list-group-item">
+            <%= thing %>
+        </li>
+    <% }) %>
+</ul>
