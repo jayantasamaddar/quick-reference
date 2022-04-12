@@ -1,0 +1,18 @@
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #333333;
+}
+
+.table th {
+    text-align: left;
+}
+
+.table td, .table th {
+    border: 1px solid #333333;
+    padding: 5px;
+}
+
+.table td a:hover {
+    color: darkcyan;
+}
