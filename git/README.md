@@ -1,10 +1,3 @@
-# List of Command Line commands
-
-- `git add --all` - Stage all files in folder.
-- `git commit -m "name of commit"` - Make commit of staged files
-- `git remote add origin https://github.com/jayantasamaddar/RapidTest.git` - Create remote origin
-- `git push -u origin main` - push the main branch
-
 # What is Git?
 
 Git is a free open source version control system.
@@ -24,15 +17,15 @@ We initialize Git by using `git init` inside the directory after which the follo
 
 | Command | Function | Syntax | Example |
 | ------- | -------- | ------ | ------- |
-| clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine<br>Cloning a repo adds an `origin` remote by default which can then be used during `git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`
+| clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>Cloning a repo adds an `origin` remote by default which can then be used during `git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`
 | remote | If a repo is not cloned we need to add a remote from the local directory to the repo. | `git remote add <name> https://github.com/user/repo` | `git remote add origin https://github.com/jayantasamaddar/quick-reference`
-| add | Track your file and changes in Git<br>Stage all files in folder | `git add <filename>`<br>`git add --all` | `git add README.md` |
+| add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` |
 | commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
 | push | Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket | `git push -u <remote name> <remote branch>` | `git push -u origin main` |
 | pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference`
 
-> Git commands are case sensitive and must be in lowercase
+> *Git commands are case sensitive and must be in **lowercase***
 
 #### Other commands 
-> `git --version` to check the current Git version.
-> `git --help` to view a list of Git commands and their functionality and other helpers.
+- `git --version` to check the current Git version.
+- `git --help` to view a list of Git commands and their functionality and other helpers.
