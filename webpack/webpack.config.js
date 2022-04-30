@@ -8,7 +8,19 @@ module.exports = {
     mode: 'development',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle.js'
+        filename: 'bundle[contenthash].js',
+        clean: true,
+        assetModuleFilename: '[name][ext]'
+    },
+    devServer: {
+        static: {
+            directory: path.resolve(__dirname, 'dist')
+        },
+        port: 3000,
+        open: true,
+        hot: true,
+        compress: true,
+        historyApiFallback: true
     },
     module: {
         rules: [
@@ -19,6 +31,20 @@ module.exports = {
                     'css-loader',
                     'sass-loader'
                 ]
+            },
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['@babel/preset-env']
+                    }
+                }
+            },
+            {
+                test: /\.(svg|png|jpg|jpeg|gif)$/i,
+                type: 'asset/resource'
             }
         ]
     },
@@ -26,31 +52,7 @@ module.exports = {
         new HTMLWebpackPlugin({
             title: 'Webpack App',
             template: './public/index.html',
-            filename: 'index.html',
-            // inject: 'body',
-            // minify: {
-            //     collapseWhitespace: true,
-            //     removeComments: true,
-            //     removeRedundantAttributes: true,
-            //     removeScriptTypeAttributes: true,
-            //     removeStyleLinkTypeAttributes: true,
-            //     useShortDoctype: true,
-            //     minifyCSS: true,
-            //     minifyJS: true,
-            //     minifyURLs: true,
-            //     removeAttributeQuotes: true,
-            //     removeEmptyAttributes: true,
-            //     removeOptionalTags: true,
-            //     removeRedundantAttributes: true,
-            //     removeStyleLinkTypeAttributes: true,
-            //     removeComments: true,
-            //     removeEmptyElements: true,
-            //     removeOptionalTags: true,
-            //     removeRedundantAttributes: true,
-            //     removeStyleLinkTypeAttributes: true,
-            //     removeComments: true,
-            //     removeEmptyElements: true,
-            // }
+            filename: 'index.html'
         })
     ]
 }
