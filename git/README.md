@@ -37,11 +37,12 @@ We initialize Git by using `git init` inside the directory after which the follo
 | remote | If a repo is not cloned we need to add a remote from the local directory to the repo. | `git remote add <name> https://github.com/user/repo` | `git remote add origin https://github.com/jayantasamaddar/quick-reference`
 | add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` or `git add .` |
 | commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
-| push | - Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket<br>- Deletes a remote branch on the repo | `git push <remote name> <remote branch>`<br>`git push <remote name> -d <branch>` | `git push origin main`<br>`git push origin -d test` |
+| push | - Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket<br>- Deletes a remote branch on the repo | `git push <remote> <branch>`<br>`git push <remote> -d <branch>` | `git push origin main`<br>`git push origin -d test` |
 | pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference` |
 | checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <name>` | `git checkout -b new-feature`<br>`git checkout main` |
 | branch | - List local branches<br>- List all branches (remote and local)<br>- Rename current local branch<br>- Delete local branch | `git branch`<br>`git branch -a`<br>`git branch <rename>`<br>`git branch -d <branch>` | `git branch`<br>`git branch -a`<br>`git branch -m new-name`<br>`git branch -d test` |
-| merge | Merge an existing branch into the current branch. | `git checkout <to-Branch>`<br>`git merge <from-Branch>` | `git checkout main`<br>`git merge new-feature` |
+| merge | Merge an existing branch into the current branch.<br>After merge, the `<from-branch>` can be deleted using `git push -d <from-branch>` | `git checkout <to-Branch>`<br>`git merge <from-Branch>` | `git checkout main`<br>`git merge new-feature` |
+| reset | Unstage the staged local changes of a single file in a Git repo<br>Unstage the staged local changes of a Git repo | `git reset <filepath>`<br>`git reset` | `git reset ./filename.txt`<br>`git reset` |
 
 > *Git commands are case sensitive and must be in **lowercase***
 
@@ -50,6 +51,6 @@ We initialize Git by using `git init` inside the directory after which the follo
 - `git --help` to view a list of all Git commands and their functionality and other helpers.
 - `git <command> --help` to view a list of all Git subcommands of a git command and their functionality.
 - `git log --oneline` to view a list of commits. Read Only. Press `Q` to Quit.
-- `git status` to check if you are in the master/main branch.
+- `git status` shows a status overview of current branch, staged/untracked files, uncommitted changes etc.
 
 
