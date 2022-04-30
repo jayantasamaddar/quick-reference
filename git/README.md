@@ -44,11 +44,11 @@ We initialize Git by using `git init` inside the directory after which the follo
 | merge | Merge an existing branch into the current branch.<br>After merge, the `<from-branch>` can be deleted using `git push -d <from-branch>` | `git checkout <to-Branch>`<br>`git merge <from-Branch>` | `git checkout main`<br>`git merge new-feature` |
 | revert | Revert to a previous commit version. | `git revert <commit_ID>` | `git revert 077151a` |
 | reset | - Unstage the staged local changes of a single file in a Git repo to the most recent commit.<br>- Unstage the staged local changes of a Git repo to most recent commit.<br>- Unstage to most recent commit AND obliterates all uncommitted changes in working directory. Use only when you want to throw away all local developments. | `git reset <filepath>`<br>`git reset`<br>`git reset --hard` | `git reset ./filename.txt`<br>`git reset`<br>`git reset --hard` |
-| diff | Show the differences in local and remote versions | `git diff` | `git diff"` |
+| diff | Show the differences in local and remote versions | `git diff` | `git diff` |
 
 > *Git commands are case sensitive and must be in **lowercase***
 
-#### Other commands 
+#### Other useful commands 
 - `git --version` to check the current Git version.
 - `git --help` to view a list of all Git commands and their functionality and other helpers.
 - `git <command> --help` to view a list of all Git subcommands of a git command and their functionality.
