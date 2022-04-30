@@ -29,8 +29,9 @@ We initialize Git by using `git init` inside the directory after which the follo
 
 #### Other commands 
 - `git --version` to check the current Git version.
-- `git --help` to view a list of Git commands and their functionality and other helpers.
-- `git log --oneline` to view a list of commits. Read Only. `Ctrl + Z` to escape.
+- `git --help` to view a list of all Git commands and their functionality and other helpers.
+- `git <command> --help` to view a list of all Git subcommands of a git command and their functionality.
+- `git log --oneline` to view a list of commits. Read Only. Press `Q` to Quit.
 - `git branch` to view a list of available branches. The * before a branch refers to the current branch.
 
 # Branching in Git
