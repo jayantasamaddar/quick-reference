@@ -24,6 +24,7 @@ We initialize Git by using `git init` inside the directory after which the follo
 | push | Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket | `git push -u <remote name> <remote branch>` | `git push -u origin main` |
 | pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference` |
 | checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <name>` | `git checkout -b feature-new`<br>`git checkout main` |
+| branch | - View list of available branches<br>- Rename current branch | `git branch`<br>`git branch <rename>` | `git branch`<br>`git branch -m new-name` |
 
 > *Git commands are case sensitive and must be in **lowercase***
 
@@ -32,7 +33,7 @@ We initialize Git by using `git init` inside the directory after which the follo
 - `git --help` to view a list of all Git commands and their functionality and other helpers.
 - `git <command> --help` to view a list of all Git subcommands of a git command and their functionality.
 - `git log --oneline` to view a list of commits. Read Only. Press `Q` to Quit.
-- `git branch` to view a list of available branches. The * before a branch refers to the current branch.
+- `git status` to check if you are in the master/main branch.
 
 # Branching in Git
 
