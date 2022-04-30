@@ -42,7 +42,7 @@ We initialize Git by using `git init` inside the directory after which the follo
 | checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <name>` | `git checkout -b new-feature`<br>`git checkout main` |
 | branch | - List local branches<br>- List all branches (remote and local)<br>- Rename current local branch<br>- Delete local branch | `git branch`<br>`git branch -a`<br>`git branch <rename>`<br>`git branch -d <branch>` | `git branch`<br>`git branch -a`<br>`git branch -m new-name`<br>`git branch -d test` |
 | merge | Merge an existing branch into the current branch.<br>After merge, the `<from-branch>` can be deleted using `git push -d <from-branch>` | `git checkout <to-Branch>`<br>`git merge <from-Branch>` | `git checkout main`<br>`git merge new-feature` |
-| reset | Unstage the staged local changes of a single file in a Git repo<br>Unstage the staged local changes of a Git repo | `git reset <filepath>`<br>`git reset` | `git reset ./filename.txt`<br>`git reset` |
+| reset | - Unstage the staged local changes of a single file in a Git repo to the most recent commit.<br>- Unstage the staged local changes of a Git repo to most recent commit.<br>- Unstage to most recent commit AND obliterates all uncommitted changes in working directory. Use only when you want to throw away all local developments. | `git reset <filepath>`<br>`git reset`<br>`git reset --hard` | `git reset ./filename.txt`<br>`git reset` |
 
 > *Git commands are case sensitive and must be in **lowercase***
 
