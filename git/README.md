@@ -17,13 +17,13 @@ We initialize Git by using `git init` inside the directory after which the follo
 
 | Command | Function | Syntax | Example |
 | ------- | -------- | ------ | ------- |
-| clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>Cloning a repo adds an `origin` remote by default which can then be used during `git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`
+| clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>Cloning a repo adds an `origin` remote by default which can then be used to push:<br>`git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`
 | remote | If a repo is not cloned we need to add a remote from the local directory to the repo. | `git remote add <name> https://github.com/user/repo` | `git remote add origin https://github.com/jayantasamaddar/quick-reference`
 | add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` or `git add .` |
 | commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
 | push | Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket | `git push -u <remote name> <remote branch>` | `git push -u origin main` |
 | pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference` |
-| checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <existing-branch-name>` | `git checkout -b feature-new-feature`<br>`git checkout main` |
+| checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <name>` | `git checkout -b feature-new`<br>`git checkout main` |
 
 > *Git commands are case sensitive and must be in **lowercase***
 
