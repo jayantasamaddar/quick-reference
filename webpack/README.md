@@ -284,7 +284,16 @@ module.exports = {
 
 ---
 
-# Babel Loader for Backward Compatibility in Browsers
+# [Babel](https://babeljs.io/docs/en/) - Loader for Backward Compatibility in Browsers
+Babel is a free and open-source JavaScript transcompiler that is mainly used to convert ECMAScript 2015+ code into a backwards compatible version of JavaScript that can be run by older JavaScript engines. Babel is a popular tool for using the newest features of the JavaScript programming language.
+
+Here are the main things Babel can do for you:
+
+- Transform syntax
+- Polyfill features that are missing in your target environment (through a third-party polyfill such as core-js)
+- Source code transformations (codemods)
+- And more! (check out these videos for inspiration)
+
 
 - Install the following dev dependencies: `npm i -D babel-loader @babel/core @babel/preset-env`
 - Add rule for the loader under `modules` in the `webpack.config.js`. Be sure to `exclude: /node_modules/`
@@ -319,6 +328,63 @@ module.exports = {
         ]
     }
 }
+```
+
+# [Polyfill](https://babeljs.io/docs/en/babel-polyfill) to add async-await support
+Without polyfilling, `async-await` may not work in the browser. We may have to use Promises `.then` syntax instead of the more verbose `async-await`.
+
+#### Syntax
+
+In **`generateJoke.js`** without polyfill
+
+```
+import axios from 'axios';
+
+const generateJoke = () => {
+    const jokeEl = document.getElementById('joke');
+    axios.get('https://icanhazdadjoke.com/', {
+        headers: {
+            Accept: 'application/json'
+        },
+    })
+    .then(({data: { joke }}) => joke ? jokeEl.innerHTML = joke : jokeEl.innerHTML = "Joke's on you!")
+    .catch(error => error.message);
+}
+```
+
+
+### What options do we have for polyfilling? 
+As of Babel 7.4.0, `@babel/polyfill` package has been deprecated in favor of directly including `core-js/stable` (to polyfill ECMAScript features) and `regenerator-runtime/runtime` (needed to use transpiled generator functions):
+
+- Install [`core-js`](https://www.npmjs.com/package/core-js) and [`regenerator-runtime`](https://www.npmjs.com/package/regenerator-runtime) as devDependencies: `npm i -D core-js regenerator-runtime`
+- Import the `core-js/stable` and `regenerator-runtime/runtime` packages in the file.
+
+#### Syntax
+
+In **`generateJoke.js`** to polyfill **`async-await` using `core-js` and `regenerator-runtime`**
+
+```
+import axios from 'axios';
+import "core-js/stable";
+import "regenerator-runtime/runtime";
+
+const generateJoke = async () => {
+    const jokeEl = document.getElementById('joke');
+    try {
+        const { data: { joke} } = await axios.get('https://icanhazdadjoke.com/', {
+            headers: {
+                Accept: 'application/json'
+            },
+        })
+        if(joke) jokeEl.innerHTML = joke;
+        else jokeEl.innerHTML = 'No joke found';
+    }
+    catch(error) {
+        console.log(error.message);
+    }
+}
+
+export default generateJoke;
 ```
 
 ---
@@ -358,6 +424,44 @@ module.exports = {
 
 ---
 
+# Third Party Plugins - [Webpack Bundle Analyzer](https://www.npmjs.com/package/webpack-bundle-analyzer) (Optional)
+Shows you all the packages used in the application and the space that they take.
+
+- Install npm package as devDependency: `npm i -D webpack-bundle-analyzer`
+- Import in `webpack.config.js`: `const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin`
+- Initialize plugin as `newBundleAnalyzerPlugin()`
+- Build project by running `npm run build`. Automatically opens a window to Port 8888 and shows a screen where all packages and the space taken by them are shown.
+
+![Webpack Bundle Analyzer | PORT 8888](src/assets/webpack-bundle-analyzer.png)
+
+#### Syntax
+```
+const path = require('path');
+const HTMLWebpackPlugin = require('html-webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
+const path = require('path');
+const HTMLWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+    // Add entry, mode
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'bundle.js'
+    }, 
+    plugins: [
+        new HTMLWebpackPlugin({
+            title: 'Webpack App',
+            template: './public/index.html',
+            filename: 'index.html',
+        }),
+        newBundleAnalyzerPlugin()
+    ]
+}
+```
+
+---
+
 # Glossary
 
 - **Live Reload** - Triggers an app wide reload that listens to file changes.
@@ -368,5 +472,6 @@ module.exports = {
 
 # References
 - **[Webpack Official Website](https://webpack.js.org)**
+- **[Babel](https://babeljs.io)**
 - **[Caching](https://en.wikipedia.org/wiki/Cache_(computing))**
 - **[Hot Module Replacement](https://webpack.js.org/concepts/hot-module-replacement/)**

@@ -1,14 +1,19 @@
 import axios from 'axios';
-const generateJoke = () => {
+import "core-js/stable";
+import "regenerator-runtime/runtime"; 
+const generateJoke = async () => {
+    const jokeEl = document.getElementById('joke');
     try {
-        axios.get('https://icanhazdadjoke.com/', {
+        const { data: { joke} } = await axios.get('https://icanhazdadjoke.com/', {
             headers: {
                 Accept: 'application/json'
             },
-        }).then(({data: { joke }}) => document.getElementById('joke').innerHTML = joke);
+        })
+        if(joke) jokeEl.innerHTML = joke;
+        else jokeEl.innerHTML = "Joke's on you!";
     }
     catch(error) {
-        console.log(error);
+        console.log(error.message);
     }
 }
 
