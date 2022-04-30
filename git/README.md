@@ -38,12 +38,13 @@ We initialize Git by using `git init` inside the directory after which the follo
 | add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` or `git add .` |
 | commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
 | push | - Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket<br>- Deletes a remote branch on the repo | `git push <remote> <branch>`<br>`git push <remote> -d <branch>` | `git push origin main`<br>`git push origin -d test` |
-| pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference` |
+| pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <remote> <branch>` | `git pull origin main` |
 | checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <name>` | `git checkout -b new-feature`<br>`git checkout main` |
 | branch | - List local branches<br>- List all branches (remote and local)<br>- Rename current local branch<br>- Delete local branch | `git branch`<br>`git branch -a`<br>`git branch <rename>`<br>`git branch -d <branch>` | `git branch`<br>`git branch -a`<br>`git branch -m new-name`<br>`git branch -d test` |
 | merge | Merge an existing branch into the current branch.<br>After merge, the `<from-branch>` can be deleted using `git push -d <from-branch>` | `git checkout <to-Branch>`<br>`git merge <from-Branch>` | `git checkout main`<br>`git merge new-feature` |
 | revert | Revert to a previous commit version. | `git revert <commit_ID>` | `git revert 077151a` |
 | reset | - Unstage the staged local changes of a single file in a Git repo to the most recent commit.<br>- Unstage the staged local changes of a Git repo to most recent commit.<br>- Unstage to most recent commit AND obliterates all uncommitted changes in working directory. Use only when you want to throw away all local developments. | `git reset <filepath>`<br>`git reset`<br>`git reset --hard` | `git reset ./filename.txt`<br>`git reset`<br>`git reset --hard` |
+| diff | Show the differences in local and remote versions | `git diff` | `git diff"` |
 
 > *Git commands are case sensitive and must be in **lowercase***
 
@@ -55,3 +56,25 @@ We initialize Git by using `git init` inside the directory after which the follo
 - `git status` shows a status overview of current branch, staged/untracked files, uncommitted changes etc.
 
 
+# Git Conflicts in a Professional Environment
+When multiple people are working on the same branch there might be some conflicts in the version due to changing of the version history.
+
+#### Situation:
+- Let's say three people, **Person A**, **Person B**, **Person C** clone the same repo and start working. 
+- There are three files in the repo: `Filename1`, `Filename2`, `Filename3`
+
+#### Problem:
+**Person A** modifies `Filename1` and commits changes and publishes the repo. Now **Person B** and **Person C** do not have the same versions, as they continue to make their own changes to their cloned versions locally. So when they make a commit and push changes, they get an error saying that they do not have the latest version of the repo.
+
+### The question here is: How do they make their changes to the repo without breaking the project
+
+#### Use Case 1 - Persons B and C are also making changes to `Filename1` :
+If three people are working on the same file, Git can still handle the changes. The first person to push, manages to do it without a problem. The next pushes by the other two people will face a problem because now the repo version has changed. They first have to pull the repo now to sync it to the current version. The pulled repo will identify the conflicted file and suggest how you should proceed.
+
+There are three options if the same file has been unsynced changes to the file after completion of a pull request: 
+
+- Use the modified version - Use the pulled version
+- Use the current version - Use the local version
+- Use both versions - Appends the changes to the local version
+
+Once the Person is happy with the changes, he/she may commit the changes and push the changes back to the repo. This is how version control ensures that there is no conflict.
