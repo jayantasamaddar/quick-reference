@@ -12,32 +12,9 @@ Git is the tool that tracks the code changes over time. Github is a website wher
 # Installing Git
 Follow the tutorial by Atlassian to **[Install Git](https://www.atlassian.com/git/tutorials/install-git)**
 
-# Git Commands and their functions
-We initialize Git by using `git init` inside the directory after which the following commands can be used:
-
-| Command | Function | Syntax | Example |
-| ------- | -------- | ------ | ------- |
-| clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>Cloning a repo adds an `origin` remote by default which can then be used to push:<br>`git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`
-| remote | If a repo is not cloned we need to add a remote from the local directory to the repo. | `git remote add <name> https://github.com/user/repo` | `git remote add origin https://github.com/jayantasamaddar/quick-reference`
-| add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` or `git add .` |
-| commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
-| push | - Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket<br>- Deletes a remote branch on the repo | `git push <remote name> <remote branch>`<br>`git push <remote name> -d <branch>` | `git push origin main`<br>`git push origin -d test` |
-| pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference` |
-| checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <name>` | `git checkout -b feature-new`<br>`git checkout main` |
-| branch | - List local branches<br>- List all branches (remote and local)<br>- Rename current local branch<br>- Delete local branch | `git branch`<br>`git branch -a`<br>`git branch <rename>`<br>`git branch -d <branch>` | `git branch`<br>`git branch -a`<br>`git branch -m new-name`<br>`git branch -d test` |
-
-> *Git commands are case sensitive and must be in **lowercase***
-
-#### Other commands 
-- `git --version` to check the current Git version.
-- `git --help` to view a list of all Git commands and their functionality and other helpers.
-- `git <command> --help` to view a list of all Git subcommands of a git command and their functionality.
-- `git log --oneline` to view a list of commits. Read Only. Press `Q` to Quit.
-- `git status` to check if you are in the master/main branch.
-
 # Branching in Git
 
-#### What happens when we create a new branch?
+### What happens when we create a new branch?
 Initially, the code on master and this new feature branch will be exactly the same. But as you make updates to the feature branch, those changes are only seen in the feature branch.
 
 So if we make changes to a feature branch and commit to save those changes onto that branch and then if you switch back to the master branch, you won't be able to see any of those changes that you made on that feature branch. Each branch maintains its own independent set of commits and has no way of knowing what commits happen in another branch.
@@ -50,5 +27,29 @@ This is really helpful when there are multiple people working on the same reposi
 One very common thing that you'll see in development is that you'll be working on this feature branch for a week or more and you have all of these changes that you've made. Suddenly you encounter this major bug, that you have to fix really quickly. For this, we make this other branch, called a **Hot Fix Branch** represented by yellow. After the code is fixed on the Hot Fix Branch and you make sure it is working correctly, this branch is then merged back into the master branch.
 
 ![Git Branching](images/git-branching.png)
+
+# Git Commands and their functions
+We initialize Git by using `git init` inside the directory after which the following commands can be used:
+
+| Command | Function | Syntax | Example |
+| ------- | -------- | ------ | ------- |
+| clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>Cloning a repo adds an `origin` remote by default which can then be used to push:<br>`git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`
+| remote | If a repo is not cloned we need to add a remote from the local directory to the repo. | `git remote add <name> https://github.com/user/repo` | `git remote add origin https://github.com/jayantasamaddar/quick-reference`
+| add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` or `git add .` |
+| commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
+| push | - Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket<br>- Deletes a remote branch on the repo | `git push <remote name> <remote branch>`<br>`git push <remote name> -d <branch>` | `git push origin main`<br>`git push origin -d test` |
+| pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference` |
+| checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <name>` | `git checkout -b new-feature`<br>`git checkout main` |
+| branch | - List local branches<br>- List all branches (remote and local)<br>- Rename current local branch<br>- Delete local branch | `git branch`<br>`git branch -a`<br>`git branch <rename>`<br>`git branch -d <branch>` | `git branch`<br>`git branch -a`<br>`git branch -m new-name`<br>`git branch -d test` |
+| merge | Merge an existing branch into the current branch. | `git checkout <to-Branch>`<br>`git merge <from-Branch>` | `git checkout main`<br>`git merge new-feature` |
+
+> *Git commands are case sensitive and must be in **lowercase***
+
+#### Other commands 
+- `git --version` to check the current Git version.
+- `git --help` to view a list of all Git commands and their functionality and other helpers.
+- `git <command> --help` to view a list of all Git subcommands of a git command and their functionality.
+- `git log --oneline` to view a list of commits. Read Only. Press `Q` to Quit.
+- `git status` to check if you are in the master/main branch.
 
 
