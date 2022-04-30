@@ -19,10 +19,11 @@ We initialize Git by using `git init` inside the directory after which the follo
 | ------- | -------- | ------ | ------- |
 | clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>Cloning a repo adds an `origin` remote by default which can then be used during `git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`
 | remote | If a repo is not cloned we need to add a remote from the local directory to the repo. | `git remote add <name> https://github.com/user/repo` | `git remote add origin https://github.com/jayantasamaddar/quick-reference`
-| add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` or `git add .` | `git add README.md`<br>`git add --all` or `git add .` |
+| add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` or `git add .` |
 | commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
 | push | Upload Git commits to a remote repo, like Github, Gitlab, Bitbucket | `git push -u <remote name> <remote branch>` | `git push -u origin main` |
-| pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference`
+| pull | Download changes from a remote repo to your local machine. Opposite of push. Useful when working with multiple teams who are constantly updating the repo | `git pull <address>` | `git pull https://github.com/jayantasamaddar/quick-reference` |
+| checkout | - Create a new branch<br>- Switch to an existing branch | `git checkout -b <name>`<br>`git checkout <existing-branch-name>` | `git checkout -b feature-new-feature`<br>`git checkout main` |
 
 > *Git commands are case sensitive and must be in **lowercase***
 
@@ -30,6 +31,7 @@ We initialize Git by using `git init` inside the directory after which the follo
 - `git --version` to check the current Git version.
 - `git --help` to view a list of Git commands and their functionality and other helpers.
 - `git log --oneline` to view a list of commits. Read Only. `Ctrl + Z` to escape.
+- `git branch` to view a list of available branches. The * before a branch refers to the current branch.
 
 # Branching in Git
 
@@ -45,5 +47,6 @@ This is really helpful when there are multiple people working on the same reposi
 
 One very common thing that you'll see in development is that you'll be working on this feature branch for a week or more and you have all of these changes that you've made. Suddenly you encounter this major bug, that you have to fix really quickly. For this, we make this other branch, called a **Hot Fix Branch** represented by yellow. After the code is fixed on the Hot Fix Branch and you make sure it is working correctly, this branch is then merged back into the master branch.
 
-![Git Branching](/images/git-branching.png)
+![Git Branching](images/git-branching.png)
+
 
