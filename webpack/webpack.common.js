@@ -1,38 +1,12 @@
 const path = require('path');
 const HTMLWebpackPlugin = require('html-webpack-plugin');
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
     entry: {
         main: './src/index.js'
     },
-    mode: 'development',
-    output: {
-        path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle[contenthash].js',
-        clean: true,
-        assetModuleFilename: '[name][ext]'
-    },
-    devServer: {
-        static: {
-            directory: path.resolve(__dirname, 'dist')
-        },
-        port: 3000,
-        open: true,
-        hot: true,
-        compress: true,
-        historyApiFallback: true
-    },
     module: {
         rules: [
-            {
-                test: /\.scss$/,
-                use: [
-                    'style-loader',
-                    'css-loader',
-                    'sass-loader'
-                ]
-            },
             {
                 test: /\.js$/,
                 exclude: /node_modules/,
@@ -54,7 +28,6 @@ module.exports = {
             title: 'Webpack App',
             template: './public/index.html',
             filename: 'index.html'
-        }),
-        new BundleAnalyzerPlugin()
+        })
     ]
 }

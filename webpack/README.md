@@ -29,7 +29,14 @@ To get started you only need to understand its Core Concepts:
     "build": "webpack --mode production" 
 }
 ```
-- Create a `webpack.config.js` file. The `--mode production` can be removed once `webpack.config.js` is added where `mode`, along with other configurations can be set. Add the following webpack configuration:
+- By default, the above value for build reads from `webpack.config.js`. If any other filename is to be read instead of `webpack.config.js` then the scripts need to carry a `--config webpack.prod.js` flag to read the config from `webpack.prod.js` instead.
+```
+"scripts": {
+    "build": "webpack --config webpack.prod.js" 
+}
+```
+- Create a `webpack.config.js` file. The `--mode production` flag can be removed once `webpack.config.js` is added where `mode`, along with other configurations can be set.
+- Add the following webpack configuration:
 
 #### Syntax
 
@@ -78,9 +85,9 @@ module.exports = {
             {
                 test: /\.scss$/,
                 use: [
-                    'style-loader',
-                    'css-loader',
-                    'sass-loader'
+                    'style-loader', // 3. Injects styles into DOM
+                    'css-loader', // 2. Turns CSS into commonJS
+                    'sass-loader' // 1. Turns SASS into CSS
                 ]
             }
         ]
@@ -145,7 +152,7 @@ module.exports = {
 # [Caching](https://webpack.js.org/guides/caching/)
 So we're using webpack to bundle our modular application which yields a deployable /dist directory. Once the contents of /dist have been deployed to a server, clients (typically browsers) will hit that server to grab the site and its assets. The last step can be time consuming, which is why browsers use a technique called caching. This allows sites to load faster with less unnecessary network traffic. However, it can also cause headaches when you need new code to be picked up.
 
-- Add the `[contenthash]` to the output filename. This generates a Hash which uniquely identifies the `bundle.js` file with a hash string, e.g. `bundle7880eebb0d7ed383141b.js` during build time. This is also auto-reflected in the script tag generated in the `index.html` in the `dist` folder.
+- Add the `[contenthash]` to the output filename. This generates a Hash which uniquely identifies the `bundle.js` file with a hash string which is determined by the content of the `bundle.js`, e.g. `bundle7880eebb0d7ed383141b.js` during build time. This is also auto-reflected in the script tag generated in the `index.html` in the `dist` folder. Thus, if no changes are made to `bundle.js`, the contenthash generated remains unchanged. A change in the filename (deterministic of change in the content of the file) will make sure the browser doesn't use the cache and loads the new file instead, else, it uses the cached file. 
 - Delete the `dist` folder.
 - `npm run build` to generate the `dist` folder from scratch, with the expected changes as mentioned above.
 - If we run another build without making any changes, we'd expect that filename to stay the same.
@@ -163,7 +170,7 @@ module.exports = {
     mode: 'development',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: '[name][contenthash].js'
+        filename: '[name]-[contenthash].js'
     },
 }
 ```
@@ -171,7 +178,7 @@ module.exports = {
 ---
 
 # [Webpack Dev Server](https://webpack.js.org/configuration/dev-server)
-Let's create a Development server build with Webpack
+Let's create a Development server for client-side development with Webpack.
 
 - Add the `"dev": "webpack serve"` to `scripts` in `package.json` file.
 
@@ -202,7 +209,7 @@ module.exports = {
     mode: 'development',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle[contenthash].js'
+        filename: 'bundle-[contenthash].js'
     },
     devServer: {
         static: {
@@ -247,7 +254,7 @@ module.exports = {
     mode: 'development',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle[contenthash].js',
+        filename: 'bundle-[contenthash].js',
         clean: true
     }
 }
@@ -255,7 +262,7 @@ module.exports = {
 
 ---
 
-# Source Maps / Devtool
+# [Source Maps / Devtool](https://webpack.js.org/plugins/source-map-dev-tool-plugin/)
 This option controls if and how source maps are generated.
 Source Maps provide a map from a production code (`dist` folder) to your source code.
 Source Maps are good for debugging as sometimes we get an error message with a line number that doesn't actually show where the actual problem is in your source code.
@@ -275,7 +282,7 @@ module.exports = {
     mode: 'development',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle[contenthash].js',
+        filename: 'bundle-[contenthash].js',
         clean: true
     },
     devtool: 'source-map'
@@ -310,7 +317,7 @@ module.exports = {
     mode: 'development',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle[contenthash].js',
+        filename: 'bundle-[contenthash].js',
         clean: true,
     },
     module: {
@@ -407,7 +414,7 @@ module.exports = {
     mode: 'development',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle[contenthash].js',
+        filename: 'bundle-[contenthash].js',
         clean: true,
         assetModuleFilename: '[name][ext]'
     },   
@@ -424,12 +431,54 @@ module.exports = {
 
 ---
 
-# Third Party Plugins - [Webpack Bundle Analyzer](https://www.npmjs.com/package/webpack-bundle-analyzer) (Optional)
+# Multiple entrypoints and vendor.js
+Sometimes we may need webpack to spin up multiple bundles, instead of just one bundle. 
+
+#### Why would we want to split up our code?
+- Code splitting our app's code which changes more frequently from our vendor code which changes less frequently helps create better maintainable code. For e.g. we may have Bootstrap or jquery or some library that we need, that is not going to change very much or ever in our App.
+- Caching benefits. The vendor code is less likely to change often unless there is some update, hence it is more likely to be cached by browsers, while the App code may require frequent rebuilds.
+
+So we can have two different bundles, 
+1. `vendor[contenthash].js` - contains less frequently updated code
+2. `main[contenthash].js` - contains more frequently updated code
+
+To do this, 
+- We create a new file `vendor.js` inside the `src` folder.
+
+#### Syntax
+
+In **`vendor.js`**
+```
+import "bootstrap"
+```
+
+In **`webpack.config.js`**
+```
+const path = require('path');
+module.exports = {
+    entry: {
+        main: './src/index.js',
+        vendor: './src/vendor.js'
+    }
+    mode: 'development',
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: '[name]-[contenthash].bundle.js'
+    },
+}
+```
+
+Where,
+- `[name]` takes the keys from the entrypoints in `entry`.
+
+---
+
+# [Webpack Bundle Analyzer](https://www.npmjs.com/package/webpack-bundle-analyzer) (Useful)
 Shows you all the packages used in the application and the space that they take.
 
 - Install npm package as devDependency: `npm i -D webpack-bundle-analyzer`
-- Import in `webpack.config.js`: `const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin`
-- Initialize plugin as `newBundleAnalyzerPlugin()`
+- `require` in `webpack.config.js`: `const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin`
+- Initialize plugin as `new BundleAnalyzerPlugin()`
 - Build project by running `npm run build`. Automatically opens a window to Port 8888 and shows a screen where all packages and the space taken by them are shown.
 
 ![Webpack Bundle Analyzer | PORT 8888](src/assets/webpack-bundle-analyzer.png)
@@ -462,6 +511,310 @@ module.exports = {
 
 ---
 
+# Production - Optimization using Extraction and Minimizer Plugins
+
+- ### Extracting CSS using [MiniCssExtractPlugin](https://webpack.js.org/plugins/mini-css-extract-plugin/)
+- ### Minimizing CSS using [CSSMinimizerWebpackPlugin](https://webpack.js.org/plugins/css-minimizer-webpack-plugin/)
+- ### Minimizing JS with [Terser](https://webpack.js.org/plugins/terser-webpack-plugin/)
+
+
+The current setup has no problems, the styles are injected by the `style-loader`, `css-loader` and the `sass-loader` into the DOM. However in production, it is nice to have a separate `.css` file rather than wait for JavaScript to load first, before it can inject the styles into the DOM. This improves performance and user experience by allowing stylesheets to load independent of the JavaScript bundle.
+
+The extracted CSS file(s) size can be further reduced by using the **`CssMinimizerWebpackPlugin`** which minifies the extracted CSS.
+
+Webpack@5+ comes in-built with **`Terser`** which minifies the JavaScript files.
+
+#### Usage - MiniCssExtract
+- Install the npm package as devDependency: `npm i -D mini-css-extract-plugin`
+- `require` in `webpack.config.js`
+- Initialize **MiniCssExtractPlugin** as `new MiniCssExtractPlugin()`. Add options. For e.g. `filename: [name]-[contenthash].css`
+- Replace the loader rules by replacing `style-loader` with `MiniCssExtractPlugin.loader` for processing `css|scss`.
+- Build project by running `npm run build`. Creates one or more `[name]-[contenthash].css` files in the output `dist` folder.
+
+#### Usage - CssMinimizer
+- `MiniCssExtractPlugin` or a similar css extractor is required as this cannot work unless there is a css file(s) in the output `dist` folder. Follow the setup as above.
+- Install the npm package as devDependency: `npm i -D css-minimizer-webpack-plugin`
+- `require` in `webpack.config.js`
+- Add the plugin as `new CssMinimizerPlugin()` to the webpack config as `minimizer` options in `optimization` settings.
+- Build project by running `npm run build`. The CSS files are now minimized.
+
+## Usage - Terser
+- For Webpack@5+ there is no dependency as Terser comes out of the box. For lower versions, install as a devDependency: `npm i -D terser-webpack-plugin`
+- `require` in `webpack.config.js`. If you are using Webpack@5+ AND want to use Terser to minify JS with no modifications to default options, this step is not required. For lower versions OR if you want to modify options, `TerserPlugin` must be required.
+- Add the plugin as ``...`` for Webpack@5+ with default options OR `new TerserPlugin()` for lower versions to the webpack config as `minimizer` options in `optimization` settings.
+- Build project by running `npm run build`. The JS files are now minimized.
+- Terser creates a `bundle-[contenthash].js.LICENSE.txt` file by default. To ask Terser not to create it, pass the following options: `{ extractComments: false, terserOptions: { format : { comments: false } } }`
+- There are other Terser options which can be explored **[HERE](https://webpack.js.org/plugins/terser-webpack-plugin/#options)**
+
+
+#### Syntax
+
+In **`webpack.config.js`**
+
+```
+const path = require('path');
+const HTMLWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const TerserPlugin = require('terser-webpack-plugin');
+
+module.exports = {
+    entry: {
+        main: './src/index.js'
+    },
+    mode: 'development',
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'bundle-[contenthash].js',
+        clean: true,
+        assetModuleFilename: '[name][ext]'
+    },
+    // devtool: 'source-map',
+    devServer: {
+        static: {
+            directory: path.resolve(__dirname, 'dist')
+        },
+        port: 3000,
+        open: true,
+        hot: true,
+        compress: true,
+        historyApiFallback: true
+    },
+    module: {
+        rules: [
+            {
+                test: /\.s?css$/,
+                use: [
+                    MiniCssExtractPlugin.loader, // instead of 'style-loader'
+                    'css-loader',
+                    'sass-loader'
+                ]
+            },
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['@babel/preset-env']
+                    }
+                }
+            },
+            {
+                test: /\.(svg|png|jpg|jpeg|gif)$/i,
+                type: 'asset/resource'
+            }
+        ]
+    },
+    optimization: {
+        minimize: true,
+        minimizer: [
+            new TerserPlugin({ 
+                extractComments: false,
+                terserOptions: {
+                    format: {
+                        comments: false,
+                    },
+                } 
+            }),
+            new CssMinimizerPlugin(),
+        ],
+    },
+    plugins: [
+        new HTMLWebpackPlugin({
+            title: 'Webpack App',
+            template: './public/index.html',
+            filename: 'index.html'
+        }),
+        new BundleAnalyzerPlugin(),
+        new MiniCssExtractPlugin({
+            filename: '[name]-[contenthash].css'
+        })
+    ]
+}
+```
+
+---
+
+# Production - [Webpack Merge](https://webpack.js.org/guides/production/) - Splitting Dev and Production
+So far, we are using one `webpack.config.js` everytime we build or run the dev server. Often times, we want different functionality for development vs production.
+
+The goals of development and production builds differ greatly. In development, we want strong source mapping and a localhost server with live reloading or hot module replacement. In production, our goals shift to a focus on minified bundles, lighter weight source maps, and optimized assets to improve load time. With this logical separation at hand, we typically recommend writing separate webpack configurations for each environment.
+
+While we will separate the production and development specific bits out, note that we'll still maintain a "common" configuration to keep things DRY. In order to merge these configurations together, we'll use a utility called `webpack-merge`. With the "common" configuration in place, we won't have to duplicate code within the environment-specific configurations.
+
+#### Files
+1. `webpack.common.js` - Common Configuration shared by Development and Production
+2. `webpack.dev.js` - Development Specific Configration
+3. `webpack.prod.js` - Production Specific Configuration
+
+#### Setup
+1. Create two files, `webpack.dev.js` and `webpack.prod.js`. Rename the `webpack.config.js` to `webpack.common.js`.
+2. Copy the contents of `webpack.common.js` to each of `webpack.dev.js` and `webpack.prod.js`. Now we can pick and remove from each of them, depending on the features we want.
+3. `entry` - We want the `entry` to be determined by the common file. Delete it from the `webpack.dev.js` and `webpack.prod..js` files.
+4. `mode` - Remove `mode` from `webpack.common.js` as mode is specific to each config file. Set the `mode` value in `webpack.dev.js` to `"development"` and in `webpack.prod.js` to `"production"`.
+5. `output` - Remove `output` from `webpack.common.js` as we only want the `contenthash` in production.
+6. `loaders` - Remove the CSS loaders from `webpack.common.js` as we want them to load differently in development and production. Replace `MiniCssExtractPlugin.loader` with `style-loader` in `webpack.dev.js`.
+7. `plugins` - We will modify the plugins from each file in the following ways
+  - `HTMLWebpackPlugin` - Keep in `webpack.common.js` and remove it from each of `webpack.dev.js` and `webpack.prod.js` as HTML file building is common for both.
+  - `MiniCssExtractPlugin` - Remove from `webpack.common.js` and `webpack.dev.js` and keep it only for `webpack.prod.js`.
+  - `CssMinimizerPlugin` - Remove from `webpack.common.js` and `webpack.dev.js` and keep it only for `webpack.prod.js`.
+  - `TenserPlugin` - Remove from `webpack.common.js` and `webpack.dev.js` and keep it only for `webpack.prod.js`.
+  - `BundleAnalyzerPlugin()` - Remove from `webpack.common.js` and `webpack.prod.js` and keep it only for `webpack.dev.js`.
+8. `optimization` - Remove from `webpack.common.js` and `webpack.dev.js` and keep it only for `webpack.prod.js`.
+9. devServer - Remove from `webpack.common.js` and `webpack.prod.js` and keep it only for `webpack.dev.js`.
+10. We will now merge the `webpack.common.js` with each of the `webpack.dev.js` and `webpack.prod.js` with `webpack-merge`. Install as a devDependency: `npm i -D webpack-merge`.
+11. `require` in `webpack.dev.js` and `webpack.prod.js`.
+
+#### Syntax
+
+In **`webpack.common.js`**
+
+```
+const path = require('path');
+const HTMLWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+    entry: {
+        main: './src/index.js'
+    },
+    module: {
+        rules: [
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['@babel/preset-env']
+                    }
+                }
+            },
+            {
+                test: /\.(svg|png|jpg|jpeg|gif)$/i,
+                type: 'asset/resource'
+            }
+        ]
+    },
+    plugins: [
+        new HTMLWebpackPlugin({
+            title: 'Webpack App',
+            template: './public/index.html',
+            filename: 'index.html'
+        })
+    ]
+}
+```
+
+In **`webpack.dev.js`**
+
+```
+const path = require('path');
+const merge = require('webpack-merge');
+const common = require('./webpack.common');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
+module.exports = merge(common, {
+    mode: 'development',
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'bundle.js',
+        clean: true,
+        assetModuleFilename: '[name][ext]'
+    },
+    devtool: 'source-map',
+    devServer: {
+        static: {
+            directory: path.resolve(__dirname, 'dist')
+        },
+        port: 3000,
+        open: true,
+        hot: true,
+        compress: true,
+        historyApiFallback: true
+    },
+    module: {
+        rules: [
+            {
+                test: /\.s?css$/,
+                use: [
+                    'style-loader', // 3. Injects styles into DOM
+                    'css-loader', // 2. Turns CSS into commonJS
+                    'sass-loader' // 1. Turns SASS into CSS
+                ]
+            }
+        ]
+    },
+    plugins: [
+        new BundleAnalyzerPlugin(),
+    ]
+});
+```
+
+In **`webpack.prod.js`**
+
+```
+const path = require('path');
+const merge = require('webpack-merge');
+const common = require('./webpack.common');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const TerserPlugin = require('terser-webpack-plugin');
+
+module.exports = merge(common, {
+    mode: 'production',
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'bundle-[contenthash].js',
+        clean: true,
+        assetModuleFilename: '[name][ext]'
+    },
+    module: {
+        rules: [
+            {
+                test: /\.s?css$/,
+                use: [
+                    MiniCssExtractPlugin.loader, // 3. Extracts CSS files from JS
+                    'css-loader', // 2. Turns CSS into commonJS
+                    'sass-loader' // 1. Turns SASS into CSS
+                ]
+            }
+        ]
+    },
+    optimization: {
+        minimize: true,
+        minimizer: [
+            new TerserPlugin({ 
+                extractComments: false,
+                terserOptions: {
+                    format: {
+                        comments: false,
+                    },
+                } 
+            }),
+            new CssMinimizerPlugin(),
+        ],
+    },
+    plugins: [
+        new MiniCssExtractPlugin({
+            filename: '[name]-[contenthash].css'
+        })
+    ]
+});
+```
+
+In **`package.json`**
+
+```
+"scripts": {
+    "start": "webpack serve --config webpack.dev.js",
+    "build": "webpack --config webpack.prod.js"
+},
+```
+
+---
+
 # Glossary
 
 - **Live Reload** - Triggers an app wide reload that listens to file changes.
@@ -473,5 +826,8 @@ module.exports = {
 # References
 - **[Webpack Official Website](https://webpack.js.org)**
 - **[Babel](https://babeljs.io)**
+- **[Terser](https://webpack.js.org/plugins/terser-webpack-plugin)**
 - **[Caching](https://en.wikipedia.org/wiki/Cache_(computing))**
+- **[Source Maps](https://ehsangazar.com/source-maps-and-how-it-works-b3f93ca7ea5**)
 - **[Hot Module Replacement](https://webpack.js.org/concepts/hot-module-replacement/)**
+- **[Webpack Bundle Analyzer](https://www.npmjs.com/package/webpack-bundle-analyzer)**
