@@ -1,11 +1,25 @@
 # What is Redux?
-Redux is an open-source JavaScript state management library for managing and centralizing application state via a single data store. It is most commonly used with libraries such as React or Angular for building user interfaces.
+**[Redux](https://redux.js.org/)** is an open-source JavaScript state management library for managing and centralizing application state via a single data store. It is most commonly used with libraries such as React or Angular for building user interfaces.
 
-# Benefits of using Redux to manage application state
-1. **Predictable** - Redux helps you write applications that **behave consistently**, run in different environments (client, server, and native), and are **easy to test**.
-2. **Centralized** - Centralizing your application's state and logic enables powerful capabilities like **undo/redo**, **state persistence**, and much more.
-3. **Debuggable** - The Redux DevTools make it easy to trace **when, where, why, and how your application's state changed**. Redux's architecture lets you log changes, use **"time-travel debugging"**, and even send complete error reports to a server.
-4. **Flexible** - Redux **works with any UI layer**, and has **a large ecosystem of addons** to fit your needs.
+Redux is really:
+
+- A single store containing "global" state
+- Dispatching plain object actions to the store when something happens in the app
+- Pure reducer functions looking at those actions and returning immutably updated state
+
+While it's not required, [your Redux code also normally includes](https://redux.js.org/tutorials/fundamentals/part-7-standard-patterns):
+
+- Action creators that generate those action objects
+- Middleware to enable side effects
+- Thunk functions that contain sync or async logic with side effects
+- Normalized state to enable looking up items by ID
+- Memoized selector functions with the Reselect library for optimizing derived data
+- The Redux DevTools Extension to view your action history and state changes
+- TypeScript types for actions, state, and other functions
+
+Additionally, Redux is normally used with the React-Redux library to let your React components talk to a Redux store.
+
+---
 
 # Concepts
 
@@ -16,6 +30,7 @@ Redux uses Reducer functions that manages the state and returns the newly update
 
 ### Dispatch
 
+---
 
 # Using Redux with React
 
@@ -40,9 +55,14 @@ In **`index.js` inside `src` folder**
 - Add a Provider (Similar to Context Provider in React Context API) to wrap over all Components: `<Provider store={store}>{children}</provider>`
 
 In **`app.js` inside `src` folder**
-- `import { Provider } from 'react-redux'`
-- `import store from './store'` 
-- Add a Provider (Similar to Context Provider in React Context API) to wrap over all Components: `<Provider store={store}>{children}</provider>`
+- `import { useSelector, useDispatch } from 'react-redux'`
+- Initialize both hooks
+    ```
+    const counter = useSelector(state => state.counter);
+    const dispatch = useDispatch();
+    ```
+- Write the counter app with buttons with onClick functions for `increment`, `decrement` and `addBy10`.
+- The `dispatch` function can pass to the `action` object passed as an argument in the reducer function declared in `index.js` in the `store` folder. This `action` object contains the two properties, `type` and `payload`: E.g. `dispatch({ type: 'ADD', payload: 10 })`. Each of the onClick functions will want to have a dispatch function with a `type` and optionally a `payload`.
 
 **Syntax**
 
@@ -77,6 +97,7 @@ const reducer = (state = { counter: 0 }, action) => {
     
     // Reducer Function Conditional logic for each value of 'action.type' or 'action.payload' or a combination of both.
 
+    // We can keep adding here as we configure the app functionality
     switch (action.type) {
         case 'INCREMENT':
             return { ...state, counter: state.counter >= 0 ? state.counter + 1 : 0 };
@@ -149,3 +170,8 @@ export default function App() {
   );
 }
 ```
+
+---
+
+# References
+1. [Redux Docs](https://redux.js.org/introduction/getting-started)
