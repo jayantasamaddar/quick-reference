@@ -99,7 +99,70 @@ If defined as an array, these will be passed to the [Redux `compose` function](h
 
 ---
 
-### 
+## Reducers and Actions
+
+### createSlice
+A function that accepts an initial state, an object of reducer functions, and a "slice name", and automatically generates action creators and action types that correspond to the reducers and state.
+
+This API is the standard approach for writing Redux logic.
+
+Internally, it uses `createAction` and `createReducer`, so you may also use [`Immer`](https://immerjs.github.io/immer/) to write "mutating" immutable updates:
+
+`createSlice` accepts a single configuration object parameter, with the following options:
+
+- **`initialState`**
+The initial state value for this slice of state.
+
+This may also be a "lazy initializer" function, which should return an initial state value when called. This will be used whenever the reducer is called with undefined as its state value, and is primarily useful for cases like reading initial state from localStorage.
+
+- **`name`**
+A string name for this slice of state. Generated action type constants will use this as a prefix.
+
+- **`reducers`**
+An object containing Redux "case reducer" functions (functions intended to handle a specific action type, equivalent to a single case statement in a switch).
+
+The keys in the object will be used to generate string action type constants, and these will show up in the Redux DevTools Extension when they are dispatched. Also, if any other part of the application happens to dispatch an action with the exact same type string, the corresponding reducer will be run. Therefore, you should give the functions descriptive names.
+
+This object will be passed to [`createReducer`](https://redux-toolkit.js.org/api/createReducer), so the reducers may safely "mutate" the state they are given.
+
+```
+import { createSlice } from '@reduxjs/toolkit'
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: 0,
+  reducers: {
+    increment: (state) => state + 1,
+  },
+})
+// Will handle the action type `'counter/increment'`
+```
+
+**Customizing Generated Action Creators​**
+
+If you need to customize the creation of the payload value of an action creator by means of a [`prepare callback`](https://redux-toolkit.js.org/api/createAction#using-prepare-callbacks-to-customize-action-contents), the value of the appropriate field of the `reducers` argument object should be an object instead of a function. This object must contain two properties: `reducer` and `prepare`. The value of the `reducer` field should be the case reducer function while the value of the `prepare` field should be the prepare callback function:
+
+```
+import { createSlice, nanoid } from '@reduxjs/toolkit'
+
+const todosSlice = createSlice({
+  name: 'todos',
+  initialState: [],
+  reducers: {
+    addTodo: {
+      reducer: (state, action) => {
+        state.push(action.payload)
+      },
+      prepare: (text) => {
+        const id = nanoid()
+        return { payload: { id, text } }
+      },
+    },
+  },
+})
+```
+
+- **`extraReducers`**
 
 ---
 
