@@ -25,9 +25,7 @@ const store = configureStore({
     preloadedState: {
         counter: 0
     },
-    enhancers: [],
-    serializeState: (state) => JSON.stringify(state),
-    deserializeState: (state) => JSON.parse(state),
+    enhancers: []
 });
 
 export default store;
