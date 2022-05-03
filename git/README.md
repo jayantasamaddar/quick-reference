@@ -33,7 +33,7 @@ We initialize Git by using `git init` inside the directory after which the follo
 
 | Command | Function | Syntax | Example |
 | ------- | -------- | ------ | ------- |
-| clone | Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>Clones a particular branch of a repo<br>Cloning adds an `origin` remote by default which can then be used to push:<br>`git push -u origin <branch>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`<b>`git clone -b <branch> <address>`
+| clone | - Bring a repository that is hosted somewhere like Github into a folder on your local machine.<br>- Clones a particular branch of a repo<br>Cloning adds an `origin` remote by default which can then be used to push:<br>`git push -u origin <branch>`<br>`git clone -b <branch> <address>` | `git clone <address>` | `git clone https://github.com/jayantasamaddar/quick-reference`<br>`git clone -b test https://github.com/jayantasamaddar/quick-reference`
 | remote | If a repo is not cloned we need to add a remote from the local directory to the repo. | `git remote add <name> https://github.com/user/repo` | `git remote add origin https://github.com/jayantasamaddar/quick-reference`
 | add | - Stage a single file in folder.<br>- Stage all files in folder. | `git add <filename>`<br>`git add --all` | `git add README.md`<br>`git add --all` or `git add .` |
 | commit | Save your file changes in Git | `git commit -m <description>` | `git commit -m "first commit"` |
