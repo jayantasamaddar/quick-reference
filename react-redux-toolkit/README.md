@@ -1,4 +1,5 @@
 # What is Redux?
+
 **[Redux](https://redux.js.org/)** is an open-source JavaScript state management library for managing and centralizing application state via a single data store. It is most commonly used with libraries such as React or Angular for building user interfaces.
 
 Redux is really:
@@ -22,6 +23,7 @@ Additionally, Redux is normally used with the React-Redux library to let your Re
 ---
 
 # What is Redux-Toolkit?
+
 The **[Redux Toolkit](https://redux-toolkit.js.org)** package is intended to be the standard way to write Redux logic. It was originally created to help address three common concerns about Redux:
 
 - "Configuring a Redux store is too complicated"
@@ -35,6 +37,7 @@ Redux Toolkit also includes a powerful data fetching and caching capability that
 ---
 
 # Benefits of using Redux/Redux Toolkit to manage application state
+
 1. **Predictable** - Redux helps you write applications that **behave consistently**, run in different environments (client, server, and native), and are **easy to test**.
 2. **Centralized** - Centralizing your application's state and logic enables powerful capabilities like **undo/redo**, **state persistence**, and much more.
 3. **Debuggable** - The Redux DevTools make it easy to trace **when, where, why, and how your application's state changed**. Redux's architecture lets you log changes, use **"time-travel debugging"**, and even send complete error reports to a server.
@@ -45,7 +48,9 @@ Redux Toolkit also includes a powerful data fetching and caching capability that
 # Using Redux Toolkit with React
 
 ### Installation
+
 - **Option 1**: Install with [Create React App](https://github.com/facebook/create-react-app)
+
 ```
 # Redux + Plain JS template
 npx create-react-app my-app --template redux
@@ -53,9 +58,11 @@ npx create-react-app my-app --template redux
 # Redux + TypeScript template
 npx create-react-app my-app --template redux-typescript
 ```
+
 - **Option 2**: Install for an existing app via - `npm i @reduxjs/toolkit react-redux`
 
 ### Libraries Included in the Package
+
 - **[`redux`](https://redux.js.org/)** - Core Library for State Management
 - **[`immer`](https://immerjs.github.io/immer/)** - [Allows to mutate state](https://redux-toolkit.js.org/usage/immer-reducers)
 - **[`redux-thunk`](https://github.com/reduxjs/redux-thunk)** - Handles async actions
@@ -63,10 +70,15 @@ npx create-react-app my-app --template redux-typescript
 - **[`rtk-query`](https://redux-toolkit.js.org/rtk-query/overview)** - Data fetching and caching
 
 ### Extras
+
 - **[`redux devtools`](https://github.com/zalmoxisus/redux-devtools-extension)** - Developer tools for Redux workflow
 - **[`combineReducers`](https://redux.js.org/api/combinereducers)** - Combines multiple reducers into a single reducer function
 
 ### react-redux
+
+- The `useSelector` hook to extract data from the Redux store state.
+- The `useDispatch` hook to dispatch actions that can modify the state.
+
 connects our app to redux
 
 ---
@@ -76,32 +88,36 @@ connects our app to redux
 ## Store Setup
 
 ### [configureStore](https://redux-toolkit.js.org/api/configureStore)
+
 A friendly abstraction over the standard Redux `createStore` function that adds useful defaults to the store setup for a better development experience.
 
 `configureStore` accepts a single configuration object parameter, with the following options:
 
-- **`reducer`** 
-If this is a single function, it will be directly used as the root reducer for the store.
-If it is an object of slice reducers, like {users : usersReducer, posts : postsReducer}, `configureStore` will automatically create the root reducer by passing this object to the Redux [`combineReducers` utility](https://redux.js.org/api/combinereducers).
+- **`reducer`**
+  If this is a single function, it will be directly used as the root reducer for the store.
+  If it is an object of slice reducers, like {users : usersReducer, posts : postsReducer}, `configureStore` will automatically create the root reducer by passing this object to the Redux [`combineReducers` utility](https://redux.js.org/api/combinereducers).
 
-- **`middleware`** 
-If provided, adds middleware functions you want added to the store. `configureStore` will automatically pass them to `applyMiddleware`. If not provided, `configureStore` will call `getDefaultMiddleware` and use the array of middleware functions it returns. For more details, see the [`getDefaultMiddleware` docs page](https://redux-toolkit.js.org/api/getDefaultMiddleware)
+> **Note:** Reducers must be [pure functions](https://en.wikipedia.org/wiki/Pure_function) that are synchronous and side effect free. Thus, we cannot send asynchronous HTTP requests from reducers. This is how we can make asynchronous requests.
+
+- **`middleware`**
+  If provided, adds middleware functions you want added to the store. `configureStore` will automatically pass them to `applyMiddleware`. If not provided, `configureStore` will call `getDefaultMiddleware` and use the array of middleware functions it returns. For more details, see the [`getDefaultMiddleware` docs page](https://redux-toolkit.js.org/api/getDefaultMiddleware)
 
 - **`devTools`**
 - If this is a boolean, it will be used to indicate whether configureStore should automatically enable support for the [Redux DevTools browser extension](https://github.com/zalmoxisus/redux-devtools-extension).
 
 - **`preloadedState`**
-An optional initial state value to be passed to the Redux `createStore` function.
+  An optional initial state value to be passed to the Redux `createStore` function.
 
 - **`enhancers`**
-An optional array of Redux store enhancers, or a callback function to customize the array of enhancers. 
-If defined as an array, these will be passed to the [Redux `compose` function](https://redux.js.org/api/compose), and the combined enhancer will be passed to createStore.
+  An optional array of Redux store enhancers, or a callback function to customize the array of enhancers.
+  If defined as an array, these will be passed to the [Redux `compose` function](https://redux.js.org/api/compose), and the combined enhancer will be passed to createStore.
 
 ---
 
 ## Reducers and Actions
 
 ### createSlice
+
 A function that accepts an initial state, an object of reducer functions, and a "slice name", and automatically generates action creators and action types that correspond to the reducers and state.
 
 This API is the standard approach for writing Redux logic.
@@ -111,15 +127,15 @@ Internally, it uses `createAction` and `createReducer`, so you may also use [`Im
 `createSlice` accepts a single configuration object parameter, with the following options:
 
 - **`initialState`**
-The initial state value for this slice of state.
+  The initial state value for this slice of state.
 
 This may also be a "lazy initializer" function, which should return an initial state value when called. This will be used whenever the reducer is called with undefined as its state value, and is primarily useful for cases like reading initial state from localStorage.
 
 - **`name`**
-A string name for this slice of state. Generated action type constants will use this as a prefix.
+  A string name for this slice of state. Generated action type constants will use this as a prefix.
 
 - **`reducers`**
-An object containing Redux "case reducer" functions (functions intended to handle a specific action type, equivalent to a single case statement in a switch).
+  An object containing Redux "case reducer" functions (functions intended to handle a specific action type, equivalent to a single case statement in a switch).
 
 The keys in the object will be used to generate string action type constants, and these will show up in the Redux DevTools Extension when they are dispatched. Also, if any other part of the application happens to dispatch an action with the exact same type string, the corresponding reducer will be run. Therefore, you should give the functions descriptive names.
 
@@ -166,6 +182,15 @@ const todosSlice = createSlice({
 
 ---
 
+# Making asynchronous requests
+
+Reducer functions must be pure, synchronous functions that have no side effects. There are two ways we can use asynchronous functions with React and Redux.
+
+1. **`useEffect`** hook inside functional components.
+2. Create an **`action creator`** which will allow us to run the asynchronous code.
+
 # References
+
 1. [Redux Toolkit Docs](https://redux.js.org/introduction/getting-started)
 2. [RTK Query Quickstart](https://redux-toolkit.js.org/tutorials/rtk-query)
+3. [Pure Functions](https://en.wikipedia.org/wiki/Pure_function)
