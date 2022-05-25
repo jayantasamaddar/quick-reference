@@ -179,6 +179,7 @@ const todosSlice = createSlice({
 ```
 
 - **`extraReducers`**
+  Extra reducers usually refer to middleware invoked reducer functions like that from `redux thunk`.
 
 ---
 
@@ -186,11 +187,50 @@ const todosSlice = createSlice({
 
 Reducer functions must be pure, synchronous functions that have no side effects. There are two ways we can use asynchronous functions with React and Redux.
 
-1. **`useEffect`** hook inside functional components.
-2. Create an **`action creator`** which will allow us to run the asynchronous code.
+1. **`useEffect`** hook inside functional components. Available only with React.
+2. Create an **`action creator`** using a async middleware like [`redux thunk`](https://github.com/reduxjs/redux-thunk) or [`redux saga`](https://github.com/redux-saga/redux-saga) which allows us to run the asynchronous code.
+3. Using Redux Toolkit's [`RTK Query`](https://redux-toolkit.js.org/rtk-query/overview) data fetching API is a purpose built data fetching and caching solution for Redux apps, and can **eliminate the need to write _any_ thunks or reducers to manage data fetching**.
+
+## Using Redux Thunk
+
+[Thunk](https://en.wikipedia.org/wiki/Thunk) is a programming concept where a function is used to delay the evaluation/calculation of an operation.
+
+Redux Thunk is a middleware that lets you call action creators that return a function instead of an action object. That function receives the store’s dispatch method, which is then used to dispatch regular synchronous actions inside the function’s body once the asynchronous operations have been completed.
+
+> **Note:** With Redux Toolkit, Redux Thunk is included by default.
+
+## [Redux Thunk vs useEffect](https://stackoverflow.com/a/67040747)
+
+There is a major advantage to the `createAsyncThunk` approach because it will catch any errors that occur in the API call. It will respond to those errors by dispatching a `fetchUserById.rejected` action instead of a `fetchUserById.fulfilled` action. Your reducer doesn't responded to the `rejected` case which is fine. The error is still caught. With your `useEffect` you run the risk of `"Uncaught error in Promise"` errors.
+
+Now, of course you can catch the errors on your own. You can also dispatch a pending action at the start of the effect. But once you start doing that, the `createAsyncThunk` might feel a lot easier by comparison since it automatically dispatches `pending`, `fulfilled`, and `rejected` actions.
+
+Redux is a framework agnostic library, hence we also get access to Redux Thunk, compared to the limited access of useEffect React hook within React.
+
+---
+
+# Redux Middleware
+
+### What is Redux Middleware?
+
+Redux uses a special kind of addon called `middleware` to let us customize the store's `dispatch` function. It's similar in concept to how server frameworks like Express or Koa behave, and multiple middleware instances can be composed together when the store is created.
+
+**Redux middleware provides third-party extension point between the `dispatch` of an action, and the moment it reaches the `reducer`.**
+
+Middleware solves two primary use cases:
+
+- Centralized application-wide behaviour, like logging, crash reporting and talking to an external API
+- Enabling user-defined asynchronous behaviour, without hardcoding a specific async pattern into Redux itself.
+
+### Why Does Middleware Exist?
+
+The reason the middleware API exists in the first place is because Redux explicity did not want to prescribe a particular solution for async.
+
+---
 
 # References
 
 1. [Redux Toolkit Docs](https://redux.js.org/introduction/getting-started)
-2. [RTK Query Quickstart](https://redux-toolkit.js.org/tutorials/rtk-query)
-3. [Pure Functions](https://en.wikipedia.org/wiki/Pure_function)
+2. [Asynchronous Redux] | [Redux Thunk](https://github.com/reduxjs/redux-thunk)) | [Redux Saga](https://github.com/redux-saga/redux-saga)
+3. [RTK Query Quickstart](https://redux-toolkit.js.org/tutorials/rtk-query)
+4. [Pure Functions](https://en.wikipedia.org/wiki/Pure_function)

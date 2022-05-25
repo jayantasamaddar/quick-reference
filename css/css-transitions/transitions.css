@@ -1,0 +1,34 @@
+body {
+  background: #333;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+}
+.box {
+  cursor: pointer;
+  background-color: maroon;
+  width: 200px;
+  height: 200px;
+  position: relative;
+  margin: auto;
+  transform: translateY(calc(50% + 100px));
+  border: 0;
+  transition-property: background, border-radius, transform; /* Property to transition, separate with commas. "all" for all */
+  transition-duration: 1s, 2s; /* duration of the transition, similar to animation-duration, commas to separate */
+  transition-timing-function: cubic-bezier(
+    0.075,
+    0.82,
+    0.165,
+    1
+  ); /* timing function - how the transition speeds or slows as it runs */
+  /* transition-delay: 2s, 1s; */ /* wait before starting transition, commas to separate */
+  /* transition: background 1s ease-in-out 2s; */ /* shorthand for above in the same order. Can chain multiple */
+}
+
+.hover {
+  background-color: red;
+  border-radius: 50%;
+  transform: translateY(calc(50% - 100px));
+}
