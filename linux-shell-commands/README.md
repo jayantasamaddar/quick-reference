@@ -18,7 +18,10 @@
 | `rm -r testfolder` | Removes 'testfolder' if it is a direct child of the current directory and contains subfolders and files (`-r` flag for recursive removal). |
 | `rm -d -i testfolder` | Prompts to remove 'testfolder' if it is a direct child of the current directory. |
 
-Note: The rm and rmdir commands do not send the files or directories to the trash bin.
+
+**Notes:**
+> The rm and rmdir commands do not send the files or directories to the trash bin.
+
 ---
 
 ## Move, Rename, Copy.
@@ -79,8 +82,8 @@ cp [flag] source destination
 
 Command | Function
 ------- | --------
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -sudo apt-get install -y nodejs | Installs nodejs LTS sources in Apt
-sudo apt-get install -y nodejs | Installs nodejs and npm
+`curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -sudo apt-get install -y nodejs` | Installs nodejs LTS sources in Apt
+`sudo apt-get install -y nodejs` | Installs nodejs and npm
 
 ## Updating Nodejs
 
@@ -97,14 +100,14 @@ Command | Function
 
 ## Logging in to Host via SSH 
 
-Command | Function
-------- | --------
-ssh -i .ssh/root@oracle **username**@**hostname**<br>ssh -i .ssh/root@oracle ubuntu@ocu1.duckdns.org<br>ssh -i .ssh/root@oracle ubuntu@158.101.20.236 | Connect to host via ssh
-curl icanhazip.com | Gets the public IP address of the machine from the external address.
+| Command | Function |
+| ------- | -------- |
+| `ssh -i .ssh/root@oracle <username>@<hostname>`<br>`ssh -i .ssh/root@oracle ubuntu@ocu1.duckdns.org`<br>`ssh -i .ssh/root@oracle ubuntu@158.101.20.236` | Connect to host via ssh |
+| `curl icanhazip.com` | Gets the public IP address of the machine from the external address. |
 
 
 ## Copy from one host to another
 
-Command | Function
-------- | --------
-scp -i .ssh/root@oracle test.txt ubuntu@ocu1.duckdns.org:/home/ubuntu/ | Copies test.txt from the current local machine folder to the host/home/ubuntu/ folder
+| Command | Function |
+| ------- | -------- |
+| `scp -i .ssh/root@oracle test.txt ubuntu@ocu1.duckdns.org:/home/ubuntu/` | Copies test.txt from the current local machine folder to the host/home/ubuntu/ folder |
