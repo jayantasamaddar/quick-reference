@@ -39,7 +39,6 @@ mv [flag] source destination
 > - If the destination is the same as the source, then the source is renamed.
 
 
-
 | Command | Function |
 | ------- | -------- |
 | `mv test.txt newtest.txt` | Renames file 'test.txt' to 'newtest.txt' if it is a direct child of the current directory. If `newtest.txt` already exists, it will be overwritten with the contents of the `test.txt`. Works for directories too, as the `mv` command is a `move` command, which is a cut-and-paste command. |
@@ -60,8 +59,7 @@ cp [flag] source destination
 
 **Notes:**
 > - Flags are optional.
-> - If the destination is the same as the source, then the source is renamed.
-
+> - Copy (`cp`) only works on local machine. For remote copy, use `scp` command.
 
 
 | Command | Function |
@@ -78,12 +76,14 @@ cp [flag] source destination
 
 ---
 
-## Installing Nodejs via shell commands
+## [Installing Nodejs via shell commands](https://github.com/nodesource/distributions)
 
 Command | Function
 ------- | --------
-`curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -sudo apt-get install -y nodejs` | Installs nodejs LTS sources in Apt
+`curl -fsSL https://deb.nodesource.com/setup_lts.x \| sudo -E bash -sudo apt-get install -y nodejs` | Installs nodejs LTS sources in Apt
 `sudo apt-get install -y nodejs` | Installs nodejs and npm
+
+---
 
 ## Updating Nodejs
 
@@ -98,6 +98,8 @@ Command | Function
 `sudo n latest` | Installs the latest version of node
 `hash -r` | Resets the location hash
 
+---
+
 ## Logging in to Host via SSH 
 
 | Command | Function |
@@ -105,9 +107,34 @@ Command | Function
 | `ssh -i .ssh/root@oracle <username>@<hostname>`<br>`ssh -i .ssh/root@oracle ubuntu@ocu1.duckdns.org`<br>`ssh -i .ssh/root@oracle ubuntu@158.101.20.236` | Connect to host via ssh |
 | `curl icanhazip.com` | Gets the public IP address of the machine from the external address. |
 
+---
 
-## Copy from one host to another
+## Secure Copy - Copying files from one host to another over a network using SSH
+
+
+**Syntax:**
+
+```
+scp [flag] [private-key] sourceFilePath destinationFilePath
+```
+
+Flags:
+| Flag | Function |
+| ---- | -------- |
+| `-i` | Selects the file from which the identity (private key) for public key authentication is read. This option is directly passed to ssh |
+| `-r` | Recursively copies the contents of the source directory to the destination directory. |
+
+
+### Copy file from local machine to remote host
 
 | Command | Function |
 | ------- | -------- |
 | `scp -i .ssh/root@oracle test.txt ubuntu@ocu1.duckdns.org:/home/ubuntu/` | Copies test.txt from the current local machine folder to the host/home/ubuntu/ folder |
+
+### Copy file from remote host to local machine
+
+| Command | Function |
+| ------- | -------- |
+| `scp -i .ssh/root@oracle ubuntu@ocu1.duckdns.org:/home/ubuntu/test.txt  ~` | Copies test.txt from the remote host to the Home folder in local machine |
+
+---
