@@ -159,3 +159,7 @@ React Hook Form is a performant, flexible and extensible form library for React 
   ```
 
 ---
+
+# Resolvers
+
+This function allows you to use any external validation library such as Yup, Zod, Joi, Superstruct, Vest and many others. The goal is to make sure you can seamlessly integrate whichever validation library you prefer. If you're not using a library, you can always write your own logic to validate your forms.

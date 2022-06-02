@@ -30,8 +30,7 @@ const bubbleSort2 = array => {
 /* Using recursive Function */
 const bubbleSort3 = array => {
   const arr = array.slice();
-  const recursiveSort = (arr, indx) => {
-    let i = indx;
+  const recursiveSort = (arr, i) => {
     if (i === arr.length - 1) return arr;
 
     for (let j = 0; j < arr.length - 1 - i; j++) {
