@@ -105,7 +105,7 @@ Once we have an image, we ask Docker to start a container using that image. A co
 This is how we run our application locally on our development machine: Instead of running the application directly and running it inside a typical process, we tell Docker to run it inside a container - an isolated environment.
 
 ```
-docker run ...
+docker run <imageName>
 ```
 
 The beauty of Docker is that once we have the image we can push it to a Docker registry like Docker Hub. 
@@ -125,4 +125,167 @@ To **summarize** the development workflow, we have the following steps:
 ---
 
 # Docker in Action
+
+The standard deployment instructions are as follows: 
+
+- Start with an OS, e.g. Ubuntu 20.04.
+- Install a runtime like Nodejs.
+- Copy app files.
+- Install dependencies.
+- Run exectuable files, e.g. `node app.js`
+
+If we are working with a really complex application, we will end up with a complex release document that has to precisely followed.
+
+To pack, deploy and ship with Docker we need to follow the following steps instead:
+
+- Add a file called `Dockerfile` (with a capital D) to our project. This file provides Docker instructions how to package the application into an image.
+- Inside the `Dockerfile` add the `FROM` instruction to tell Docker which Base Image to use. Docker images can be found in the [Docker Hub](https://hub.docker.com/search?q=node), which is a registry for Docker images.
+    
+    - E.g. `FROM ubuntu:20.04`, and install Node on top of it.
+    
+    OR we can start from a Node base image, which is already built on top of Linux, 
+    
+    - e.g. `FROM node:lts-slim` and install Node on top of it.
+
+- Add the `COPY` instruction to tell Docker where to copy the application files in the Image File System.
+- Optionally, the `WORKDIR` instruction can be used to tell Docker where to run the application from. 
+    
+    e.g. `WORKDIR /app`
+
+- Finally, the `CMD` instruction tells Docker how to run the application.
+
+    e.g. `CMD node app.js` or `CMD [ "node", "app.js" ]`
+
+- Go to the Terminal and run the following command to package the application and build the image:
+
+    **Syntax:**
+    ```
+    docker build -t hello-docker .
+    ```
+
+    Where, 
+    - `t` is the tag name,
+    - `hello-docker` is the name of the image, and
+    - `.` is the current directory.
+
+- On running the command, the Docker Image is created, but nothing appears in the directory. That's because Docker doesn't store the image here. In fact, the Image is not a single file. Instead, it stores it in the local Docker Registry. To see all the images on the local machine, run the command: 
+
+    ```
+    docker images
+    ```
+
+    OR
+
+    ```
+    docker image ls
+    ```
+
+- Run `docker run hello-docker` to run the application.
+
+- Once Published to Docker Hub, the image can be pulled on any machine that has Docker using, `docker pull <imageAddress>` and ran using `docker run hello-docker`.
+
+---
+
+# The Linux Command Line
+
+Docker is based on basic Linux concepts. If you want to be productive and troubleshoot Docker issues easily, we need to know some basic Linux commands.
+
+A list of linux commands can be found [here](/linux-shell-commands/)
+
+
+### Linux Distributions or Linux Distros
+
+Linux is an Open-Source software. Many individuals and communities have created their own version of Linux called Linux Distributions. Each distribution is made to fit specialized needs like running servers, desktop computers, mobile phones and so on.
+
+Examples of Linux Distros are:
+
+- Ubuntu
+- Debian
+- Alpine
+- Fedora
+- CentOS
+
+> Most of these distributions, support the same set of commands but some may have differences.
+
+
+### Running Linux
+
+As we learned earlier, we can use `docker pull` to pull an image from Docker Hub. 
+However we can run, `docker run ubuntu` to start a container with this image if the image is available locally. However, if the image does not exist it is pulled first behind the hood before a container is started.
+
+We can use, `docker run -d ubuntu` to run the image in the background. This will start the container in the background and return immediately.
+
+- **To see current running processes, we can run the command:**
+    
+    ```
+    docker ps
+    ```
+    
+- **To see all processes including ones' stopped, we can run the command:**   
+    
+    ```
+    docker ps -a
+    ```
+
+- **To start a container and interact with it, we need to run the following command:**
+    
+    ```
+    docker run -it ubuntu
+    ```
+
+    Where,
+    - `-it` is the combination of the interactive mode and terminal flag, which tells Docker to start an interactive shell or bash inside the container and wait for inputs.
+
+    The bash or "Bourne Again Shell" is a program that takes commands and passes it to the kernel (here: the Linux kernel) for execution.
+
+    The shell is started as, `root@38b186120e02:/#`, where,
+
+    - `root` is the current logged in user. `root` is the root user with highest privileges.
+    - `@38b186120e02` is the container ID
+    - `/` represents where the current working directory is, in this case it is the root directory of the container's file system.
+    - `#` represents the prompt that the current user has the highest privileges as it is the root user. If a normal user instead of a root user was logged in, you'd see a `$` prompt instead.
+
+    > - Linux is a case-sensitive operating system.
+    > - In Linux the forward slash `/` is used as the directory separator unlike Windows where the backslash `\` is used.
+
+---
+
+# Images vs Containers
+
+We have been talking about Images and Containers. Let us try to understand the difference between the two:- 
+
+| Image | Container |
+| ----- | --------- |
+| An image is a package or a template, just like a VM Template, that you may have worked with in the virtualization world. | Containers are running instances of images that are isolated and have their own environments and set of processes.
+
+---
+
+# PORT Mapping
+
+When we run a containerized web application, it runs and we are able to see that the server is running. But how does an user access the application?
+
+Let's say the application is listening on PORT 5000. So technically, one should be able to access the application on PORT 5000. But what IP does one use to access it from the web browser?
+
+There are two options:-
+
+- To use the IP of the Docker container. Every Docker container gets an IP address assigned by default (172.17.0.1). But this is an internal IP and is only accessible within the Docker host. So if we open a browser from the Docker host and try to access the application, using `http://172.17.0.1:5000`, we will be able to access it. But since this is an internal IP, users outside of the Docker host will not be able to access the application.
+
+- We could use the IP of the Docker host, e.g. 192.168.1.5. But for this to work, we must have mapped the port inside the Docker container to a free port on the Docker host.
+**For example:** If you want the users to access the application through Port 80 on the Docker host, we could map Port 80 of the localhost to Port 5000 of the Docker container using the `-p` flag.
+
+  ```
+  docker run -p 80:5000 hello-docker
+  ```
+    
+  - The user can access the application by going to the URL, `http://192.168.1.5:80`. All traffic on Port 80 on the Docker Host will be routed to Port 5000 on the Docker Container.
+  This way multiple instances of the Docker application can be run on the same Docker host on multiple ports.
+
+  ```
+  docker run -p 5000:8000
+  ```
+
+---
+
+# Persisting Data
+
 

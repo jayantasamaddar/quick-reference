@@ -1,22 +1,38 @@
 # Linux Shell Commands
 
+## General Commands
+
+| Command | Function |
+| ------- | -------- |
+| `whoami`<br>`echo $USER` | Prints the current user to the terminal |
+| `pwd` | Prints the absolute path to the working directory. |
+| `ls` | Shows all the directories and files of the current directory. |
+| `history` | List the last 1000 commands executed, numbered by execution order |
+| `!1001` | Execute the 1001th command executed |
+| `clear`<br>`Ctrl + L` | Clear the terminal screen |
+
+---
+
 ## Basic CRUD Tasks.
 
 | Command | Function |
 | ------- | -------- |
-| `mkdir directory` | Create a directory with the name 'directory' |
+| `mkdir directory` | Create a directory with the name `directory` |
 | `cd directory` | Changes directory to 'directory' if it is a direct child of the current directory. |
 | `cd ~` | Changes directory to the Home directory. Same as `cd /home/$USER` |
 | `cd ..` | Changes directory to the parent directory. |
 | `cd /` | Changes directory to the root directory. |
-| `ls` | Shows all the directories and files of the current directory. |
-| `touch test.txt` | Creates an empty file in the current directory with the name 'test.txt'. |
-| `nano test.txt` | Opens the file 'test.txt' for edit in the text editor nano. Opens a blank text file for edit, if it doesn't exist. |
-| `cat test.txt` | Reads the contents of the 'test.txt' file and displays it on the terminal. |
+| `touch test.txt` | Creates an empty file in the current directory with the name `test.txt`. |
+| `nano test.txt` | Opens the file `test.txt` for edit in the text editor nano. Opens a blank text file for edit, if it doesn't exist. |
+| `cat test.txt` | Reads the contents of the `test.txt` file and displays it on the terminal.<br>`cat` is short for concatenate. |
+| `more test.txt` | Reads the contents of the `test.txt` file and displays it on the terminal .<br>Useful for larger files as it allows pagination (`Space` to go to view more or `Enter` to go one line down at a time)<br>The problem with `more` is we can only scroll down but not up. |
+| `less more.txt` | If `less` is not installed on the system, we can install it with `apt install less`. `less` is a more advanced text file viewer that allows scrolling up and down using the arrow keys. |
+| `head test.txt`<br>`head -n 5 test.txt` | Prints the first 10 lines of the `test.txt` file.<br>Prints the first 5 lines of the `test.txt` file. |
+| `tail test.txt`<br>`tail -n 5 test.txt` | Prints the last 10 lines of the `test.txt` file.<br>Prints the last 5 lines of the `test.txt` file. |
 | `rm test.txt` | Removes 'test.txt' if it is a direct child of the current directory. |
-| `rm -d testfolder`<br>`rmdir testfolder` | Removes 'testfolder' if it is a direct child of the current directory and is empty. |
-| `rm -r testfolder` | Removes 'testfolder' if it is a direct child of the current directory and contains subfolders and files (`-r` flag for recursive removal). |
-| `rm -d -i testfolder` | Prompts to remove 'testfolder' if it is a direct child of the current directory. |
+| `rm -d testfolder`<br>`rmdir testfolder` | Removes `testfolder` if it is a direct child of the current directory and is empty. |
+| `rm -r testfolder` | Removes `testfolder` if it is a direct child of the current directory and contains subfolders and files (`-r` flag for recursive removal). |
+| `rm -d -i testfolder` | Prompts to remove `testfolder` if it is a direct child of the current directory. |
 
 
 **Notes:**
@@ -136,5 +152,48 @@ Flags:
 | Command | Function |
 | ------- | -------- |
 | `scp -i .ssh/root@oracle ubuntu@ocu1.duckdns.org:/home/ubuntu/test.txt  ~` | Copies test.txt from the remote host to the Home folder in local machine |
+
+---
+
+## Managing Packages
+These days most operating systems and development platforms come with a package manager.
+
+Common package managers are:
+
+- npm
+- yarn
+- pip
+- NuGet
+
+In Ubuntu, we have a package manager called `apt` which is short for, **Advanced Package Tool**.
+
+The apt related commands are as follows:
+
+| Command | Function |
+| ------- | -------- |
+| `sudo apt update` | Updates the package database, i.e. list of available packages |
+| `apt list` | Lists all the available packages |
+| `apt list --upgradable` | Lists all the installed packages that can be upgraded |
+| `sudo apt upgrade` | Updates the list of upgradeable packages |
+| `sudo apt install <package-name>` | Installs the package |
+| `sudo apt remove <package-name>` | Removes the package |
+
+---
+
+# Redirection
+
+One of the most important concepts of Linux is the concept of Standard Input and Standard Output.
+So by default Standard Input represents the keyboard and Standard Output represents the screen.
+But in the shell, we can change the source of the Standard Input and Standard Output to different files. This is called, **Redirection**. 
+
+- The redirection operator for Standard Output is the greater than `>`.
+- The redirection operator for Standard Input is the less than `<`.
+
+| Command | Function |
+| ------- | -------- |
+| `cat file1.txt` | Reads the contents of the file and prints it on default standard output - the screen |
+| `cat file1.txt > file2.txt` | Reads the contents of the file and prints it on the redirected standard output, i.e. `file2.txt`. If `file2.txt` doesn't exist, it is created and the contents of `file1.txt` is written on it. If `file2.txt` exists, it is overwritten with contents of `file1.txt`. |
+| `cat file1.txt file2.txt > combinedfile.txt` | Reads the contents of the files and prints it on the redirected standard output, i.e. `combinedfile.txt`. If `combinedfile.txt` doesn't exist, it is created and the contents of `file1.txt` and `file2.txt` are written on it. If `combinedfile.txt` exists, it is overwritten with contents of `file1.txt` and `file2.txt`. |
+| `ls -l Work > TestFolder/Work.txt` | Lists the contents of the directory `Work` and writes the contents on the redirected standard output, i.e. `TestFolder/Work.txt`.<br>If `Testfolder` directory doesn't exist, then it defaults to the default standard output, i.e. the screen.<br>If `TestFolder/Work.txt` doesn't exist, it is created and the results of `ls -l Work` are written on it.<br>If `TestFolder/Work.txt` exists, it is overwritten with the results of `ls -l Work`. |
 
 ---
