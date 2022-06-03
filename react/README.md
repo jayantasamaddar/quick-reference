@@ -305,7 +305,14 @@ const DataLookupField = (
 export default DataLookupField
 ```
 
-------------------------------------------------------------------------------------------------------
+---
+
+# Why is using fetch inside useEffect a bad idea for network requests?
+
+- Lack of in-built caching support provided by libraries like React Query.
+- Multiple components will require multiple network calls.
+
+---
 
 # References
 
