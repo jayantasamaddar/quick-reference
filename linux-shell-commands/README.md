@@ -116,6 +116,22 @@ Command | Function
 
 ---
 
+## Preparing Package for Publishing to NPM
+
+Command | Function
+------- | --------
+`node -v > .nvmrc` | Creates a .nvmrc file with the current node version.
+`npm pack` | Creates a package.tgz file with the current project.
+`npm link` | Creates a symlink to the package.tgz file in the project's node_modules folder.
+`npm adduser`<br>`npm adduser --registry https://registry.npmjs.org` | Adds a user to the npm registry.
+`npm adduser --registry https://registry.npmjs.org --scope public` | Adds a user to the npm registry and makes it public.
+`npm adduser --registry https://registry.npmjs.org --scope private` | Adds a user to the npm registry and makes it private.
+`npm publish` | Publishes the current package to npm.
+`npm publish --access public` | Publishes the current package to npm and makes it public.
+`npm publish --access private` | Publishes the current package to npm and makes it private.
+
+---
+
 ## Logging in to Host via SSH 
 
 | Command | Function |

@@ -161,14 +161,21 @@ let person: Human = {
 
 ```
 interface PersonAttributes {
-    gender: string,
-    occupation: string,
-    cars: number
+    gender: string;
+    occupation: string;
+    cars: number;
 }
 
-interface Person extends PersonAttributes {
-    name: string,
-    age?: number // optional property
+interface Bikes {
+  bikes?: {
+    name: string;
+    mileageInMiles: number;
+  }[]                 // optional property, bikes is an array of objects
+}
+
+interface Person extends PersonAttributes, Bikes { // extends PersonAttributes and Bikes
+    name: string;
+    age?: number; // optional property
     isStudent: boolean;
 }
 ```
@@ -181,6 +188,13 @@ Both Types and Interfaces serve the purpose of type checking. Both can be extend
 - The `this` keyword can be used to refer to the type implementing the interface.
 - Type Aliases can be hovered over wherever it is used and the details expanded in the tooltip, while it's not the same for `interface`.
 - `union` types cannot be created with interfaces.
+
+  They have to be created with type:
+
+  ```
+  type MyUnion = string | number;
+  ```
+
 - In error reporting, type aliases may be replaced by their definition in error reporting.
 - Legacy versions of Typescript do not create recursive type aliases such as type `List<V> = { v:V, right: List<V> | undefined }`
 
@@ -190,19 +204,41 @@ Generally interfaces are encouraged over type aliases.
 
 # React Types
 
-- React.FC - React Functional Component Type
-- React.ReactElement - Basic React specific JSX Element
-- JSX.Element - Basic JSX Element with `props` and `type` typed as `any`.
+- **React.FC** - React Functional Component Type
+- **React.ReactElement** - Basic React specific JSX Element. Typically applied to the return value of a component.
+- **JSX.Element** - Basic JSX Element with `props` and `type` typed as `any`. Not necessary to use in React but can be used in other JSX based frameworks.
+- **React.ReactNode** - React specific JSX Element. A node maybe an array of other React Elements or text. Typically this type is applied to the `children` property of a React Element.
 
   ```
   import { FC } from 'react;
 
-  const Card:FC = (): ReactElement => {
-      return <div>Hello world</div>
+  interface Props {
+    loading?: string;
+  }
+
+  const Card:FC<Props> = ({ loading }): ReactElement | null => {
+      return (!loading ?
+        <div>Hello world</div>
+        : null
+      );
   }
   ```
 
   Where,
 
-  - The type declaration for the function is `FC` (React Functional Component),
-  - `ReactElement` or React JSX is the output of the function.
+  - The type declaration for the function is `FC` (React Functional Component).
+  - The `Props` interface is used to define the props that the component accepts.
+  - `ReactElement | null` is the output of the function. i.e. output is either ReactElement or null.
+
+---
+
+# Type Definitions
+
+### What are the multiple scenarios for Typescript Type Definitions?
+
+In Typescript, when using a Javascript library there are essentially four scenarios in what concerns type definitions:
+
+- No type definitions of any kind are available.
+- Type definitions are available and shipped together with the compiler itself.
+- A library does not ship with type definitions, but they can be installed separately.
+- A library ships with its own type definitions built-in the library.
