@@ -1,0 +1,21 @@
+{
+  "name": "yargs",
+  "version": "1.0.0",
+  "description": "Demo of yargs module and how to use it.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "yargs",
+    "CLI",
+    "CLI-tool",
+    "command-line"
+  ],
+  "author": "Jayanta Samaddar",
+  "license": "ISC",
+  "devDependencies": {
+    "yargs": "^17.5.1"
+  }
+}
