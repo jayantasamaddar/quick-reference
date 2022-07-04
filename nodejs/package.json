@@ -1,0 +1,9 @@
+{
+  "name": "nodejs",
+  "version": "1.0.0",
+  "description": "Nodejs Primer to Native Modules",
+  "main": "index.js",
+  "type": "module",
+  "author": "Jayanta Samaddar <jayanta@zenius.one>",
+  "license": "MIT"
+}
