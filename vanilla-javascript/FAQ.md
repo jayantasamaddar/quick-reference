@@ -2,7 +2,7 @@
 
 - [Table of Contents](#table-of-contents)
   - [Strings](#strings)
-    - [What is the difference between `charAt(index)` and using `string[index]` to access a character?](#what-is-the-difference-between-charatindex-and-using-stringindex-to-access-a-character)
+    - [What is the difference between using `charAt(index)` and `string[index]` to access a character?](#what-is-the-difference-between-using-charatindex-and-stringindex-to-access-a-character)
   - [Arrays](#arrays)
     - [How to check if the element is an Array?](#how-to-check-if-the-element-is-an-array)
   - [Events](#events)
@@ -13,8 +13,9 @@
 
 ## Strings
 
-### What is the difference between `charAt(index)` and using `string[index]` to access a character?
+### What is the difference between using `charAt(index)` and `string[index]` to access a character?
 
+<!-- prettier-ignore -->
 | #   | index value                   | charAt (return value) | Bracket notation (return value) |
 | --- | ----------------------------- | --------------------- | ------------------------------- |
 | 1   | index >= length               | `''`                  | `undefined`                     |
@@ -23,6 +24,7 @@
 | 4   | index = true                  | character at 1        | `undefined`                     |
 | 5   | Number(index: string) === NaN | character at 0        | `undefined`                     |
 | 6   | Number(index: string) !== NaN | character at index    | character at index              |
+| 7   | index: decimal                | character at `Math.floor(Number(index))` | `undefined`  |
 
 **Notes:**
 
@@ -31,11 +33,13 @@
   - Boolean values are type coerced. `Number(true)` evaluates to 1 and `Number(false)` evaluates to 0.
   - All falsy values return index 0.
   - An array containing a single element [1] or ['1'] when coerced, returns the number. Array containing multiple elements returns `NaN` and the treatment happens as per the table above.
+  - If index is a decimal value, as a number, string or array with one element, `Math.floor(Number(index))` is applied.
 
 - For **bracket notation**, type coercion is attempted when index provided is a string or an array containing one element.
 
   - Boolean values are not type coerced. So `true` doesn't coerce to `1`. `true` or `false` both return `undefined`.
   - All falsy values except 0, return `undefined`.
+  - Decimal values return `undefined`.
 
 - `type falsy = null | undefined | NaN | ''`
   - `falsy` doesn't include 0 here, as 0 is a valid Number index.
@@ -78,6 +82,13 @@ console.log({ brackets: str['ABC'] }); // returns undefined
 /** Type coercion: Success */
 console.log({ charAt: str.charAt('1') }); // returns 'B' (attempts to access index after type coercion)
 console.log({ brackets: str['1'] }); // returns undefined (attempts to access index after type coercion)
+
+/** Decimal Values */
+console.log({ charAt: str.charAt(1.9) }); // returns 'B', applies Math.floor(Number(index))
+console.log({ charAt: str.charAt('1.9') }); // returns 'B', applies Math.floor(Number(index))
+console.log({ charAt: str.charAt(['1.9']) }); // returns 'B', applies Math.floor(Number(index))
+
+console.log({ brackets: str[1.9] }); // returns undefined
 ```
 
 [View on StackOverflow](https://stackoverflow.com/a/73170435/6574719)
