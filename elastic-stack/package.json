@@ -1,0 +1,14 @@
+{
+  "name": "elastic-stack",
+  "version": "1.0.0",
+  "description": "Basic Project using Elastic Stack: Elastic Search, Kibana",
+  "main": "index.js",
+  "type": "module",
+  "author": "Jayanta Samaddar",
+  "license": "MIT",
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.2.1",
+    "axios": "^0.27.2",
+    "dotenv": "^16.0.1"
+  }
+}
