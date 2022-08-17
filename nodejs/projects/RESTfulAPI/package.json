@@ -1,0 +1,13 @@
+{
+  "name": "restful-api",
+  "version": "1.0.0",
+  "description": "A RESTful API, written using only built-in Node libraries. No external node modules have been used.",
+  "main": "index.js",
+  "type": "module",
+  "author": "Jayanta Samaddar",
+  "license": "MIT",
+  "scripts": {
+    "dev": "NODE_ENV=development nodemon index.js",
+    "start": "NODE_ENV=production nodemon index.js"
+  }
+}
