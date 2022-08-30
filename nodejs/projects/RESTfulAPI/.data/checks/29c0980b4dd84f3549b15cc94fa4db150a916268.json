@@ -1,0 +1,16 @@
+{
+  "id": "29c0980b4dd84f3549b15cc94fa4db150a916268",
+  "phone": "9831373153",
+  "protocol": "https",
+  "url": "instagram.com",
+  "method": "get",
+  "successCodes": [
+    200,
+    201,
+    301,
+    302
+  ],
+  "timeoutSeconds": 3,
+  "state": "up",
+  "lastChecked": 1661821729223
+}

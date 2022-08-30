@@ -12,18 +12,68 @@
 - [The REPL](#the-repl)
 - [Architecture of Node](#architecture-of-node)
   - [Events](#events)
-  - [EventEmitter Class](#eventemitter-class)
+- [EventEmitter Class](#eventemitter-class)
     - [`emitter.on(eventName, listener)`](#emitteroneventname-listener)
     - [`emitter.once(eventName, listener)`](#emitteronceeventname-listener)
     - [`emitter.off(eventName, listener)`](#emitteroffeventname-listener)
     - [`emitter.removeAllListeners([eventName])`](#emitterremovealllistenerseventname)
-  - [File System](#file-system)
-  - [HTTP](#http)
-    - [`http.createServer(options)`](#httpcreateserveroptions)
-      - [The `requestListener` function](#the-requestlistener-function)
-      - [Creating a HTTP Server](#creating-a-http-server)
-  - [URL](#url)
-  - [Stream](#stream)
+- [Path](#path)
+  - [`path.basename(path[, ext])`](#pathbasenamepath-ext)
+  - [`path.dirname(path)`](#pathdirnamepath)
+  - [`path.extname(path)`](#pathextnamepath)
+  - [`path.parse(path)`](#pathparsepath)
+  - [`path.format(pathObject)`](#pathformatpathobject)
+  - [`path.join([...paths])`](#pathjoinpaths)
+  - [`path.resolve([...paths])`](#pathresolvepaths)
+  - [`path.sep`](#pathsep)
+- [URL](#url)
+  - [URL Strings and URL Objects](#url-strings-and-url-objects)
+  - [The WHATWG URL API](#the-whatwg-url-api)
+    - [`new URL(input[, base])`](#new-urlinput-base)
+      - [`url.toJSON()`](#urltojson)
+      - [`url.search`](#urlsearch)
+      - [`url.searchParams`](#urlsearchparams)
+  - [`URLSearchParams` Class](#urlsearchparams-class)
+    - [`new URLSearchParams()`](#new-urlsearchparams)
+    - [`new URLSearchParams(string)`](#new-urlsearchparamsstring)
+    - [`new URLSearchParams(obj)`](#new-urlsearchparamsobj)
+    - [`new URLSearchParams(iterable)`](#new-urlsearchparamsiterable)
+    - [`urlSearchParams.append(name, value)`](#urlsearchparamsappendname-value)
+    - [`urlSearchParams.get(name)`](#urlsearchparamsgetname)
+    - [`urlSearchParams.getAll(name)`](#urlsearchparamsgetallname)
+    - [`urlSearchParams.set(name, value)`](#urlsearchparamssetname-value)
+    - [`urlSearchParams.delete(name)`](#urlsearchparamsdeletename)
+    - [`urlSearchParams.has(name)`](#urlsearchparamshasname)
+    - [`urlSearchParams.toString()`](#urlsearchparamstostring)
+    - [`urlSearchParams.keys()`](#urlsearchparamskeys)
+    - [`urlSearchParams.values()`](#urlsearchparamsvalues)
+    - [`urlSearchparams.entries()`](#urlsearchparamsentries)
+    - [`urlSearchParamsSymbol.iterator`](#urlsearchparamssymboliterator)
+  - [`url.fileURLToPath(url)`](#urlfileurltopathurl)
+- [File System](#file-system)
+  - [Accessing the File System APIs](#accessing-the-file-system-apis)
+    - [To use the Promise-based APIs](#to-use-the-promise-based-apis)
+    - [To use the Callback and Sync APIs](#to-use-the-callback-and-sync-apis)
+  - [Opening a File](#opening-a-file)
+    - [`fs.open(path[, flags[, mode]], callback)`](#fsopenpath-flags-mode-callback)
+    - [`fs.readFile(path[, options], callback)`](#fsreadfilepath-options-callback)
+      - [File descriptors](#file-descriptors)
+      - [Performance Considerations](#performance-considerations)
+  - [Reading File(s)](#reading-files)
+    - [`fs.readFile(path[, flags[, mode]], callback)`](#fsreadfilepath-flags-mode-callback)
+    - [`fs.rename`](#fsrename)
+  - [Truncating a File](#truncating-a-file)
+    - [`fs.ftruncate(fd[, len], callback)`](#fsftruncatefd-len-callback)
+  - [File System Flags](#file-system-flags)
+- [HTTP](#http)
+  - [`http.createServer(options)`](#httpcreateserveroptions)
+    - [The `requestListener` function](#the-requestlistener-function)
+    - [Creating a HTTP Server](#creating-a-http-server)
+- [String Decoder](#string-decoder)
+  - [`new StringDecoder([encoding])`](#new-stringdecoderencoding)
+  - [`stringDecoder.write(buffer)`](#stringdecoderwritebuffer)
+  - [`stringDecoder.end([buffer])`](#stringdecoderendbuffer)
+- [Stream](#stream)
     - [What are Streams?](#what-are-streams)
     - [Types of Streams](#types-of-streams)
     - [Why Streams](#why-streams)
@@ -301,7 +351,7 @@ This ensures the proper sequencing of events and helps avoid race conditions and
 
 ---
 
-## EventEmitter Class
+# EventEmitter Class
 
 The EventEmitter class is defined and exposed by the `node:events` module:
 
@@ -413,7 +463,1063 @@ Returns a reference to the `EventEmitter`, so that calls can be chained.
 
 ---
 
-## File System
+# Path
+
+The `node:path` module provides utilities for working with file and directory paths. It can be accessed using:
+
+```cjs
+const path = require('path');
+```
+
+```es6
+import path from 'path';
+```
+
+We will look at some of the most used `path` methods.
+
+---
+
+## `path.basename(path[, ext])`
+
+- `path <string>`
+- `ext <string>` - An optional file extension
+- Returns: `<string>`
+
+The `path.basename()` method returns the last portion of a path, similar to the Unix basename command. Trailing directory separators are ignored, see [`path.sep`](#pathsep).
+
+```js
+path.basename('/foo/bar/baz/asdf/quux.html');
+// Returns: 'quux.html'
+
+path.basename('/foo/bar/baz/asdf/quux.html', '.html');
+// Returns: 'quux'
+```
+
+Although Windows usually treats file names, including file extensions, in a case-insensitive manner, this function does not. For example, `C:\foo.html` and `C:\foo.HTML` refer to the same file, but `basename` treats the extension as a case-sensitive string:
+
+```js
+path.win32.basename('C:\\foo.html', '.html');
+// Returns: 'foo'
+
+path.win32.basename('C:\\foo.HTML', '.html');
+// Returns: 'foo.HTML'
+```
+
+A TypeError is thrown if path is not a string or if ext is given and is not a string.
+
+---
+
+## `path.dirname(path)`
+
+- `path <string>`
+- Returns: `<string>`
+
+The `path.dirname()` method returns the directory name of a path, similar to the Unix dirname command. Trailing directory separators are ignored, see [`path.sep`](#pathsep).
+
+```js
+path.dirname('/foo/bar/baz/asdf/quux');
+// Returns: '/foo/bar/baz/asdf'
+```
+
+A TypeError is thrown if path is not a string.
+
+---
+
+## `path.extname(path)`
+
+- `path <string>`
+- Returns: `<string>`
+
+The **`path.extname()`** method returns the extension of the path, from the last occurrence of the **`.`** (period) character to end of string in the last portion of the path. If there is no **`.`** in the last portion of the path, or if there are no **`.`** characters other than the first character of the `basename` of path (see [`path.basename()`](#pathbasenamepath-ext)), an empty string is returned.
+
+```js
+path.extname('index.html');
+// Returns: '.html'
+
+path.extname('index.coffee.md');
+// Returns: '.md'
+
+path.extname('index.');
+// Returns: '.'
+
+path.extname('index');
+// Returns: ''
+
+path.extname('.index');
+// Returns: ''
+
+path.extname('.index.md');
+// Returns: '.md'
+```
+
+A TypeError is thrown if path is not a string.
+
+---
+
+## `path.parse(path)`
+
+- `path <string>`
+- Returns: `<Object>`
+
+The **`path.parse()`** method returns an object whose properties represent significant elements of the path. Trailing directory separators are ignored, see [`path.sep`](#pathsep).
+
+The returned object will have the following properties:
+
+- `dir <string>`
+- `root <string>`
+- `base <string>`
+- `name <string>`
+- `ext <string>`
+
+```js
+path.parse('/home/user/dir/file.txt');
+// Returns:
+// { root: '/',
+//   dir: '/home/user/dir',
+//   base: 'file.txt',
+//   ext: '.txt',
+//   name: 'file' }
+```
+
+```
+┌─────────────────────┬────────────┐
+│          dir        │    base    │
+├──────┬              ├──────┬─────┤
+│ root │              │ name │ ext │
+"  /    home/user/dir / file  .txt "
+└──────┴──────────────┴──────┴─────┘
+(All spaces in the "" line should be ignored. They are purely for formatting.)
+```
+
+This is the opposite of [`path.format()`](#pathformatpathobject).
+
+---
+
+## `path.format(pathObject)`
+
+- `pathObject <Object>` - A JavaScript object having the following properties:
+  - `dir <string>`
+  - `root <string>`
+  - `base <string>`
+  - `name <string>`
+  - `ext <string>`
+- Returns: `<string>`
+
+The **`path.format()`** method returns a path string from an object. This is the opposite of [`path.parse()`](#pathparsepath).
+
+When providing properties to the `pathObject` remember that there are combinations where one property has priority over another:
+
+- `pathObject.root` is ignored if `pathObject.dir` is provided
+- `pathObject.ext` and `pathObject.name` are ignored if `pathObject.base` exists
+
+```js
+// If `dir`, `root` and `base` are provided,
+// `${dir}${path.sep}${base}`
+// will be returned. `root` is ignored.
+path.format({
+  root: '/ignored',
+  dir: '/home/user/dir',
+  base: 'file.txt',
+});
+// Returns: '/home/user/dir/file.txt'
+
+// `root` will be used if `dir` is not specified.
+// If only `root` is provided or `dir` is equal to `root` then the
+// platform separator will not be included. `ext` will be ignored.
+path.format({
+  root: '/',
+  base: 'file.txt',
+  ext: 'ignored',
+});
+// Returns: '/file.txt'
+
+// `name` + `ext` will be used if `base` is not specified.
+path.format({
+  root: '/',
+  name: 'file',
+  ext: '.txt',
+});
+// Returns: '/file.txt'
+```
+
+---
+
+## `path.join([...paths])`
+
+- `...paths <string>` - A sequence of path segments
+- Returns: `<string>`
+
+The **`path.join()`** method joins all given path segments together using the platform-specific separator as a delimiter, then normalizes the resulting path.
+
+Zero-length `path` segments are ignored. If the joined path string is a zero-length string then `'.'` will be returned, representing the current working directory.
+
+```js
+path.join('/foo', 'bar', 'baz/asdf', 'quux');
+// Returns: '/foo/bar/baz/asdf/quux'
+
+path.join('/foo', 'bar', 'baz/asdf', 'quux', '..');
+// Returns: '/foo/bar/baz/asdf'
+
+path.join('foo', {}, 'bar');
+// Throws 'TypeError: Path must be a string. Received {}'
+```
+
+A TypeError is thrown if any of the path segments is not a string.
+
+---
+
+## `path.resolve([...paths])`
+
+- `...paths <string>` - A sequence of paths or path segments
+- Returns: `<string>`
+
+The `path.resolve()` method resolves a sequence of paths or path segments into an absolute path.
+
+The given sequence of paths is **processed from right to left, with each subsequent path prepended until an absolute path is constructed**.
+
+For instance, given the sequence of path segments: `/foo`, `/bar`, `baz`, calling `path.resolve('/foo', '/bar', 'baz')` would return `/bar/baz` because `'baz'` is not an absolute path but `'/bar' + '/' + 'baz'` is.
+
+> **Note:**
+>
+> - If, after processing all given `path` segments, an absolute path has not yet been generated, the current working directory is used.
+> - Zero-length `path` segments are ignored.
+> - If no `path` segments are passed, `path.resolve()` will return the absolute path of the current working directory.
+
+```js
+path.resolve('/foo/bar', './baz');
+// Returns: '/foo/bar/baz'
+
+path.resolve('/foo/bar', '/tmp/file/');
+// Returns: '/tmp/file'
+
+path.resolve('wwwroot', 'static_files/png/', '../gif/image.gif');
+// If the current working directory is /home/myself/node,
+// this returns '/home/myself/node/wwwroot/static_files/gif/image.gif'
+```
+
+A TypeError is thrown if any of the arguments is not a string.
+
+---
+
+## `path.sep`
+
+- `<string>`
+
+Provides the platform-specific path segment separator:
+
+**On POSIX:**
+
+```js
+'foo/bar/baz'.split(path.sep);
+// Returns: ['foo', 'bar', 'baz']
+```
+
+---
+
+# URL
+
+The `node:url` module provides utilities for URL resolution and parsing. It can be accessed using:
+
+**Using CommonJS:**
+
+```cjs
+const url = require('url');
+```
+
+**Using ES6 Modules:**
+
+```es6
+import url from 'url';
+```
+
+---
+
+## URL Strings and URL Objects
+
+A URL string is a structured string containing multiple meaningful components. When parsed, a URL object is returned containing properties for each of these components.
+
+The `node:url` module provides two APIs for working with URLs:
+
+- A legacy API that is Node.js specific, and
+- A newer API that implements the same **[WHATWG URL Standard](https://url.spec.whatwg.org/)** used by web browsers.
+
+A comparison between the WHATWG and Legacy APIs is provided below. Above the URL `'https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'`, properties of an object returned by the legacy `url.parse()` are shown. Below it are properties of a WHATWG `URL` object.
+
+WHATWG URL's `origin` property includes `protocol` and `host`, but not username or password.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                              href                                              │
+├──────────┬──┬─────────────────────┬────────────────────────┬───────────────────────────┬───────┤
+│ protocol │  │        auth         │          host          │           path            │ hash  │
+│          │  │                     ├─────────────────┬──────┼──────────┬────────────────┤       │
+│          │  │                     │    hostname     │ port │ pathname │     search     │       │
+│          │  │                     │                 │      │          ├─┬──────────────┤       │
+│          │  │                     │                 │      │          │ │    query     │       │
+"  https:   //    user   :   pass   @ sub.example.com : 8080   /p/a/t/h  ?  query=string   #hash "
+│          │  │          │          │    hostname     │ port │          │                │       │
+│          │  │          │          ├─────────────────┴──────┤          │                │       │
+│ protocol │  │ username │ password │          host          │          │                │       │
+├──────────┴──┼──────────┴──────────┼────────────────────────┤          │                │       │
+│   origin    │                     │         origin         │ pathname │     search     │ hash  │
+├─────────────┴─────────────────────┴────────────────────────┴──────────┴────────────────┴───────┤
+│                                              href                                              │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+(All spaces in the "" line should be ignored. They are purely for formatting.)
+```
+
+**Parsing the URL string using the WHATWG API (Recommended):**
+
+```js
+const myURL = new URL(
+  'https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'
+);
+
+console.log(myURL);
+
+// Returns:
+// URL {
+//     href: 'https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash',
+//     origin: 'https://sub.example.com:8080',
+//     protocol: 'https:',
+//     username: 'user',
+//     password: 'pass',
+//     host: 'sub.example.com:8080',
+//     hostname: 'sub.example.com',
+//     port: '8080',
+//     pathname: '/p/a/t/h',
+//     search: '?query=string',
+//     searchParams: URLSearchParams { 'query' => 'string' },
+//     hash: '#hash'
+// }
+```
+
+**Parsing the URL string using the Legacy API:**
+
+```js
+import url from 'url';
+const myURL = url.parse(
+  'https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'
+);
+
+console.log(myURL);
+
+// Returns:
+// Url {
+//     protocol: 'https:',
+//     slashes: true,
+//     auth: 'user:pass',
+//     host: 'sub.example.com:8080',
+//     port: '8080',
+//     hostname: 'sub.example.com',
+//     hash: '#hash',
+//     search: '?query=string',
+//     query: 'query=string',
+//     pathname: '/p/a/t/h',
+//     path: '/p/a/t/h?query=string',
+//     href: 'https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'
+// }
+```
+
+---
+
+## The WHATWG URL API
+
+We will be using the WHATWG URL API. It comes with a **`URL`** class implemented by following the WHATWG URL Standard. The URL class is also available on the global object.
+
+In accordance with browser conventions, all properties of `URL` objects are implemented as getters and setters on the class prototype, rather than as data properties on the object itself.
+
+### `new URL(input[, base])`
+
+---
+
+- `input <string>` - The absolute or relative input URL to parse. If input is relative, then base is required. If input is absolute, the base is ignored. If input is not a string, it is converted to a string first.
+- `base <string>` - The base URL to resolve against if the input is not absolute. If base is not a string, it is converted to a string first.
+
+Creates a new URL object by parsing the input relative to the base. If base is passed as a string, it will be parsed equivalent to new URL(base).
+
+```js
+const myURL = new URL('/foo', 'https://example.org/');
+// https://example.org/foo
+```
+
+The `URL` constructor is accessible as a property on the global object. It can also be imported from the built-in `url` module:
+
+```es6
+import { URL } from 'url';
+console.log(URL === globalThis.URL); // Prints 'true'.
+```
+
+A TypeError will be thrown if the input or base are not valid URLs.
+
+> **Note:** An effort will be made to coerce the given values into strings. For instance:
+
+```js
+const myURL = new URL({ toString: () => 'https://example.org/' });
+// https://example.org/
+```
+
+---
+
+#### `url.toJSON()`
+
+- Returns: `<string>`
+
+The `toJSON()` method on the URL object returns the serialized URL. The value returned is equivalent to that of `url.href` and `url.toString()`.
+
+This method is automatically called when an URL object is serialized with `JSON.stringify()`.
+
+```js
+const myURLs = [
+  new URL('https://www.example.com'),
+  new URL('https://test.example.org'),
+];
+console.log(JSON.stringify(myURLs));
+// Prints ["https://www.example.com/","https://test.example.org/"]
+```
+
+```js
+// url.toJSON() returns a string while JSON.stringify(url) returns a JSON string which needs parsing.
+const myURL = new URL('https://www.example.com');
+const a = myURL.toJSON();
+console.log(a === JSON.stringify(myURL)); // Prints: false
+const b = JSON.parse(JSON.stringify(myURL));
+console.log(a === b); // Prints: true
+```
+
+---
+
+#### `url.search`
+
+- `<string>`
+
+Gets and sets the serialized query portion of the URL.
+
+```js
+/** Get */
+const myURL = new URL('https://example.org/abc?123');
+console.log(myURL.search);
+// Prints ?123
+
+/** Set */
+myURL.search = 'abc=xyz';
+console.log(myURL.href);
+// Prints https://example.org/abc?abc=xyz
+```
+
+Any invalid URL characters appearing in the value assigned the `search` property will be [percent-encoded](https://nodejs.org/api/url.html#percent-encoding-in-urls). The selection of which characters to percent-encode may vary somewhat from what the `url.parse()` and `url.format()` methods would produce.
+
+---
+
+#### `url.searchParams`
+
+- `<URLSearchParams>`
+
+Gets the `URLSearchParams` object representing the query parameters of the URL. This property is read-only but the `URLSearchParams` object it provides can be used to mutate the URL instance; to replace the entirety of query parameters of the URL, use the `url.search` setter. See [URLSearchParams](#urlsearchparams-class) documentation for details.
+
+Use care when using `.searchParams` to modify the URL because, per the WHATWG specification, the `URLSearchParams` object uses different rules to determine which characters to percent-encode. For instance, the `URL` object will not percent encode the ASCII tilde (~) character, while URLSearchParams will always encode it:
+
+```js
+const myUrl = new URL('https://example.org/abc?foo=~bar');
+
+console.log(myUrl.search); // prints ?foo=~bar
+
+// Modify the URL via searchParams...
+myUrl.searchParams.sort();
+
+console.log(myUrl.search); // prints ?foo=%7Ebar
+```
+
+---
+
+## `URLSearchParams` Class
+
+The `URLSearchParams` API provides read and write access to the query of a `URL`. The `URLSearchParams` class can also be used standalone with one of the four following constructors. The `URLSearchParams` class is also available on the global object.
+
+```es6
+import { URLSearchParams } from 'url';
+console.log(URLSearchParams === globalThis.URLSearchParams); // Prints 'true'.
+```
+
+The WHATWG `URLSearchParams` interface and the `querystring` module have similar purpose, but the purpose of the `querystring` module is more general, as it allows the customization of delimiter characters (& and =). On the other hand, this API is designed purely for URL query strings.
+
+```js
+const newURL = new URL('https://example.org/?abc=123');
+
+// get
+console.log(newURL.searchParams.get('abc')); // Prints: "123"
+
+// append
+newURL.searchParams.append('abc', 'xyz');
+console.log(newURL.href); // Prints https://example.org/?abc=123&abc=xyz
+
+// delete
+newURL.searchParams.delete('abc');
+
+// set
+newURL.searchParams.set('a', 'b');
+console.log(newURL.href); // Prints: https://example.org/?a=b
+
+// URLSearchParams constructor
+const newSearchParams = new URLSearchParams(newURL.searchParams);
+// The above is equivalent to
+// const newSearchParams = new URLSearchParams(myURL.search);
+
+newSearchParams.append('a', 'c');
+console.log(newURL.href); // Prints: https://example.org/?a=b
+
+console.log(newSearchParams.toString()); // Prints: a=b&a=c
+
+// newSearchParams.toString() is implicitly called
+newURL.search = newSearchParams; // assigns newURL.search to 'a=b&a=c'. This updates the URL.
+console.log(newURL.href); // Prints: https://example.org/?a=b&a=c
+
+newSearchParams.delete('a');
+
+newURL.search = newSearchParams; // assigns newURL.search to ''. This updates the URL.
+console.log(newURL.href); // Prints: https://example.org/
+```
+
+The `URLSearchParams` object is almost like a Map object having the same methods and iterators with a few caveats:
+
+- get
+- set
+- has
+- keys
+- entries
+-
+
+and iterator with a few special methods
+
+---
+
+### `new URLSearchParams()`
+
+Instantiate a new empty URLSearchParams object.
+
+```js
+const searchParams = new URLSearchParams();
+```
+
+---
+
+### `new URLSearchParams(string)`
+
+- `string <string>` - A query string
+- Parse the string as a query string, and use it to instantiate a `new URLSearchParams` object. A leading '?', if present, is ignored.
+
+```js
+const params = new URLSearchParams('user=abc&query=xyz');
+console.log(params.get('user')); // Prints 'abc'
+console.log(params.toString()); // Prints 'user=abc&query=xyz'
+
+params = new URLSearchParams('?user=abc&query=xyz');
+console.log(params.toString()); // Prints 'user=abc&query=xyz'
+```
+
+---
+
+### `new URLSearchParams(obj)`
+
+- `obj <Object>` - An object representing a collection of key-value pairs
+
+Instantiate a new `URLSearchParams` object with a query hash map. The key and value of each property of `obj` are always coerced to strings.
+
+Unlike `querystring` module, duplicate keys in the form of array values are not allowed. Arrays are stringified using `array.toString()`, which simply joins all array elements with commas.
+
+```js
+const params = new URLSearchParams({
+  user: 'abc',
+  query: ['first', 'second'],
+});
+
+console.log(params.getAll('query')); // Prints [ 'first,second' ]
+console.log(params.toString()); // Prints 'user=abc&query=first%2Csecond'
+```
+
+---
+
+### `new URLSearchParams(iterable)`
+
+- `iterable <Iterable>` - An iterable object whose elements are key-value pairs
+
+Instantiate a new `URLSearchParams` object with an iterable map in a way that is similar to [`Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)'s constructor. `iterable` can be an `Array` or any iterable object. That means `iterable` can be another `URLSearchParams`, in which case the constructor will simply create a clone of the provided `URLSearchParams`. Elements of iterable are key-value pairs, and can themselves be any iterable object.
+
+Duplicate keys are not allowed.
+
+```js
+/** Using an array */
+const params = new URLSearchParams([
+  ['user', 'abc'],
+  ['query', 'first'],
+  ['query', 'second'],
+]);
+console.log(params.toString()); // Prints 'user=abc&query=first&query=second'
+
+/** Using a Map object */
+const map = new Map();
+map.set('user', 'abc');
+map.set('query', 'xyz');
+params = new URLSearchParams(map);
+console.log(params.toString()); // Prints 'user=abc&query=xyz'
+
+// Using a generator function
+function* getQueryPairs() {
+  yield ['user', 'abc'];
+  yield ['query', 'first'];
+  yield ['query', 'second'];
+}
+params = new URLSearchParams(getQueryPairs());
+console.log(params.toString()); // Prints 'user=abc&query=first&query=second'
+
+// Each key-value pair must have exactly two elements
+new URLSearchParams([['user', 'abc', 'error']]);
+// Throws TypeError [ERR_INVALID_TUPLE]:
+//        Each query pair must be an iterable [name, value] tuple
+```
+
+---
+
+### `urlSearchParams.append(name, value)`
+
+- `name <string>`
+- `value <string>`
+
+Append (add to the end of the string) a new name-value pair to the query string.
+
+```js
+const params = new URLSearchParams();
+params.append('foo', 'bar');
+params.append('foo', 'baz');
+params.append('abc', 'def');
+console.log(params.toString()); // Prints foo=bar&foo=baz&abc=def
+```
+
+---
+
+### `urlSearchParams.get(name)`
+
+- `name <string>`
+- Returns: `<string>` or `null` if there is no name-value pair with the given name.
+
+Returns the value of the first name-value pair whose name is `name`. If there are no such pairs, `null` is returned.
+
+```js
+const params = new URLSearchParams();
+params.append('foo', 'bar');
+params.append('foo', 'baz');
+console.log(params.get('foo')); // Prints: bar
+```
+
+---
+
+### `urlSearchParams.getAll(name)`
+
+- `name <string>`
+- Returns: `<string[]>`
+
+Returns the values of all name-value pairs whose name is `name`. If there are no such pairs, an empty array is returned.
+
+```js
+const params = new URLSearchParams();
+params.append('foo', 'bar');
+params.append('foo', 'baz');
+params.append('abc', 'def');
+console.log(params.getAll('foo')); // Prints: [ 'bar', 'baz' ]
+```
+
+---
+
+### `urlSearchParams.set(name, value)`
+
+- `name <string>`
+- `value <string>`
+
+Sets the value in the `URLSearchParams` object associated with `name` to `value`. If there are any pre-existing name-value pairs whose names are `name`, set the first such pair's value to `value` and remove all others. If not, append the name-value pair to the query string.
+
+```js
+/** Setup **/
+const params = new URLSearchParams();
+params.append('foo', 'bar');
+params.append('foo', 'baz');
+params.append('abc', 'def');
+console.log(params.toString()); // Prints: foo=bar&foo=baz&abc=def
+
+params.set('foo', 'def');
+params.set('xyz', 'opq');
+console.log(params.toString()); // Prints: foo=def&abc=def&xyz=opq
+```
+
+---
+
+### `urlSearchParams.delete(name)`
+
+- `name <string>`
+
+Remove all name-value pairs whose name is `name`.
+
+```js
+const params = new URLSearchParams();
+params.append('foo', 'bar');
+params.append('foo', 'baz');
+params.append('abc', 'def');
+params.delete('foo');
+console.log(params.toString()); // Prints abc=def
+```
+
+---
+
+### `urlSearchParams.has(name)`
+
+- `name <string>`
+- Returns `<boolean>`
+
+Returns true if there is at least one name-value pair whose name is name.
+
+```js
+const params = new URLSearchParams();
+console.log(params.has('abc')); // false
+params.append('abc', 'def');
+console.log(params.has('abc')); // true
+```
+
+---
+
+### `urlSearchParams.toString()`
+
+- Returns: `<string>`
+
+Returns the search parameters serialized as a string, with characters percent-encoded where necessary.
+
+```js
+const params = new URLSearchParams();
+params.append('foo', 'bar');
+params.append('abc', 'def');
+console.log(params.toString()); // Prints: foo=bar&abc=def
+```
+
+---
+
+### `urlSearchParams.keys()`
+
+- Returns: `<Iterator>`
+
+Returns an ES6 Iterator over the values of each name-value pair.
+
+```js
+const params = new URLSearchParams('foo=bar&foo=baz');
+for (const name of params.keys()) {
+  console.log(name);
+}
+// Prints:
+//   foo
+//   foo
+```
+
+---
+
+### `urlSearchParams.values()`
+
+- Returns: `<Iterator>`
+
+Returns an ES6 Iterator over the values of each name-value pair.
+
+```js
+const params = new URLSearchParams('foo=bar&foo=baz');
+for (const name of params.values()) {
+  console.log(name);
+}
+// Prints:
+//   bar
+//   baz
+```
+
+### `urlSearchparams.entries()`
+
+- Returns: `<Iterator>`
+- Returns an ES6 `Iterator` over each of the name-value pairs in the query string. Each item of the iterator is a JavaScript `Array`. The first item of the `Array` is the `name`, the second item of the Array is the `value`.
+
+Alias for [`urlSearchParams[@@iterator]()`](#urlsearchparamssymboliterator).
+
+---
+
+### `urlSearchParams[Symbol.iterator]()`
+
+- Returns `<Iterator>`
+
+Returns an ES6 `Iterator` over each of the name-value pairs in the query string. Each item of the iterator is a JavaScript `Array`. The first item of the `Array` is the `name`, the second item of the Array is the `value`.
+
+Alias for [`urlSearchParams.entries()`](#urlsearchparamsentries).
+
+```js
+const params = new URLSearchParams('foo=bar&xyz=baz');
+for (const [name, value] of params) {
+  console.log(name, value);
+}
+// Prints:
+//   foo bar
+//   xyz baz
+```
+
+---
+
+## `url.fileURLToPath(url)`
+
+- `url <URL> | <string>` - The file URL string or URL object to convert to a path.
+- Returns: `<string>` - The fully-resolved platform-specific Node.js file path.
+
+This function ensures the correct decodings of percent-encoded characters as well as ensuring a cross-platform valid absolute path string.
+
+```js
+import { fileURLToPath } from 'node:url';
+
+const url = import.meta.url;
+// Returns: file:///home/jayantasamaddar/Work/quick-reference/nodejs/modules/url/url.js
+
+const __filename = fileURLToPath(url); // Returns:
+```
+
+---
+
+# File System
+
+The `node:fs` module enables interacting with the file system in a way modeled on standard POSIX functions. All file system operations have synchronous, callback, and promise-based forms, and are accessible using both CommonJS syntax and ES6 Modules (ESM).
+
+## Accessing the File System APIs
+
+The File System APIs can be grouped into two categories based on the two flavours:
+
+- **Promise-based APIs**
+- **Callback APIs (also includes the Sync APIs)**
+
+All callback and promise-based file system APIs (with the exception of `fs.FSWatcher()`) use libuv's threadpool. This can have surprising and negative performance implications for some applications. See the UV_THREADPOOL_SIZE documentation for more information.
+
+### To use the Promise-based APIs
+
+The **`fs/promises`** API provides asynchronous file system methods that return promises.
+
+The promise APIs use the underlying Node.js threadpool to perform file system operations off the event loop thread. These operations are not synchronized or threadsafe. Care must be taken when performing multiple concurrent modifications on the same file or data corruption may occur.
+
+**CommonJS**
+
+```cjs
+const fs = require('fs/promises');
+```
+
+**ES6 Modules**
+
+```es6
+import fs from 'fs/promises';
+```
+
+### To use the Callback and Sync APIs
+
+The callback APIs perform all operations asynchronously, without blocking the event loop, then invoke a callback function upon completion or error. The callback APIs use the underlying Node.js threadpool to perform file system operations off the event loop thread. These operations are not synchronized or threadsafe. Care must be taken when performing multiple concurrent modifications on the same file or data corruption may occur.
+
+**CommonJS**
+
+```cjs
+const fs = require('fs');
+```
+
+**ES6 Modules**
+
+```es6
+import fs from 'fs';
+```
+
+---
+
+## Opening a File
+
+### `fs.open(path[, flags[, mode]], callback)`
+
+Asynchronous file open to perform some actions on the file. It may need to be closed with the `fs.close()` method.
+
+- `path <string> | <Buffer> | <URL>`
+- `flags <string> | <number>` - [See support of file system flags](#file-system-flags). Default: 'r'.
+- `mode <string> | <integer>` - Default: 0o666 (readable and writable)
+- `callback <Function>`
+  - `err <Error>` - Error if any
+  - `fd <integer>` - Reference to an open file. Uniquely identifies an open file in operating system.
+
+```js
+const path =
+  '/home/jayantasamaddar/Work/quick-reference/nodejs/modules/url/url.js';
+
+fs.open(path, 'r', (err, fd) => {
+  if (!err && fd) {
+    // do something like READ or WRITE or both
+  } else {
+    // handle error
+  }
+});
+```
+
+---
+
+### `fs.readFile(path[, options], callback)`
+
+- `path <string> | <Buffer> | <URL> | <integer>` - Filename or file descriptor
+- `options <Object> | <string>`
+  - `encoding <string> | <null>` - Default: `null`
+  - `flag <string>` - See support of file system flags. Default: `'r'`.
+  - `signal <AbortSignal>` - Allows aborting an in-progress readFile
+- `callback <Function>`
+  - `err <Error> | <AggregateError>`
+  - `data <string> | <Buffer>`
+
+Asynchronously reads the entire contents of a file.
+
+```es6
+import { readFile } from 'fs';
+
+readFile('/etc/passwd', (err, data) => {
+  if (err) throw err;
+  console.log(data);
+});
+```
+
+```es6
+import { readFile } from 'fs';
+const buffer = readFile('./assets/panagram.txt', (err, data) => {
+  /* handle error */
+  if (err) {
+    console.log(err);
+    return;
+  }
+  /** Do something with the data */
+  console.log(data);
+  return data;
+});
+```
+
+The callback is passed two arguments `(err, data)`, where data is the contents of the file.
+
+If no encoding is specified, then the raw buffer is returned.
+
+If `options` is a string, then it specifies the encoding:
+
+```es6
+import { readFile } from 'fs';
+
+readFile('/etc/passwd', 'utf8', callback);
+```
+
+When the path is a directory, the behavior of `fs.readFile()` and `fs.readFileSync()` is platform-specific. On macOS, Linux, and Windows, an error will be returned. On FreeBSD, a representation of the directory's contents will be returned.
+
+```es6
+import { readFile } from 'fs';
+
+// macOS, Linux, and Windows
+readFile('<directory>', (err, data) => {
+  // => [Error: EISDIR: illegal operation on a directory, read <directory>]
+});
+
+//  FreeBSD
+readFile('<directory>', (err, data) => {
+  // => null, <data>
+});
+```
+
+It is possible to abort an ongoing request using an AbortSignal. If a request is aborted the callback is called with an `AbortError`:
+
+```es6
+import { readFile } from 'node:fs';
+
+const controller = new AbortController();
+const signal = controller.signal;
+readFile(fileInfo[0].name, { signal }, (err, buf) => {
+  // ...
+});
+// When you want to abort the request
+controller.abort();
+```
+
+The `fs.readFile()` function buffers the entire file. To minimize memory costs, when possible prefer streaming via `fs.createReadStream()`.
+
+Aborting an ongoing request does not abort individual operating system requests but rather the internal buffering `fs.readFile` performs.
+
+#### File descriptors
+
+1. Any specified file descriptor has to support reading.
+2. If a file descriptor is specified as the path, it will not be closed automatically.
+3. The reading will begin at the current position. For example, if the file already had `'Hello World'` and six bytes are read with the file descriptor, the call to `fs.readFile()` with the same file descriptor, would give `'World'`, rather than `'Hello World'`.
+
+#### Performance Considerations
+
+The `fs.readFile()` method asynchronously reads the contents of a file into memory one chunk at a time, allowing the event loop to turn between each chunk. This allows the read operation to have less impact on other activity that may be using the underlying libuv thread pool but means that it will take longer to read a complete file into memory.
+
+The additional read overhead can vary broadly on different systems and depends on the type of file being read. If the file type is not a regular file (a pipe for instance) and Node.js is unable to determine an actual file size, each read operation will load on 64 KiB of data. For regular files, each read will process 512 KiB of data.
+
+For applications that require as-fast-as-possible reading of file contents, it is better to use `fs.read()` directly and for application code to manage reading the full contents of the file itself.
+
+The Node.js GitHub issue **[#25741](https://github.com/nodejs/node/issues/25741)** provides more information and a detailed analysis on the performance of `fs.readFile()` for multiple file sizes in different Node.js versions.
+
+---
+
+###
+
+## Reading File(s)
+
+### `fs.readFile(path[, flags[, mode]], callback)`
+
+---
+
+### `fs.rename`
+
+---
+
+## Truncating a File
+
+### `fs.ftruncate(fd[, len], callback)`
+
+- `fd <integer>`
+- `len <integer>` - Default: 0
+- `callback <Function>`
+  - `err <Error>`
+
+Truncates the file descriptor. No arguments other than a possible exception are given to the completion callback.
+
+If the file referred to by the file descriptor was larger than len bytes, only the first len bytes will be retained in the file.
+
+---
+
+## [File System Flags](https://nodejs.org/api/fs.html#file-system-flags)
+
+The following flags are available wherever the `flag` option takes a string.
+
+- `'a'`: Open file for appending. The file is created if it does not exist.
+
+- `'ax'`: Like 'a' but fails if the path exists.
+
+- `'a+'`: Open file for reading and appending. The file is created if it does not exist.
+
+- `'ax+'`: Like 'a+' but fails if the path exists.
+
+- `'as'`: Open file for appending in synchronous mode. The file is created if it does not exist.
+
+- `'as+'`: Open file for reading and appending in synchronous mode. The file is created if it does not exist.
+
+- `'r'`: Open file for reading. An exception occurs if the file does not exist.
+
+- `'r+'`: Open file for reading and writing. An exception occurs if the file does not exist. Modifying a file rather than replacing it may require the flag option to be set to `'r+'` rather than the default `'w'`.
+
+- `'rs+'`: Open file for reading and writing in synchronous mode. Instructs the operating system to bypass the local file system cache.
+
+This is primarily useful for opening files on NFS mounts as it allows skipping the potentially stale local cache. It has a very real impact on I/O performance so using this flag is not recommended unless it is needed.
+
+This doesn't turn fs.open() or fsPromises.open() into a synchronous blocking call. If synchronous operation is desired, something like fs.openSync() should be used.
+
+- `'w'`: Open file for writing. The file is created (if it does not exist) or truncated (if it exists).
+
+- `'wx'`: Like 'w' but fails if the path exists.
+
+- `'w+'`: Open file for reading and writing. The file is created (if it does not exist) or truncated (if it exists).
+
+- `'wx+'`: Like 'w+' but fails if the path exists.
+
+---
 
 1. `fs.readFileSync` (synchronous)
 
@@ -465,7 +1571,7 @@ bufferFn();
 
 ---
 
-## HTTP
+# HTTP
 
 To use the HTTP server and client one must `require('node:http')`.
 
@@ -475,11 +1581,11 @@ In order to support the full spectrum of possible HTTP applications, the Node.js
 
 ---
 
-### `http.createServer([options][, requestListener])`
+## `http.createServer([options][, requestListener])`
 
 Returns a new instance of [`http.Server`](https://nodejs.org/api/http.html#class-httpserver), i.e. creates a HTTP Server that listens on a PORT.
 
-#### The `requestListener` function
+### The `requestListener` function
 
 The `requestListener` is a function which is automatically added to the `request` event.
 
@@ -490,7 +1596,7 @@ The `requestListener` function takes two arguments,
 
 ---
 
-#### Creating a HTTP Server
+### Creating a HTTP Server
 
 **Method 1:**
 
@@ -552,11 +1658,103 @@ The events that are available for the [`http.Server` Class](https://nodejs.org/a
 
 ---
 
-## URL
+# [String Decoder](https://nodejs.org/api/string_decoder.html)
+
+The `node:string_decoder` module provides an API for decoding Buffer objects into strings in a manner that preserves encoded multi-byte UTF-8 and UTF-16 characters. It can be accessed using:
+
+**CommonJS**
+
+```cjs
+const { StringDecoder } = require('string_decoder');
+```
+
+**ES6 Modules**
+
+```es6
+import { StringDecoder } from 'string_decoder';
+```
+
+The following example shows the basic use of the `StringDecoder` class.
+
+```es6
+import { StringDecoder } from 'string_decoder';
+const decoder = new StringDecoder('utf8');
+
+const cent = Buffer.from([0xc2, 0xa2]);
+console.log(decoder.write(cent)); // ¢
+
+const euro = Buffer.from([0xe2, 0x82, 0xac]);
+console.log(decoder.write(euro)); // €
+```
+
+When a `Buffer` instance is written to the `StringDecoder` instance, an internal buffer is used to ensure that the decoded string does not contain any incomplete multibyte characters. These are held in the buffer until the next call to `stringDecoder.write()` or until `stringDecoder.end()` is called.
+
+In the following example, the three UTF-8 encoded bytes of the European Euro symbol (**€**) are written over three separate operations:
+
+```es6
+import { StringDecoder } from 'string_decoder';
+const decoder = new StringDecoder('utf8');
+
+decoder.write(Buffer.from([0xe2]));
+decoder.write(Buffer.from([0x82]));
+console.log(decoder.end(Buffer.from([0xac])));
+```
 
 ---
 
-## Stream
+## `new StringDecoder([encoding])`
+
+- `encoding <string>` - The character encoding the `StringDecoder` will use. **Default:** `'utf8'`.
+
+Creates a new `StringDecoder` instance.
+
+```js
+const decoder = new StringDecoder('utf8');
+```
+
+---
+
+## `stringDecoder.write(buffer)`
+
+- `buffer <Buffer> | <TypedArray> | <DataView>` - A `Buffer`, or `TypedArray`, or `DataView` containing the bytes to decode.
+- Returns: `<string>`
+
+Returns a decoded string, ensuring that any incomplete multibyte characters at the end of the `Buffer`, or `TypedArray`, or `DataView` are omitted from the returned string and stored in an internal buffer for the next call to `stringDecoder.write()` or `stringDecoder.end()`.
+
+```es6
+import { StringDecoder } from 'string_decoder';
+
+const data = {};
+const data.baseDir = "/home/jayantasamaddar/Work/quick-reference/nodejs/projects/RESTfulAPI/.data/";
+
+_data.read = (dir, file, callback) => {
+  fs.readFile(`${data.baseDir}${dir}/${file}.json`, (err, data) => {
+    callback(err, data);
+  });
+};
+
+_data.read('test', 'newFile', (error, data) => {
+  const decoder = new StringDecoder('utf-8');
+  const buffer = '' + decoder.write(data);
+  console.log({ error, data: JSON.parse(buffer) });
+  // Result: console.log({ error, data: JSON.parse(buffer) });
+});
+```
+
+---
+
+## `stringDecoder.end([buffer])`
+
+- `buffer <Buffer> | <TypedArray> | <DataView>` - A `Buffer`, or `TypedArray`, or `DataView` containing the bytes to decode.
+- Returns: `<string>`
+
+Returns any remaining input stored in the internal buffer as a string. Bytes representing incomplete UTF-8 and UTF-16 characters will be replaced with substitution characters appropriate for the character encoding.
+
+If the `buffer` argument is provided, one final call to `stringDecoder.write()` is performed before returning the remaining input. After `end()` is called, the `stringDecoder` object can be reused for new input.
+
+---
+
+# Stream
 
 ### What are Streams?
 

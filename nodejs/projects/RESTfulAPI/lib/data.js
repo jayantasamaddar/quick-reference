@@ -5,8 +5,9 @@
 // Dependencies
 import fs from 'fs';
 import path from 'path';
+import helpers from './helpers.js';
 
-// Solve for __dirname not defined in ES module scope
+// Solve for __dirname not defined in ES module scope. Not needed for CommonJS
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +16,6 @@ const __dirname = path.dirname(__filename);
 const lib = {};
 
 // Base Directory
-
 lib.baseDir = path.join(__dirname, '../.data/');
 
 // Write data to file
@@ -44,7 +44,45 @@ lib.create = (dir, file, data, callback) => {
 // Read data from a file
 lib.read = (dir, file, callback) => {
   fs.readFile(`${lib.baseDir}${dir}/${file}.json`, (err, data) => {
-    callback(err, data);
+    if (!err && data) {
+      const parsedData = helpers.parseJSONToObject(data);
+      callback(false, parsedData);
+    } else callback(err, data);
+  });
+};
+
+// Search files with criteria. Default list all files in a directory.
+lib.search = (dir, criteria, callback) => {
+  fs.readdir(`${lib.baseDir}${dir}`, {}, (err, files) => {
+    if (!err && files) {
+      const entries =
+        typeof criteria === 'object' ? Object.entries(criteria) : [];
+
+      if (entries.length === 0) {
+        callback(false, files);
+      } else {
+        // Filter the files
+        const results = files.filter(file => {
+          const fileData = JSON.parse(
+            fs.readFileSync(
+              `${lib.baseDir}${dir}/${file}`,
+              'utf8',
+              (err, data) => {
+                if (!err && data) return data;
+                else console.log({ error: err.message });
+              }
+            )
+          );
+          // Match criteria
+          for (const entry of entries) {
+            if (fileData[entry[0]] !== entry[1]) return false;
+          }
+          return true;
+        });
+        // Return the search results
+        callback(false, results);
+      }
+    } else callback(err, files);
   });
 };
 
