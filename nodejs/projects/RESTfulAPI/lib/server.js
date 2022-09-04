@@ -127,10 +127,19 @@ function requestListener(req, res) {
 
 // Defining a Router
 const router = {
+  '': handlers.index,
+  'account/create': handlers.account.create,
+  'account/edit': handlers.account.edit,
+  'account/deleted': handlers.account.deleted,
+  'session/create': handlers.session.create,
+  'session/deleted': handlers.session.deleted,
+  'checks/all': handlers.checkList,
+  'checks/create': handlers.checksCreate,
+  'checks/edit': handlers.checksEdit,
   ping: handlers.ping,
-  users: handlers.users,
-  tokens: handlers.tokens,
-  checks: handlers.checks,
+  'api/users': handlers.users,
+  'api/tokens': handlers.tokens,
+  'api/checks': handlers.checks,
 };
 
 // Create the Initialization methods

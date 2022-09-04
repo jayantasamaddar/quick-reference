@@ -18,3 +18,23 @@ We will add a bunch of public facing routes that will serve HTML to the browser 
 We will create a bunch of templates that will be used to serve the HTML pages and we are going to write a lot of frontend JavaScript so that the form submissions can be processed by AJAX-JSON calls to our API as opposed to a form POST.
 
 ---
+
+## Changes to Routes
+
+We need to make modifications to the existing routes and add new routes that will be accessed by the frontend GUI.
+
+### Change the existing API routes by adding a `/api` prefix.
+
+In **`server.js`**,
+
+```js
+// Defining a Router
+const router = {
+  ping: handlers.ping,
+  'api/users': handlers.users,
+  'api/tokens': handlers.tokens,
+  'api/checks': handlers.checks,
+};
+```
+
+### Adding

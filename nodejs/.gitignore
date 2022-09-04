@@ -1,3 +1,9 @@
 node_modules
 .env
-./projects/RESTfulAPI/config.js
+
+# Database
+**/.data/*
+**/.logs/*
+
+# Config
+projects/RESTfulAPI/config.js
