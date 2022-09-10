@@ -2,13 +2,27 @@
 
 - [Table of Contents](#table-of-contents)
 - [What is Redis?](#what-is-redis)
-- [Architecture](#architecture)
 - [Advantages](#advantages)
+- [Multi-Model Database](#multi-model-database)
+- [Core Architecture](#core-architecture)
 - [Setup and Installation](#setup-and-installation)
   - [Setup using Docker](#setup-using-docker)
   - [Setup in Linux](#setup-in-linux)
+- [Data Types](#data-types)
+  - [Strings](#strings)
+    - [Overview](#overview)
+    - [String Commands](#string-commands)
+  - [Lists](#lists)
+    - [List Commands](#list-commands)
+  - [Sets](#sets)
+  - [Sorted Sets](#sorted-sets)
+  - [HyperLogLog](#hyperloglog)
+  - [Hashes](#hashes)
+  - [Streams](#streams)
+- [Transactions](#transactions)
+- [Pub-Sub](#pub-sub)
 - [Commands](#commands)
-  - [String Commands](#string-commands)
+  - [String Commands](#string-commands-1)
     - [`SET`](#set)
     - [`GET`](#get)
     - [`GETRANGE`](#getrange)
@@ -20,7 +34,7 @@
     - [`INCRBYFLOAT`](#incrbyfloat)
     - [`DECR`](#decr)
     - [`DECRBY`](#decrby)
-  - [List Commands](#list-commands)
+  - [List Commands](#list-commands-1)
     - [`LPUSH`](#lpush)
     - [`LPUSHX`](#lpushx)
     - [`RPUSH`](#rpush)
@@ -33,11 +47,12 @@
     - [`LINSERT`](#linsert)
     - [`LINDEX`](#lindex)
     - [`LTRIM`](#ltrim)
+    - [`LREM`](#lrem)
     - [`BLPOP`](#blpop)
-      - [**Overview**](#overview)
-      - [**Non-Blocking Behaviour**](#non-blocking-behaviour)
-      - [**Blocking Behaviour**](#blocking-behaviour)
-      - [**Examples**](#examples)
+      - [Overview](#overview-1)
+      - [Non-Blocking Behaviour](#non-blocking-behaviour)
+      - [Blocking Behaviour](#blocking-behaviour)
+      - [Examples](#examples)
   - [Set Commands](#set-commands)
     - [`SADD`](#sadd)
     - [SMEMBERS](#smembers)
@@ -49,6 +64,51 @@
     - [`SINTERSTORE`](#sinterstore)
     - [`SUNION`](#sunion)
     - [`SUNIONSTORE`](#sunionstore)
+  - [Sorted Set Commands](#sorted-set-commands)
+    - [`ZADD`](#zadd)
+    - [`ZRANGE`](#zrange)
+      - [Index Ranges](#index-ranges)
+      - [Score Ranges](#score-ranges)
+    - [`ZCARD`](#zcard)
+    - [`ZCOUNT`](#zcount)
+    - [`ZREM`](#zrem)
+    - [`ZRANK`](#zrank)
+    - [`ZREVRANK`](#zrevrank)
+    - [`ZSCORE`](#zscore)
+    - [`ZINCRBY`](#zincrby)
+    - [`ZREMRANGEBYSCORE`](#zremrangebyscore)
+    - [`ZREMRANGEBYRANK`](#zremrangebyrank)
+  - [HyperLogLog Commands](#hyperloglog-commands)
+    - [`PFADD`](#pfadd)
+    - [`PFCOUNT`](#pfcount)
+    - [`PFMERGE`](#pfmerge)
+  - [Hash Commands](#hash-commands)
+    - [`HSET`](#hset)
+    - [`HSETNX`](#hsetnx)
+    - [`HKEYS`](#hkeys)
+    - [`HVALS`](#hvals)
+    - [`HGET`](#hget)
+    - [`HGETALL`](#hgetall)
+    - [`HEXISTS`](#hexists)
+    - [`HLEN`](#hlen)
+    - [`HSTRLEN`](#hstrlen)
+    - [`HINCRBY`](#hincrby)
+    - [`HINCRBYFLOAT`](#hincrbyfloat)
+    - [`HDEL`](#hdel)
+  - [Transaction Commands](#transaction-commands)
+    - [`MULTI`](#multi)
+    - [`EXEC`](#exec)
+    - [`DISCARD`](#discard)
+    - [`WATCH`](#watch)
+    - [`UNWATCH`](#unwatch)
+  - [PUB/SUB Commands](#pubsub-commands)
+    - [`PUBLISH`](#publish)
+    - [`SUBSCRIBE`](#subscribe)
+    - [`PSUBSCRIBE`](#psubscribe)
+    - [`PUBSUB CHANNELS`](#pubsub-channels)
+    - [`PUBSUB NUMSUB`](#pubsub-numsub)
+    - [`PUBSUB NUMPAT`](#pubsub-numpat)
+    - [`UNSUBSCRIBE`](#unsubscribe)
   - [Universal Commands](#universal-commands)
     - [`KEYS`](#keys)
     - [`DEL`](#del)
@@ -61,30 +121,25 @@
   - [Server Management Commands](#server-management-commands)
     - [`FLUSHDB`](#flushdb)
     - [`FLUSHALL`](#flushall)
-- [Data Types](#data-types)
-  - [Strings](#strings)
-    - [Overview](#overview-1)
-    - [String Commands](#string-commands-1)
-  - [Lists](#lists)
-    - [List Commands](#list-commands-1)
-  - [Streams](#streams)
+- [Data Persistence and Recovery](#data-persistence-and-recovery)
+  - [RDB](#rdb)
+  - [AOF](#aof)
+  - [Durability and Recovery](#durability-and-recovery)
+- [Optimizing Memory Costs with Redis on Flash](#optimizing-memory-costs-with-redis-on-flash)
+- [Scaling Redis](#scaling-redis)
+  - [Clustering](#clustering)
+  - [Sharding](#sharding)
+- [High Availability across Geo-locations](#high-availability-across-geo-locations)
+  - [Problem](#problem)
+  - [Solution](#solution)
+  - [Data Integrity and Consistency](#data-integrity-and-consistency)
+- [Running Redis on Kubernetes](#running-redis-on-kubernetes)
 
 # What is Redis?
 
-Redis is an open source (BSD licensed), in-memory **data structure store** used as a NoSQL database, cache, message broker, and streaming engine.
+Redis which stands for Remote Dictionary Server, is an open source (BSD licensed), in-memory **data structure store** used as a NoSQL database, cache, message broker, and streaming engine.
 
 Following the footsteps of other NoSQL Databases like Cassandra, CouchDB and MongoDB, Redis allows the user to store vast amounts of data without the limits of relational databases.
-
----
-
-# Architecture
-
-There are two main processes in Redis architecture:
-
-1. Redis Console Client
-2. Redis Server
-
-This client and server can be on the same computer or on two different computers. Redis can also be configured as a Master-Slave configuration for distributed systems.
 
 ---
 
@@ -93,7 +148,9 @@ This client and server can be on the same computer or on two different computers
 The advantages of Redis are:
 
 1. **Extremely Fast** - Redis stores the whole dataset in primary memory, hence is very fast and can perform 110000 SETs per second, about 81000 GETs per second. It supports pipelining of commands and getting and setting multiple values in a single command to speed up communications with the client libraries.
+
 2. **Persistence** - While all the data lives in memory, changes are asynchronously saved on disk using flexible policies based on **_elapsed time_** and **_number of updates since last save_**.
+
 3. **Rich Support of Data Types** - Redis supports most of the data types that developers already know such as:
 
 - [String](https://redis.io/docs/data-types/strings/)
@@ -112,6 +169,41 @@ The advantages of Redis are:
 
 ---
 
+# Multi-Model Database
+
+First of all, how does Redis support multiple data formats in a single database. The way it works is, we have Redis Core, which is a key-value store that supports storing multiple data types:
+
+- Strings
+- Lists
+- Sets
+- Sorted Sets
+- Hashes
+- HyperLogLog
+- Bitmaps
+- Bit Field
+- Geospatial
+
+The Redis Core can be extended with Redis Modules for different data structures that your application needs for different purposes. For example, Redis Search for Full Text Search functionality like Elasticsearch, or RedisGraph for Graph Data storage, Redis TimeSeries for relational data and RedisJSON for storing documents.
+
+The great thing about this is, that Redis Modules are well, modular, i.e. they are not tightly integrated into one database. You can pick and choose which data service functionality you need for your application.
+
+When using Redis as a primary database, Redis being an in-memory data store provides out-of-the-box cache. This reduces complexity in eliminating the need to implement a caching layer separately.
+
+An in-memory database means Redis is super fast making applications blazing fast. This also means running application tests are way faster because Redis doesn't need a schema like other databases. So time to run tests is fast and simple.
+
+---
+
+# Core Architecture
+
+There are two main processes in Redis Core architecture:
+
+1. Redis Console Client
+2. Redis Server
+
+This client and server can be on the same computer or on two different computers. Redis can also be configured as a Master-Slave configuration for distributed systems.
+
+---
+
 # Setup and Installation
 
 ## [Setup using Docker](https://redis.io/docs/stack/get-started/install/docker/)
@@ -127,6 +219,128 @@ The advantages of Redis are:
 - Install Redis Server - `sudo apt install redis-server`
 - Start Redis Server as a background process - `redis-server &`
 - Enter Redis CLI to use Redis - `redis-cli`
+
+---
+
+# Data Types
+
+## Strings
+
+### Overview
+
+Redis strings store sequences of bytes, including text, serialized objects, and binary arrays. As such, strings are the most basic Redis data type. They're often used for caching, but they support additional functionality that lets you implement counters and perform bitwise operations, too.
+
+**Limits**
+By default, a single Redis string can be a maximum of 512 MB.
+
+### [String Commands](https://redis.io/commands/?group=string)
+
+- [SET](#set)
+- [MSET](#mset)
+- [GET](#get)
+- [MGET](#mget)
+- SETRANGE
+- [GETRANGE](#getrange)
+- [STRLEN](#strlen)
+- [INCR](#incr)
+- [INCRBY](#incrby)
+- [INCRBYFLOAT](#incrbyfloat)
+- [DECR](#decr)
+- [DECRBY](#decrby)
+- APPEND
+- [DEL](#del)
+- GETDEL
+
+---
+
+## Lists
+
+Redis lists are linked lists of string values. Redis lists are frequently used to:
+
+- Implement stacks and queues.
+- Build queue management for background worker systems.
+
+Consider [Redis Streams](#streams) as an alternative to Lists when you need to store and process an indeterminate series of events.
+
+**Limits**
+The max length of a Redis list is 2^32 - 1 (4,294,967,295) elements.
+
+### [List Commands](https://redis.io/commands/?group=list)
+
+- [LPUSH](#lpush)
+- [LPUSHX](#lpushx)
+- [RPUSH](#rpush)
+- [RPUSHX](#rpushx)
+- [LRANGE](#lrange)
+- [LLEN](#llen)
+- [LPOP](#lpop)
+- [RPOP](#rpop)
+- [LSET](#lset)
+- [LINSERT](#linsert)
+- [LINDEX](#lindex)
+- [LTRIM](#ltrim)
+- [BLPOP](#blpop)
+
+---
+
+## Sets
+
+---
+
+## Sorted Sets
+
+---
+
+## HyperLogLog
+
+**`HyperLogLog`** is a data structure that answers a simple question: What is the approximate cardinality of a set. As a probabilistic data structure, HyperLogLog trades perfect accuracy for efficient space utilization.
+
+The Redis HyperLogLog implementation uses up to 12 KB and provides a standard error of 0.81%.
+
+> **Note:** If one needs more Set like functionality or perfect count accuracy one can use either a Redis Set or a Sorted Set. But remember, when counting large sets, a Redis Set will require a lot more memory than a HyperLogLog.
+
+HyperLogLogs naturally help to preserve privacy. Once we put a value into a HyperLogLog, we can't get it out. A HyperLogLog stores as little information as possible to estimate its counts. This ,means, HyperLogLogs are a great way to count unique members without explicitly storing personal data.
+
+The HyperLogLog unique values (since it only stores unique values) can be anything such as IP addresses, visitors of a website, search terms, e-mail addresses, unique count of locations.
+
+**References:**
+
+- [Using HyperLogLog to build a Traffic Heat Map](https://www.youtube.com/watch?v=MunL8nnwscQ)
+
+**Limits:**
+The HyperLogLog can estimate the cardinality of sets with up to 18,446,744,073,709,551,616 (2^64) members.
+
+**[List of HyperLogLog Commands](#hyperloglog-commands)**
+
+---
+
+## Hashes
+
+Redis hashes are record types structured as collections of field-value pairs. You can use hashes to represent basic objects and to store groupings of counters, among other things.
+
+---
+
+## Streams
+
+---
+
+# Transactions
+
+Redis Transactions allow the execution of a group of commands in a single step, they are centered around the commands **`MULTI`**, **`EXEC`**, **`DISCARD`** and **`WATCH`**. Redis Transactions are what make Redis Atomic and make two important guarantees:
+
+All the commands in a transaction are serialized and executed sequentially. A request sent by another client will never be served in the middle of the execution of a Redis Transaction. This guarantees that the commands are executed as a single isolated operation.
+
+The EXEC command triggers the execution of all the commands in the transaction, so if a client loses the connection to the server in the context of a transaction before calling the EXEC command none of the operations are performed, instead if the EXEC command is called, all the operations are performed. When using the append-only file Redis makes sure to use a single write(2) syscall to write the transaction on disk. However if the Redis server crashes or is killed by the system administrator in some hard way it is possible that only a partial number of operations are registered. Redis will detect this condition at restart, and will exit with an error. Using the redis-check-aof tool it is possible to fix the append only file that will remove the partial transaction so that the server can start again.
+
+Starting with version 2.2, Redis allows for an extra guarantee to the above two, in the form of optimistic locking in a way very similar to a check-and-set (CAS) operation. This is documented later on this page.
+
+---
+
+# Pub-Sub
+
+**`SUBSCRIBE`**, **`UNSUBSCRIBE`** and **`PUBLISH`** implement the [Wiki: Publish/Subscribe messaging paradigm](http://en.wikipedia.org/wiki/Publish/subscribe) where senders (publishers) are not programmed to send their messages to specific receivers (subscribers). Rather, published messages are characterized into channels, without knowledge of what (if any) subscribers there may be. Subscribers express interest in one or more channels, and only receive messages that are of interest, without knowledge of what (if any) publishers there are. This decoupling of publishers and subscribers can allow for greater scalability and a more dynamic network topology.
+
+For instance in order to subscribe to channels foo and bar the client issues a SUBSCRIBE providing the names of the channels:
 
 ---
 
@@ -1207,9 +1421,75 @@ LRANGE nuts 0 -1
 
 ---
 
+### `LREM`
+
+Removes the first **`count`** occurrences of elements equal to **`element`** from the list stored at **`key`**. The **`count`** argument influences the operation in the following ways:
+
+- **`count > 0`**: Remove elements equal to **`element`** moving from head to tail.
+- **`count < 0`**: Remove elements equal to **`element`** moving from tail to head.
+- **`count = 0`**: Remove all elements equal to **`element`**.
+
+**Time Complexity:** O(N+M) where N is the length of the list and M is the number of elements removed.
+
+**Syntax:**
+
+```sh
+LREM key count element
+```
+
+**Returns:**
+
+- Integer reply: The number of removed elements. Non-existing keys are treated like empty lists, so when **`key`** does not exist, the command will always return **`0`**.
+- Error: An error is returned when **`key`** holds a value that is not of type list.
+
+For example: **`LREM list -2 "hello"`** will remove the last two occurrences of **`"hello"`** in the list stored at **`list`**.
+
+**Examples:**
+
+```sh
+SET name "Jayanta"
+## OK
+
+RPUSH names "Adraha" "Bhargav" "Jayanta" "Pratik" "Ravi" "Adraha" "Rohit" "Adraha" "Adraha"
+## (integer) 9
+
+LREM names -1 "Adraha"
+## (integer) 1
+
+LRANGE names 0 -1
+## 1) "Adraha"
+## 2) "Bhargav"
+## 3) "Jayanta"
+## 4) "Pratik"
+## 5) "Ravi"
+## 6) "Adraha"
+## 7) "Rohit"
+## 8) "Adraha"
+
+LREM names 2 "Adraha"
+## (integer) 2
+
+LRANGE names 0 -1
+## 1) "Bhargav"
+## 2) "Jayanta"
+## 3) "Pratik"
+## 4) "Ravi"
+## 5) "Rohit"
+## 6) "Adraha"
+
+
+LREM names 1 "Soumojit"
+# (integer) 0
+
+LREM name 1 "Jayanta"
+# (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
 ### `BLPOP`
 
-#### **Overview**
+#### Overview
 
 **`BLPOP`** is a blocking list pop primitive. It is the blocking version of **`LPOP`** because it blocks the connection when there are no elements to pop from any of the given lists. An element is popped from the head of the first list that is non-empty, with the given keys being checked in the order that they are given.
 
@@ -1232,7 +1512,7 @@ BLPOP key [key ...] timeout
 
 ---
 
-#### **Non-Blocking Behaviour**
+#### Non-Blocking Behaviour
 
 When **`BLPOP`** is called, if at least one of the specified keys contains a non-empty list, an element is popped from the head of the list and returned to the caller together with the key it was popped from.
 
@@ -1246,7 +1526,7 @@ BLPOP list1 list2 list3 0
 
 ---
 
-#### **Blocking Behaviour**
+#### Blocking Behaviour
 
 If none of the specified keys exist, **`BLPOP`** blocks the connection until another client performs an **`LPUSH`** or **`RPUSH`** operation against one of the keys.
 
@@ -1258,7 +1538,7 @@ When **`BLPOP`** causes a client to block and a **`non-zero timeout`** is specif
 
 ---
 
-#### **Examples**
+#### Examples
 
 ```sh
 SET name "Jayanta"
@@ -1795,6 +2075,1676 @@ SUNIONSTORE container nonexisting nonexisting2
 SUNIONSTORE container names nuts
 ## (error) WRONGTYPE Operation against a key holding the wrong kind of value
 ```
+
+---
+
+## Sorted Set Commands
+
+### `ZADD`
+
+Adds all the specified members with the specified scores to the sorted set stored at **`key`**. It is possible to specify multiple score / member pairs. If a specified member is already a member of the sorted set, the score is updated and the element reinserted at the right position to ensure the correct ordering.
+
+If **`key`** does not exist, a new sorted set with the specified members as sole members is created, like if the sorted set was empty. If the key exists but does not hold a sorted set, an error is returned.
+
+The score values should be the string representation of a double precision floating point number. **`+inf`** (Positive Infinity) and **`-inf`** (Negative Infinity) values are valid values as well.
+
+**Time Complexity:** O(log(N)) for each item added, where N is the number of elements in the sorted set.
+
+**Syntax:**
+
+```sh
+ZADD key [NX | XX] [GT | LT] [CH] [INCR] score member [score member ...]
+```
+
+**Options:**
+
+**`ZADD`** supports a list of options, specified after the name of the key and before the first score argument. Options are:
+
+- **`XX`**: Only update elements that already exist. Don't add new elements.
+- **`NX`**: Only add new elements. Don't update already existing elements.
+- **`LT`**: Only update existing elements if the new score is **less than** the current score. This flag doesn't prevent adding new elements.
+- **`GT`**: Only update existing elements if the new score is **greater than** the current score. This flag doesn't prevent adding new elements.
+- **`CH`**: Modify the return value from the number of new elements added, to the total number of elements changed (CH is an abbreviation of changed). Changed elements are **new elements added** and elements already existing for which **the score was updated**. So elements specified in the command line having the same score as they had in the past are not counted. Note: normally the return value of **`ZADD`** only counts the number of new elements added.
+- **`INCR`**: When this option is specified **`ZADD`** acts like **`ZINCRBY`**. Only one score-element pair can be specified in this mode.
+
+> **Note:** The GT, LT and NX options are mutually exclusive.
+
+**Returns:**
+Integer reply, specifically:
+
+- When used without optional arguments, the number of elements added to the sorted set (excluding score updates).
+- If the **`CH`** option is specified, the number of elements that were changed (added or updated).
+
+If the **`INCR`** option is specified, the return value will be Bulk string reply:
+
+- The new score of **`member`** (a double precision floating point number) represented as string, or **`nil`** if the operation was aborted (when called with either the **`XX`** or the **`NX`** option).
+
+**Examples:**
+
+```sh
+SADD nuts "Peanuts" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD sports 1 "Cricket"
+## (integer) 1
+
+ZADD sports 2 "Football" 3 "Tennis" 4 "Boxing" 5 "Wrestling"
+## (integer) 4
+
+ZRANGE sports 0 -1
+## 1) "Cricket"
+## 2) "Football"
+## 3) "Tennis"
+## 4) "Boxing"
+## 5) "Wrestling"
+
+ZADD sports 5 "Football"
+## (integer) 0
+
+ZRANGE sports 0 -1
+## 1) "Cricket"
+## 2) "Tennis"
+## 3) "Boxing"
+## 4) "Football"
+## 5) "Wrestling"
+
+ZADD nuts 4 "Apricots"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZRANGE`
+
+Returns the specified range of elements in the sorted set stored at **`<key>`**.
+
+**`ZRANGE`** can perform different types of range queries:
+
+- By index (rank),
+- By the score, or
+- By lexicographical order.
+
+**Time Complexity:** O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements returned.
+
+**Syntax:**
+
+```sh
+ZRANGE key start stop [BYSCORE | BYLEX] [REV] [LIMIT offset count] [WITHSCORES]
+```
+
+**Returns:**
+
+- Array reply: List of elements in the specified range (optionally with their scores, in case the WITHSCORES option is given).
+
+---
+
+#### Index Ranges
+
+By default, the command performs an index range query. The **`start`** and **`stop`** arguments represent zero-based indexes, where **`0`** is the first element, **`1`** is the next element, and so on. These arguments specify an **`inclusive range`**, so for example, **`ZRANGE myzset 0 1`** will return both the first and the second element of the sorted set.
+
+The indexes can also be negative numbers indicating offsets from the end of the sorted set, with -1 being the last element of the sorted set, **`-2`** the penultimate element, and so on.
+
+Out of range indexes do not produce an error.
+
+- If **`start`** is greater than either the end index of the sorted set or **`stop`**, an empty list is returned.
+- If **`stop`** is greater than the end index of the sorted set, Redis will use the last element of the sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD sports 1 "Cricket" 2 "Football" 3 "Tennis" 4 "Boxing" 5 "Wrestling"
+## (integer) 5
+
+ZRANGE sports 0 -1
+## 1) "Cricket"
+## 2) "Football"
+## 3) "Tennis"
+## 4) "Boxing"
+## 5) "Wrestling"
+
+ZRANGE sports 5 -1
+# (empty array)
+
+ZRANGE sports 0 99
+## 1) "Cricket"
+## 2) "Tennis"
+## 3) "Boxing"
+## 4) "Football"
+## 5) "Wrestling"
+
+#----------------------------------------------------------------#
+# Return all elements with scores
+#----------------------------------------------------------------#
+ZRANGE sports 0 -1 WITHSCORES
+## 1) "Cricket"
+## 2) "1"
+## 3) "Tennis"
+## 4) "3"
+## 5) "Boxing"
+## 6) "4"
+## 7) "Football"
+## 8) "5"
+## 9) "Wrestling"
+## 10) "5"
+
+#----------------------------------------------------------------#
+# Return all elements in the reverse order
+#----------------------------------------------------------------#
+ZRANGE sports 0 -1 REV
+## 1) "Wrestling"
+## 2) "Football"
+## 3) "Boxing"
+## 4) "Tennis"
+## 5) "Cricket"
+
+ZRANGE nonexisting 0 -1
+## (empty array)
+
+ZRANGE nuts 0 -1
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+#### Score Ranges
+
+When the **`BYSCORE`** option is provided, the command behaves like **`ZRANGEBYSCORE`** and returns the range of elements from the sorted set having scores equal or between **`start`** and **`stop`**.
+
+**`start`** and **`stop`** can be **`-inf`** and **`+inf`**, denoting the negative and positive infinities, respectively. This means that you are not required to know the highest or lowest score in the sorted set to get all elements from or up to a certain score.
+
+By default, the score intervals specified by **`start`** and **`stop`** are closed (inclusive). It is possible to specify an open interval (exclusive) by prefixing the score with the character **`(`**.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" 3 "Shreyas Iyer" +inf "Ravindra Jadeja"
+## (integer) 5
+
+ZRANGE cricketers -inf +inf BYSCORE
+## 1) "Rohit Sharma"
+## 2) "Virat Kohli"
+## 3) "K.L. Rahul"
+## 4) "Shreyas Iyer"
+## 5) "Ravindra Jadeja"
+
+ZRANGE cricketers 0 4 BYSCORE
+## 1) "Virat Kohli"
+## 2) "K.L. Rahul"
+## 3) "Shreyas Iyer"
+
+#----------------------------------------------------------------#
+# Return all elements within -infinity < score <= infinity
+#----------------------------------------------------------------#
+ZRANGE cricketers (-inf +inf BYSCORE
+## 1) "Virat Kohli"
+## 2) "K.L. Rahul"
+## 3) "Shreyas Iyer"
+## 4) "Ravindra Jadeja"
+
+#----------------------------------------------------------------#
+# Return all elements within -infinity < score < infinity
+#----------------------------------------------------------------#
+ZRANGE cricketers (-inf (+inf BYSCORE
+## 1) "Virat Kohli"
+## 2) "K.L. Rahul"
+## 3) "Shreyas Iyer"
+
+#--------------------------------------------------------------------------------------#
+# Return all elements within -infinity < score < infinity in reversed order with scores
+#--------------------------------------------------------------------------------------#
+ZRANGE cricketers +inf -inf BYSCORE REV WITHSCORES
+## 1) "Ravindra Jadeja"
+## 2) "inf"
+## 3) "Shreyas Iyer"
+## 4) "3"
+## 5) "K.L. Rahul"
+## 6) "2"
+## 7) "Virat Kohli"
+## 8) "1"
+## 9) "Rohit Sharma"
+## 10) "-inf"
+
+ZRANGE cricketers 5 10 BYSCORE
+## (empty array)
+
+ZRANGE nonexisting -inf +inf BYSCORE
+## (empty array)
+
+ZRANGE nuts -inf +inf BYSCORE
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZCARD`
+
+Returns the sorted set cardinality (number of elements) of the sorted set stored at **`key`**.
+
+**Time Complexity:** O(1)
+
+**Syntax:**
+
+```sh
+ZCARD key
+```
+
+**Returns:**
+
+- Integer reply: The cardinality (number of elements) of the sorted set, or **`0`** if **`key`** does not exist.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD sports 1 "Cricket" 2 "Football" 3 "Tennis" 4 "Boxing" 5 "Wrestling"
+## (integer) 5
+
+ZCARD sports
+## (integer) 5
+
+ZCARD nonexisting
+## (integer) 0
+
+ZCARD nuts
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZCOUNT`
+
+Returns the number of elements in the sorted set at **`key`** with a score between **`min`** and **`max`**.
+
+The **`min`** and **`max`** arguments have the same semantic as described for **`ZRANGEBYSCORE`**.
+
+> **Note:** the command has a complexity of just O(log(N)) because it uses elements ranks (see **`ZRANK`**) to get an idea of the range. Because of this there is no need to do a work proportional to the size of the range.
+
+**Time Complexity:** O(log(N)) with N being the number of elements in the sorted set.
+
+**Syntax:**
+
+```sh
+ZCOUNT key min max
+```
+
+**Returns:**
+
+- Integer reply: The number of elements in the specified score range.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" 3 "Shreyas Iyer" +inf "Ravindra Jadeja"
+## (integer) 5
+
+#-----------------------------------------------------------------#
+# Return count of all elements
+#-----------------------------------------------------------------#
+ZCOUNT cricketers -inf +inf
+## (integer) 5
+
+#-----------------------------------------------------------------#
+# Return count of all elements within -infinity < score <= infinity
+#-----------------------------------------------------------------#
+ZCOUNT cricketers (-inf +inf
+## (integer) 4
+
+#-----------------------------------------------------------------#
+# Return count of all elements within -infinity < score < infinity
+#-----------------------------------------------------------------#
+ZCOUNT cricketers (-inf (+inf
+## (integer) 3
+
+ZCOUNT nonexisting -inf +inf
+## (integer) 0
+
+ZCARD nuts -inf +inf
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZREM`
+
+Removes the specified members from the sorted set stored at **1**. Non existing members are ignored.
+
+**Time Complexity:** **`O(M*log(N))`** with **`N`** being the number of elements in the sorted set and **`M`** the number of elements to be removed.
+
+**Syntax:**
+
+```sh
+ZCOUNT key min max
+```
+
+**Returns:**
+
+- Integer reply: The number of members removed from the sorted set, not including non-existing members.
+- Error: An error is returned when **`key`** exists and does not hold a sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" 3 "Shreyas Iyer" +inf "Ravindra Jadeja"
+## (integer) 5
+
+ZREM cricketers "Shreyas Iyer" "K.L. Rahul"
+## (integer) 2
+
+ZRANGE cricketers 0 -1 WITHSCORES
+## 1) "Rohit Sharma"
+## 2) "-inf"
+## 3) "Virat Kohli"
+## 4) "1"
+## 5) "Ravindra Jadeja"
+## 6) "3"
+
+ZCOUNT nonexisting "Cat" "Dog"
+## (integer) 0
+
+ZCOUNT nuts "Cashews" "Apricots"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZRANK`
+
+Returns the rank of **`member`** in the sorted set stored at **`key`**, with the scores ordered from low to high. The rank (or index) is 0-based, which means that the **`member`** with the lowest score has rank **`0`**.
+
+Use **[`ZREVRANK`](#zrevrank)** to get the rank of an element with the scores ordered from high to low.
+
+**Time Complexity:** **`O(log(N))`**
+
+**Syntax:**
+
+```sh
+ZRANK key member
+```
+
+**Returns:**
+
+- If **`member`** exists in the sorted set, Integer reply: the rank of **`member`**.
+- If **`member`** does not exist in the sorted set or **`key`** does not exist, Bulk string reply: **`nil`**.
+- Error: An error is returned when **`key`** exists and does not hold a sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" +inf "Ravindra Jadeja"
+## (integer) 4
+
+ZRANK cricketers "Rohit Sharma"
+## (integer) 0
+
+ZRANK cricketers "Sachin Tendulkar"
+## (nil)
+
+ZRANK nonexisting "Sachin Tendulkar"
+## (nil)
+
+ZRANK nuts "Cashews"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZREVRANK`
+
+Returns the rank of **`member`** in the sorted set stored at **`key`**, with the scores ordered from high to low. The rank (or index) is 0-based, which means that the **`member`** with the highest score has rank **`0`**.
+
+Use **[`ZRANK`](#zrank)** to get the rank of an element with the scores ordered from low to high.
+
+**Time Complexity:** **`O(log(N))`**
+
+**Syntax:**
+
+```sh
+ZRANK key member
+```
+
+**Returns:**
+
+- If **`member`** exists in the sorted set, Integer reply: the rank of **`member`**.
+- If **`member`** does not exist in the sorted set or **`key`** does not exist, Bulk string reply: **`nil`**.
+- Error: An error is returned when **`key`** exists and does not hold a sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" +inf "Ravindra Jadeja"
+## (integer) 4
+
+ZREVRANK cricketers "Rohit Sharma"
+## (integer) 3
+
+ZREVRANK cricketers "Sachin Tendulkar"
+## (nil)
+
+ZREVRANK nonexisting "Sachin Tendulkar"
+## (nil)
+
+ZREVRANK nuts "Cashews"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZSCORE`
+
+Returns the score of **`member`** in the sorted set at **`key`**.
+
+If member does not exist in the sorted set, or key does not exist, nil is returned.
+
+**Time Complexity:** **`O(log(N))`**
+
+**Syntax:**
+
+```sh
+ZRANK key member
+```
+
+**Returns:**
+
+- Bulk string reply: The score of **`member`** (a double precision floating point number), represented as string. If **`member`** does not exist in the sorted set or **`key`** does not exist, Bulk string reply: **`nil`**.
+- Error: An error is returned when **`key`** exists and does not hold a sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" +inf "Ravindra Jadeja"
+## (integer) 4
+
+ZSCORE cricketers "Rohit Sharma"
+## (integer) "-inf"
+
+ZSCORE cricketers "Sachin Tendulkar"
+## (nil)
+
+ZSCORE nonexisting "Sachin Tendulkar"
+## (nil)
+
+ZSCORE nuts "Cashews"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZINCRBY`
+
+Increments the score of **`member`** in the sorted set stored at **`key`** by **`increment`**. If **`member`** does not exist in the sorted set, it is added with **`increment`** as its score (as if its previous score was **`0.0`**). If **`key`** does not exist, a new sorted set with the specified **`member`** as its sole member is created.
+
+An error is returned when **`key`** exists but does not hold a sorted set.
+
+The **`score`** value should be the string representation of a numeric value, and accepts double precision floating point numbers. **It is possible to provide a negative value to decrement the score**.
+
+**Time Complexity:** **`O(log(N))`** where **`N`** is the number of elements in the sorted set.
+
+**Syntax:**
+
+```sh
+ZINCRBY key increment member
+```
+
+**Returns:**
+
+- Bulk string reply: The new score of **`member`** (a double precision floating point number), represented as string.
+- Error: An error is returned when **`key`** exists and does not hold a sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" +inf "Ravindra Jadeja"
+## (integer) 4
+
+ZINCRBY cricketers 2 "Virat Kohli"
+## "3"
+
+ZINCRBY cricketers 1 "Sachin Tendulkar"
+## "1"
+
+ZRANGE cricketers 0 -1 WITHSCORES
+## 1) "Rohit Sharma"
+## 2) "-inf"
+## 3) "Sachin Tendulkar"
+## 4) "1"
+## 5) "K.L. Rahul"
+## 6) "2"
+## 7) "Virat Kohli"
+## 8) "3"
+## 9) "Ravindra Jadeja"
+## 10) "inf"
+
+ZINCRBY nonexisting 1 "Sachin Tendulkar"
+## "1"
+
+ZRANGE nonexisting 0 -1 WITHSCORES
+## 1) "Sachin Tendulkar"
+## 2) "1"
+
+ZINCRBY nuts 2 "Cashews"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZREMRANGEBYSCORE`
+
+Removes all elements in the sorted set stored at **`key`** with a score between **`min`** and **`max`** (inclusive).
+
+**Time Complexity:** **`O(log(N))`** where **`N`** is the number of elements in the sorted set.
+
+**Syntax:**
+
+```sh
+ZREMRANGEBYSCORE key min max
+```
+
+**Returns:**
+
+- Integer reply: The number of elements removed.
+- Error: An error is returned when **`key`** exists and does not hold a sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" 3 "Shreyas Iyer" +inf "Ravindra Jadeja"
+## (integer) 5
+
+ZREMRANGEBYSCORE cricketers 2 2
+## (integer) 1
+
+ZRANGE cricketers 0 -1 WITHSCORES
+## 1) "Rohit Sharma"
+## 2) "-inf"
+## 3) "Virat Kohli"
+## 4) "1"
+## 5) "Shreyas Iyer"
+## 6) "3"
+## 7) "Ravindra Jadeja"
+## 8) "inf"
+
+ZREMRANGEBYSCORE cricketers 1 inf
+## (integer) 3
+
+ZRANGE cricketers 0 -1 WITHSCORES
+## 1) "Rohit Sharma"
+## 2) "-inf"
+
+ZREMRANGEBYSCORE nonexisting -inf +inf
+## (integer) 0
+
+ZREMRANGEBYSCORE nuts -inf +inf
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `ZREMRANGEBYRANK`
+
+Removes all elements in the sorted set stored at **`key`** with rank between **`start`** and **`stop`** (inclusive).
+
+Both **`start`** and **`stop`** are 0-based indexes with **`0`** being the element with the lowest score. These indexes can be negative numbers, where they indicate offsets starting at the element with the highest score. For example: **`-1`** is the element with the highest score, **`-2`** the element with the second highest score and so forth.
+
+**Time Complexity:** **`O(log(N)+M)`** with **`N`** being the number of elements in the sorted set and **`M`** the number of elements removed by the operation.
+
+**Syntax:**
+
+```sh
+ZREMRANGEBYRANK key start stop
+```
+
+**Returns:**
+
+- Integer reply: The number of elements removed.
+- Error: An error is returned when **`key`** exists and does not hold a sorted set.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+ZADD cricketers -inf "Rohit Sharma" 1 "Virat Kohli" 2 "K.L. Rahul" 3 "Shreyas Iyer" +inf "Ravindra Jadeja"
+## (integer) 5
+
+ZREMRANGEBYRANK cricketers 2 2
+## (integer) 1
+
+ZRANGE cricketers 0 -1
+## 1) "Rohit Sharma"
+## 2) "Virat Kohli"
+## 3) "Shreyas Iyer"
+## 4) "Ravindra Jadeja"
+
+ZREMRANGEBYRANK cricketers 0 -1
+## (integer) 4
+
+ZRANGE cricketers 0 -1
+## (empty array)
+
+ZREMRANGEBYRANK nonexisting -inf +inf
+## (integer) 0
+
+ZREMRANGEBYSCORE nuts -inf +inf
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+## HyperLogLog Commands
+
+### `PFADD`
+
+Adds all the element arguments to the HyperLogLog data structure stored at the variable name specified as first argument.
+
+As a side effect of this command the HyperLogLog internals may be updated to reflect a different estimation of the number of unique items added so far (the cardinality of the set).
+
+If the approximated cardinality estimated by the HyperLogLog changed after executing the command, **`PFADD`** returns **`1`**, otherwise **`0`** is returned. The command automatically creates an empty HyperLogLog structure (that is, a Redis String of a specified length and with a given encoding) if the specified key does not exist.
+
+To call the command without elements but just the variable name is valid, this will result into no operation performed if the variable already exists, or just the creation of the data structure if the key does not exist (in the latter case **`1`** is returned).
+
+For an introduction to HyperLogLog data structure check the **[`PFCOUNT`](#pfcount)** command.
+
+**Time Complexity:** **`O(1)`** to add every element.
+
+**Syntax:**
+
+```sh
+PFADD key [element [element ...]]
+```
+
+**Returns:**
+
+- Integer reply: **`1`** if at least 1 HyperLogLog internal register was altered. **`0`** otherwise.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+PFADD hll a b c d e f g
+## (integer) 1
+
+PFADD hll a b c
+## (integer) 0
+
+PFADD nuts "Peanuts"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `PFCOUNT`
+
+When called with a single key, returns the approximated cardinality computed by the HyperLogLog data structure stored at the specified variable, which is **`0`** if the variable does not exist.
+
+When called with multiple keys, returns the approximated cardinality of the union of the HyperLogLogs passed, by internally merging the HyperLogLogs stored at the provided keys into a temporary HyperLogLog.
+
+The HyperLogLog data structure can be used in order to count **unique** elements in a set using just a small constant amount of memory, specifically 12k bytes for every HyperLogLog (plus a few bytes for the key itself).
+
+The returned cardinality of the observed set is not exact, but approximated with a standard error of **0.81%**.
+
+For example in order to take the count of all the unique search queries performed in a day, a program needs to call PFADD every time a query is processed. The estimated number of unique queries can be retrieved with PFCOUNT at any time.
+
+> **Note:** As a side effect of calling this function, it is possible that the HyperLogLog is modified, since the last 8 bytes encode the latest computed cardinality for caching purposes. So **`PFCOUNT`** is technically a write command.
+
+**Time Complexity:** **`O(1)`** with a very small average constant time when called with a single key. **`O(N)`** with **`N`** being the number of keys, and much bigger constant times, when called with multiple keys.
+
+**Syntax:**
+
+```sh
+PFCOUNT key [key ...]
+```
+
+**Returns:**
+
+- Integer reply: The approximated number of unique elements observed via **`PFADD`**.
+
+**Performances**
+
+When **`PFCOUNT`** is called with a single key, performances are excellent even if in theory constant times to process a dense HyperLogLog are high. This is possible because the **`PFCOUNT`** uses caching in order to remember the cardinality previously computed, that rarely changes because most **`PFADD`** operations will not update any register. Hundreds of operations per second are possible.
+
+When **`PFCOUNT`** is called with multiple keys, an on-the-fly merge of the HyperLogLogs is performed, which is slow, moreover the cardinality of the union can't be cached, so when used with multiple keys **`PFCOUNT`** may take a time in the order of magnitude of the millisecond, and should be not abused.
+
+> **Note:** The user should take in mind that single-key and multiple-keys executions of this command are semantically different and have different performances.
+
+**Examples:**
+
+```sh
+SADD nuts "Apricots" "Cashews" "Almonds"
+## (integer) 3
+
+PFADD hll a b c d e f g
+## (integer) 1
+
+PFADD hll2 1 2 3 4 5 6 7
+## (integer) 1
+
+PFCOUNT hll
+## (integer) 7
+
+PFCOUNT hll hll2
+## (integer) 14
+
+PFCOUNT nonexisting
+## (integer) 0
+
+PFCOUNT nuts
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `PFMERGE`
+
+Merge multiple HyperLogLog values into a unique value that will approximate the cardinality of the union of the observed Sets of the source HyperLogLog structures.
+
+The computed merged HyperLogLog is set to the destination variable, which is created if does not exist (defaulting to an empty HyperLogLog).
+
+If the destination variable exists, it is treated as one of the source sets and its cardinality will be included in the cardinality of the computed HyperLogLog.
+
+**Time Complexity:** **`O(N)`** to merge **`N`** HyperLogLogs, but with high constant times.
+
+**Syntax:**
+
+```sh
+PFMERGE destkey sourcekey [sourcekey ...]
+```
+
+**Returns:**
+
+- Simple string reply: The command just returns **OK**.
+- Error: An error is returned when **`destkey`** or any of the **`sourcekeys`** exists and does not hold a HyperLogLog.
+
+**Examples:**
+
+```sh
+SET name "Jayanta"
+## OK
+
+PFADD hll a b c d e f g
+## (integer) 1
+
+PFADD hll2 1 2 3 4 5 6 7
+## (integer) 1
+
+PFMERGE mergedHLL hll hll2
+## OK
+
+PFCOUNT mergedHLL
+## (integer) 14
+
+PFCOUNT mergedHLL hll hll2
+## (integer) 14
+
+PFCOUNT mergedHLL name hll hll2
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+## Hash Commands
+
+### `HSET`
+
+Sets **`field`** in the hash stored at **`key`** to **`value`**. If **`key`** does not exist, a new key holding a hash is created. If **`field`** already exists in the hash, it is overwritten.
+
+**Time Complexity:** **`O(1)`** for each field/value pair added, so **`O(N)`** to add **`N`** field/value pairs when the command is called with multiple field/value pairs.
+
+**Syntax:**
+
+```sh
+HSET key field value [field value ...]
+```
+
+**Returns:**
+
+- Integer reply: The number of fields that were added.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HSET nuts dry_fruits "Pistachios"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HSETNX`
+
+Sets **`field`** in the hash stored at **`key`** to **`value`**, only if **`field`** does not yet exist. If **`key`** does not exist, a new key holding a hash is created. If **`field`** already exists, this operation has no effect.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+HSETNX key field value
+```
+
+**Returns:**
+
+- Integer reply, specifically:
+  - **`1`** if field is a new field in the hash and value was set.
+  - **`0`** if field already exists in the hash and no operation was performed.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HSETNX tshirt01 name "Bla bla bla"
+## (integer) 0
+
+HSETNX tshirt01 discount_code ""
+## (integer) 1
+
+HSETNX nuts dry_fruits "Pistachios"
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HKEYS`
+
+Returns all field names in the hash stored at **`key`**.
+
+**Time Complexity:** **`O(N)`** where **`N`** is the size of the hash.
+
+**Syntax:**
+
+```sh
+HKEYS key
+```
+
+**Returns:**
+
+- Array reply: List of fields in the hash, or an empty list when **`key`** does not exist.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HKEYS tshirt01
+## 1) "name"
+## 2) "sku"
+## 3) "quantity"
+## 4) "price"
+## 5) "discount"
+## 6) "tax"
+## 7) "tax_inclusive"
+## 8) "amount"
+
+HKEYS nonexisting
+## (empty array)
+
+HKEYS nuts
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HVALS`
+
+Returns all values in the hash stored at **`key`**.
+
+**Time Complexity:** **`O(N)`** where **`N`** is the size of the hash.
+
+**Syntax:**
+
+```sh
+HVALS key
+```
+
+**Returns:**
+
+- Array reply: List of values in the hash, or an empty list when **`key`** does not exist.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HVALS tshirt01
+## 1) "Oversize Worldwide T-Shirt"
+## 2) "KKXYZ123"
+## 3) "1"
+## 4) "1050.00"
+## 5) "0.00"
+## 6) "50.00"
+## 7) "true"
+## 8) "1050.00"
+
+HVALS nonexisting
+## (empty array)
+
+HVALS nuts
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HGET`
+
+Returns the **`value`** associated with **`field`** in the hash stored at **`key`**.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+HGET key field
+```
+
+**Returns:**
+
+- Bulk string reply: The **`value`** associated with **`field`**, or **`nil`** when **`field`** is not present in the hash or **`key`** does not exist.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HGET tshirt01 sku
+## "KKXYZ123"
+
+HGET nonexisting sku
+## (empty array)
+
+HGET tshirt01 blah
+## (empty array)
+
+HGET nuts randomhash
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HGETALL`
+
+Returns all **`fields`** and **`values`** of the hash stored at **`key`**. In the returned value, every field name is followed by its value, so the length of the reply is twice the size of the hash.
+
+**Time Complexity:** **`O(N)`** where **`N`** is the size of the hash.
+
+**Syntax:**
+
+```sh
+HGETALL key
+```
+
+**Returns:**
+
+- Array reply: List of fields and their values stored in the hash, or an empty list when **`key`** does not exist.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HGETALL tshirt01
+## 1) "name"
+## 2) "Oversize Worldwide T-Shirt"
+## 3) "sku"
+## 4) "KKXYZ123"
+## 5) "quantity"
+## 6) "1"
+## 7) "price"
+## 8) "1050.00"
+## 9) "discount"
+## 10) "0.00"
+## 11) "tax"
+## 12) "50.00"
+## 13) "tax_inclusive"
+## 14) "true"
+## 15) "amount"
+## 16) "1050.00"
+
+HGETALL nonexisting
+## (empty array)
+
+HGETALL nuts
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HEXISTS`
+
+Returns if **`field`** is an existing field in the hash stored at **`key`**.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+HEXISTS key field
+```
+
+**Returns:**
+
+- Integer reply, specifically:
+  - **`1`** if the hash contains **`field`**.
+  - **`0`** if the hash does not contain **`field`**, or **`key`** does not exist.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HEXISTS tshirt01 sku
+## (integer) 1
+
+HEXISTS tshirt01 imaginaryField
+## (integer) 0
+
+HEXISTS nonexisting imaginaryField
+## (integer) 0
+
+HEXISTS nuts imaginaryField
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HLEN`
+
+Returns the number of fields contained in the hash stored at **`key`**.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+HLEN key
+```
+
+**Returns:**
+
+- Integer reply: number of fields in the hash, or **`0`** when **`key`** does not exist.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HLEN tshirt01
+## (integer) 8
+
+HLEN nonexisting
+## (integer) 0
+
+HLEN nuts
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HSTRLEN`
+
+Returns the string length of the value associated with **`field`** in the hash stored at **`key`**. If the **`key`** or the **`field`** do not exist, **`0`** is returned.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+HSTRLEN key field
+```
+
+**Returns:**
+
+- Integer reply: The string length of the value associated with **`field`**, or **`0`** when **`field`** is not present in the hash or **`key`** does not exist at all.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HSTRLEN tshirt01 sku
+## (integer) 8
+
+HSTRLEN tshirt01 imaginaryField
+## (integer) 0
+
+HSTRLEN nonexisting imaginaryField
+## (integer) 0
+
+HSTRLEN nuts imaginaryField
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HINCRBY`
+
+Increments the number stored at **`field`** in the hash stored at **`key`** by **`increment`**. If **`key`** does not exist, a new key holding a hash is created. If **`field`** does not exist the value is set to **`0`** before the operation is performed.
+
+A negative integer provided as the **`increment`** will effectively do a decrement operation.
+
+The range of values supported by **`HINCRBY`** is limited to 64 bit signed integers.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+HINCRBY key field increment
+```
+
+**Returns:**
+
+- Integer reply: The **`value`** at **`field`** after the increment operation.
+- Error: An error is returned if one of the following conditions occur:
+  - The **`field`** contains a **`value`** of the wrong **`type`** (not parseable as an integer).
+  - The **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HINCRBY tshirt01 tax 50
+## (integer) 100
+
+HINCRBY tshirt01 tax -50
+## (integer) 50
+
+HINCRBY tshirt01 compare_at_value 1200
+## (integer) 1200
+
+HKEYS tshirt01
+## 1) "name"
+## 2) "sku"
+## 3) "quantity"
+## 4) "price"
+## 5) "discount"
+## 6) "tax"
+## 7) "tax_inclusive"
+## 8) "amount"
+## 9) "compare_at_value"
+
+#-----------------------------------------------------------------------------------#
+# Create a new hash if key doesn't exist and create a new hash key
+#-----------------------------------------------------------------------------------#
+HINCRBY nonexisting amount 1000
+## (integer) 1000
+
+HGETALL nonexisting
+## 1) "amount"
+## 2) "1000"
+
+#-----------------------------------------------------------------------------------#
+# Errors
+#-----------------------------------------------------------------------------------#
+HINCRBY tshirt01 name 50
+## (error) ERR hash value is not an integer
+
+HINCRBY nuts imaginaryField 200
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HINCRBYFLOAT`
+
+Increment the specified **`field`** of a hash stored at **`key`**, and representing a floating point number, by the specified **`increment`**. If the increment value is negative, the result is to have the hash field value **`decremented`** instead of incremented. If the field does not exist, it is set to **`0`** before performing the operation.
+
+The exact behavior of this command is identical to the one of the **`INCRBYFLOAT`** command, please refer to the documentation of **[`INCRBYFLOAT`](#incrbyfloat)** for further information.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+HINCRBYFLOAT key field increment
+```
+
+**Returns:**
+
+- Bulk string reply: The **`value`** of **`field`** after the increment.
+- Error: An error is returned if one of the following conditions occur:
+  - The **`field`** contains a **`value`** of the wrong **`type`** (not a string).
+  - The current **`field`** content or the specified **`increment`** are not parsable as a double precision floating point number.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HINCRBYFLOAT tshirt01 tax 49.99
+## "99.99"
+
+HINCRBYFLOAT tshirt01 tax -49.99
+## "50"
+
+HINCRBYFLOAT tshirt01 compare_at_value 1499.99
+## "1499.99"
+
+HKEYS tshirt01
+## 1) "name"
+## 2) "sku"
+## 3) "quantity"
+## 4) "price"
+## 5) "discount"
+## 6) "tax"
+## 7) "tax_inclusive"
+## 8) "amount"
+## 9) "compare_at_value"
+
+#-----------------------------------------------------------------#
+# Create a new hash if key doesn't exist and create a new hash key
+#-----------------------------------------------------------------#
+HINCRBYFLOAT nonexisting amount 1049.50
+## "1049.50"
+
+HGETALL nonexisting
+## 1) "amount"
+## 2) "1049.50"
+
+#-----------------------------------------------------------------------------------#
+# Errors
+#-----------------------------------------------------------------------------------#
+HINCRBYFLOAT tshirt01 name 51.25
+## (error) ERR hash value is not a float
+
+HINCRBYFLOAT nuts imaginaryField 231.50
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+### `HDEL`
+
+Removes the specified fields from the hash stored at **`key`**. Specified fields that do not exist within this hash are ignored. If **`key`** does not exist, it is treated as an empty hash and this command returns **`0`**.
+
+**Time Complexity:** **`O(N)`** where **`N`** is the number of fields to be removed.
+
+**Syntax:**
+
+```sh
+HDEL key field [field ...]
+```
+
+**Returns:**
+
+- Integer reply: the number of fields that were removed from the hash, not including specified but non existing fields.
+- Error: An error is returned when **`key`** exists and does not hold a Hash.
+
+**Examples:**
+
+```sh
+SADD nuts "Cashews" "Almonds" "Peanuts"
+## (integer) 3
+
+HSET tshirt01 name "Oversize Worldwide T-Shirt" sku KKXYZ123 quantity 1 price 1050.00 discount 0.00 tax 50.00 tax_inclusive true amount 1050.00
+## (integer) 8
+
+HDEL tshirt01 tax_inclusive quantity pokemon
+## (integer) 2
+
+HKEYS tshirt01
+## 1) "name"
+## 2) "sku"
+## 3) "price"
+## 4) "discount"
+## 5) "tax"
+## 6) "amount"
+
+HDEL nonexisting imaginaryField
+## (integer) 0
+
+HDEL nuts imaginaryField
+## (error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+---
+
+## Transaction Commands
+
+### `MULTI`
+
+Marks the start of a **[transaction](#transactions)** block. Subsequent commands will be queued for atomic execution using **`EXEC`**.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+MULTI
+```
+
+**Returns:**
+
+- Simple string reply: Always **`OK`**.
+
+**Examples:**
+
+```sh
+MULTI
+## OK
+
+SADD stationery "Pens" "Pencil" "Ruler" "Sharpener" "Eraser"
+## QUEUED
+
+SMEMBERS stationery
+## QUEUED
+
+HSET employee name "Jayanta Samaddar" age 30 role "SDE-II" experience_in_years 5
+## QUEUED
+
+HGETALL employee
+## QUEUED
+```
+
+---
+
+### `EXEC`
+
+Executes all previously queued commands in a transaction and restores the connection state to normal.
+
+When using **`WATCH`**, **`EXEC`** will execute commands only if the watched keys were not modified, allowing for a **[check-and-set mechanism]**.
+
+**Time Complexity:** Depends on commands in the transaction.
+
+**Syntax:**
+
+```sh
+EXEC
+```
+
+**Returns:**
+
+- Array reply: Each element being the reply to each of the commands in the atomic transaction.
+- When using **`WATCH`**, **`EXEC`** can return a Null reply if the execution was aborted.
+
+**Example:**
+
+```sh
+MULTI
+## OK
+
+SADD stationery "Pens" "Pencil" "Ruler" "Sharpener" "Eraser"
+## QUEUED
+
+SMEMBERS stationery
+## QUEUED
+
+HSET employee name "Jayanta Samaddar" age 30 role "SDE-II" experience_in_years 5
+## QUEUED
+
+HGETALL employee
+## QUEUED
+
+EXEC
+## 1) (integer) 5
+## 2) (integer) 4
+## 3) 1) "Pens"
+   ## 2) "Sharpener"
+   ## 3) "Ruler"
+   ## 4) "Pencil"
+   ## 5) "Eraser"
+## 4) 1) "name"
+   ## 2) "Jayanta Samaddar"
+   ## 3) "age"
+   ## 4) "30"
+   ## 5) "role"
+   ## 6) "SDE-II"
+   ## 7) "experience_in_years"
+   ## 8) "5"
+##
+```
+
+---
+
+### `DISCARD`
+
+Flushes all previously queued commands in a **[transaction](#transactions)** and restores the connection state to normal.
+
+If **`WATCH`** was used, **`DISCARD`** unwatches all keys watched by the connection.
+
+**Time Complexity:** **`O(1)`** for every key.
+
+**Syntax:**
+
+```sh
+DISCARD
+```
+
+**Returns:**
+
+- Simple string reply: always **`OK`**.
+
+**Examples:**
+
+```sh
+MULTI
+## OK
+
+SADD stationery "Pens" "Pencil" "Ruler" "Sharpener" "Eraser"
+## QUEUED
+
+SMEMBERS stationery
+## QUEUED
+
+HSET employee name "Jayanta Samaddar" age 30 role "SDE-II" experience_in_years 5
+## QUEUED
+
+HGETALL employee
+## QUEUED
+
+DISCARD
+## OK
+
+EXEC
+## (error) ERR EXEC without MULTI
+```
+
+---
+
+### `WATCH`
+
+Marks the given keys to be watched for conditional execution of a **[transaction](#transactions)**.
+
+**Time Complexity:** **`O(1)`** for every key.
+
+**Syntax:**
+
+```sh
+WATCH key [key ...]
+```
+
+**Returns:**
+
+- Simple string reply: always **`OK`**.
+
+**Examples:**
+
+In **`Terminal 1`**
+
+```sh
+SADD stationery "Pens" "Pencil" "Ruler" "Sharpener" "Eraser"
+## (integer) 5
+
+HSET employee name "Jayanta Samaddar" age 30 role "SDE-II" experience_in_years 5
+## (integer) 4
+```
+
+In **`Terminal 2`**,
+
+```sh
+MULTI
+## OK
+
+SADD stationery "Paper" "Ink"
+## QUEUED
+
+HGETALL employee
+## QUEUED
+
+SMEMBERS stationery
+## QUEUED
+
+EXEC
+## 1) (integer) 2
+## 2) 1) "name"
+   ## 2) "Jayanta Samaddar"
+   ## 3) "age"
+   ## 4) "30"
+   ## 5) "role"
+   ## 6) "SDE-II"
+   ## 7) "experience_in_years"
+   ## 8) "5"
+## 3) 1) "Ruler"
+   ## 2) "Pencil"
+   ## 3) "Sharpener"
+   ## 4) "Paper"
+   ## 5) "Pens"
+   ## 6) "Eraser"
+   ## 7) "Ink"
+
+```
+
+---
+
+### `UNWATCH`
+
+Flushes all the previously watched keys for a **[transaction](#transactions)**.
+
+If you call **`EXEC`** or **`DISCARD`**, there's no need to manually call **`UNWATCH`**.
+
+**Time Complexity:** **`O(1)`**
+
+**Syntax:**
+
+```sh
+WATCH key [key ...]
+```
+
+**Returns:**
+
+- Simple string reply: always **`OK`**.
+
+**Examples:**
+
+```sh
+UNWATCH
+```
+
+---
+
+## PUB/SUB Commands
+
+### `PUBLISH`
+
+---
+
+### `SUBSCRIBE`
+
+---
+
+### `PSUBSCRIBE`
+
+---
+
+### `PUBSUB CHANNELS`
+
+---
+
+### `PUBSUB NUMSUB`
+
+---
+
+### `PUBSUB NUMPAT`
+
+---
+
+### `UNSUBSCRIBE`
 
 ---
 
@@ -2489,67 +4439,137 @@ FLUSHALL
 
 ---
 
-# Data Types
+# Data Persistence and Recovery
 
-## Strings
+You maybe wondering, **"How can an in-memory database persist data?"**
 
-### Overview
+'Cause if the Redis process or the server on which Redis is running fails, all the data in memory is gone, right? And if the data is gone, how can one recover it? Basically how can one be confident that the data is safe?
 
-Redis strings store sequences of bytes, including text, serialized objects, and binary arrays. As such, strings are the most basic Redis data type. They're often used for caching, but they support additional functionality that lets you implement counters and perform bitwise operations, too.
+The simplest way to have data backups is by replicating Redis. So if the Redis master instance goes down, the replicas will still be running and have all the data. So if you have a replicated Redis, the replicas will have the data but if all the Redis instances including their replicas go down, you will lose the data with no replica remaining. So we need real persistence.
 
-**Limits**
-By default, a single Redis string can be a maximum of 512 MB.
+Redis has multiple mechanisms for persisting the data for keeping the data safe:
 
-### [String Commands](https://redis.io/commands/?group=string)
+1. **Snapshots (RDB)** - The RDB persistence performs point-in-time snapshots of your dataset at specified intervals (based on time or number of writes passed). This will be stored on disk. This is great for backups and disaster recovery. Note that we will still lose the last minutes of data because we do snapshotting every 5 minutes or an hour depending on your needs.
 
-- [SET](#set)
-- [MSET](#mset)
-- [GET](#get)
-- [MGET](#mget)
-- SETRANGE
-- [GETRANGE](#getrange)
-- [STRLEN](#strlen)
-- [INCR](#incr)
-- [INCRBY](#incrby)
-- [INCRBYFLOAT](#incrbyfloat)
-- [DECR](#decr)
-- [DECRBY](#decrby)
-- APPEND
-- [DEL](#del)
-- GETDEL
+2. **AOF (Append only File)** - The AOF persistence logs every write operation received by the server, that will be played again at server startup, reconstructing the original dataset.
 
----
+3. **No Persistence** - If you wish, you can disable persistence completely, if you want your data to just exist as long as the server is running.
 
-## Lists
+4. **RDB + AOF** - It is possible to combine both **AOF** and **RDB** in the same instance. Notice that, in this case, when Redis restarts the AOF file will be used to reconstruct the original dataset since it is guaranteed to be the most complete.
 
-Redis lists are linked lists of string values. Redis lists are frequently used to:
+The most important thing to understand is the different trade-offs between the RDB and AOF persistence.
 
-- Implement stacks and queues.
-- Build queue management for background worker systems.
+## RDB
 
-Consider [Redis Streams](#streams) as an alternative to Lists when you need to store and process an indeterminate series of events.
+## AOF
 
-**Limits**
-The max length of a Redis list is 2^32 - 1 (4,294,967,295) elements.
+## Durability and Recovery
 
-### [List Commands](https://redis.io/commands/?group=list)
+It is a best practice to separate servers that run the Redis database and where data is backed up.
 
-- [LPUSH](#lpush)
-- [LPUSHX](#lpushx)
-- [RPUSH](#rpush)
-- [RPUSHX](#rpushx)
-- [LRANGE](#lrange)
-- [LLEN](#llen)
-- [LPOP](#lpop)
-- [RPOP](#rpop)
-- [LSET](#lset)
-- [LINSERT](#linsert)
-- [LINDEX](#lindex)
-- [LTRIM](#ltrim)
-- [BLPOP](#blpop)
+For example: If your applications and services run in the cloud on AWS EC2 instance, you should use Elastic Block Storage (EBS) to persist your data instead of storing the data on the EC2 instance's hard drive. This is because, if the EC2 instance died, you want have access to any of its storage, whether it is RAM or disk or whatever.
+
+So if you want persistence and durability for your data, you must put your data outside your instances on an external network storage. As a result, by decoupling the database and the backup, even if all the server instances fail, you still have the data on disk unaffected. You can just spin up other instances and pull the data from the separate storage, like EBS.
 
 ---
 
-## Streams
+# Optimizing Memory Costs with Redis on Flash
+
+The question that maybe lingering is - **"Isn't storing data on memory expensive?"**
+
+You would need more servers compared to a database that stores data on disk simply because memory is limited in size. So there's a trade-off between cost and performance. Redis has a way to optimize this using a service called Redis on Flash, which is part of Redis Enterprise.
+
+Redis on Flash extends the RAM to the Flash Drive or SSD where frequently used values are stored in memory (RAM) and infrequently used values are stored on disk (SSD).
+
+So for Redis, this is more RAM-like latency and performance on the server. This means, Redis can use more of the underlying infrastructure and server resources by using both RAM and SSD, increasing the storage capacity on each server and saving infrastructure costs.
+
+---
+
+# Scaling Redis
+
+Let's say, your single Redis instance runs out of memory, i.e. becomes too large to hold in memory or the Redis instance becomes a bottleneck and cannot handle any more requests. In such case, how do you increase the capacity and memory size for your Redis database? In other words, How do we scale a Redis Database?
+
+We have several options.
+
+## Clustering
+
+Redis supports **clustering**. This means you can have a primary or master Redis instance for reading and writing, and you can have multiple replicas of that primary instance for reading the data. This way you can scale Redis to handle more requests and in addition increase the high availability of your database, because if the master fails, one of the replicas can take over and your Redis database can continue functioning without any issues.
+
+All replicas hold copies of the data of the primary instance, hence the more replicas you have, the more space you need as one server may not have sufficient memory for all your replicas. In addition, having multiple replicas on one server defeats the purpose of replicas because if that server fails, multiple replicas are gone. Instead, you want to distribute these replicas among different servers or nodes.
+
+But what if the dataset grows too large to fit in a single server? In other words, what if the primary instance gets capped for writes? This is when we use **sharding**.
+
+## Sharding
+
+Sharding is a general concept in databases that means you take the complete dataset and divide it into smaller subsets of data called shards, which are then responsible for their own subset of data. That means that instead of having one master instance that handles the complete dataset, we can now shard it into let's say, 4 shards, each of them responsible for Reads and Writes to a subset of the data. Each shard also needs less memory capacity because they just have 1/4th of the total data. This means you can distribute and run shards on smaller nodes and basically scale your cluster horizontally.
+
+As the databse grows, these shards can be re-sharded it in even smaller chunks and create more shards.
+
+---
+
+# High Availability across Geo-locations
+
+## Problem
+
+Let's consider another scenario where applications need even higher availability and performance across multiple geographic locations.
+
+For example: You have a Redis database cluster in one region, in the datacenter of London (EU). But we have the two following use cases:
+
+1. Users are geographically distributed and accessing the application all over the world. So we want to distribute our application and data services globally close to the users to give our users better performance.
+2. Disaster Recovery - If the datacenter in London (EU) goes down, we want an immediate switch over to another data center so that the Redis service stays available. In other words, we want replicas of the whole Redis cluster in datacenters in multiple geographic locations.
+
+This means a single dataset must be replicated to many clusters, spread across multiple geographic locations, with each cluster being fully able to accept reads and writes.
+
+## Solution
+
+You will have multiple Redis clusters that will act as local Redis instances in each region.
+
+Say Cluster01 (EU), Cluster02 (US)
+
+The data will now be synced across these geographically distributed clusters. This is a feature available in Redis Enterprise called Active-Active Deployment because you have multiple active databases in multiple locations.
+
+So with this setup we will have lower latency for the users and even if the Redis database in one region completely goes down, the other regions will be unaffected.
+
+## Data Integrity and Consistency
+
+If a connection or syncing between two regions breaks for a short time, because of some network problem or some reason, the Redis clusters in these regions can update the data independently and once connection is re-established, they can sync up those changes again.
+
+Now the first question that may pop up on your mind is - **"How does Redis resolve the changes in multiple regions to the same dataset?"**
+
+So if the same data changed in multiple regions, how does Redis make sure that the data changes of any region is not lost and data is correctly synced.
+
+For this particular problem, Redis Enterprise uses a concept called **Conflict-Free Replicated Data Types (CRDT)**. This concept is used to resolve any conflicts automatically at the database level without any data loss.
+
+**Conflict 1: Concurrent SETs**
+
+| Time | Instance A           | Instance B           |
+| ---- | -------------------- | -------------------- |
+| t1   | SET key1 "value1"    |                      |
+| t2   |                      | SET key1 "value2"    |
+| t3   | SYNC                 | SYNC                 |
+| t4   | GET key1 => "value2" | GET key1 => "value2" |
+
+**Resolution:** Last Write Wins
+
+Outcome of concurrent writes is predictable and based on a set of rules. Dataset will eventually converge to a single, consistent state.
+
+**Conflict 2: APPEND vs DEL**
+
+| Time | Instance A                | Instance B                |
+| ---- | ------------------------- | ------------------------- |
+| t1   | SET key1 "Hello"          |                           |
+| t2   | SYNC                      | SYNC                      |
+| t3   | APPEND key1 " there"      |                           |
+| t3   |                           | DEL key1                  |
+| t5   | SYNC                      | SYNC                      |
+| t6   | GET key1 => "Hello there" | GET key1 => "Hello there" |
+
+**Resolution:** APPEND wins
+
+As we learned, Redis uses multiple data types, so for each data type, Redis Enterprise uses its own data conflict resolution rules, that are most optimal for that data type. Instead of just overriding the changes of one source and just discarding all the others, all the parallel changes are kept and intelligently resolved.
+
+---
+
+# Running Redis on Kubernetes
 
 ---
