@@ -8,6 +8,11 @@
 - [Setup and Installation](#setup-and-installation)
   - [Setup using Docker](#setup-using-docker)
   - [Setup in Linux](#setup-in-linux)
+- [Security & Configuration](#security--configuration)
+  - [Add a Password without an Username](#add-a-password-without-an-username)
+  - [Access Control List (`ACL`)](#access-control-list-acl)
+    - [ACL Commands](#acl-commands)
+  - [`AUTH` - Access Password protected Redis](#auth---access-password-protected-redis)
 - [Data Types](#data-types)
   - [Strings](#strings)
     - [Overview](#overview)
@@ -123,7 +128,11 @@
     - [`FLUSHALL`](#flushall)
 - [Data Persistence and Recovery](#data-persistence-and-recovery)
   - [RDB](#rdb)
+    - [Advantages of RDB](#advantages-of-rdb)
+    - [Disadvantages of RDB](#disadvantages-of-rdb)
   - [AOF](#aof)
+    - [Advantages of AOF](#advantages-of-aof)
+    - [Disadvantages of AOF](#disadvantages-of-aof)
   - [Durability and Recovery](#durability-and-recovery)
 - [Optimizing Memory Costs with Redis on Flash](#optimizing-memory-costs-with-redis-on-flash)
 - [Scaling Redis](#scaling-redis)
@@ -209,7 +218,7 @@ This client and server can be on the same computer or on two different computers
 ## [Setup using Docker](https://redis.io/docs/stack/get-started/install/docker/)
 
 - [Download Redis Image from Docker Hub](https://hub.docker.com/_/redis)
-- Start a Redis Instance - `docker run --name some-redis -p [containerPort:hostPort] -d redis`
+- Start a Redis Instance - `docker run --name some-redis -p [containerPort:6379] -d redis`
 - Connecting via redis-cli - `docker exec -it some-redis redis-cli`
 - For other options, check the Docker Hub page above.
 
@@ -219,6 +228,53 @@ This client and server can be on the same computer or on two different computers
 - Install Redis Server - `sudo apt install redis-server`
 - Start Redis Server as a background process - `redis-server &`
 - Enter Redis CLI to use Redis - `redis-cli`
+
+---
+
+# Security & Configuration
+
+## Add a Password without an Username
+
+By default, Redis loads an user `default` with all access, hence, it is possible to set a password without an initial Username. By doing so, it sets the password for the `default` user.
+
+**Using Docker:**
+
+```s
+docker run --name redis01 -d -p 6379:6379 redis redis-server --requirepass [password]
+```
+
+---
+
+## Access Control List (`ACL`)
+
+The Redis **`ACL`**, short for **Access Control List**, is the feature that allows certain connections to be limited in terms of the commands that can be executed and the keys that can be accessed. The way it works is that, after connecting, a client is required to provide a username and a valid password to authenticate. If authentication succeeded, the connection is associated with a given user and the limits the user has. Redis can be configured so that new connections are already authenticated with a "default" user (this is the default configuration). Configuring the default user has, as a side effect, the ability to provide only a specific subset of functionalities to connections that are not explicitly authenticated.
+
+### ACL Commands
+
+- ACL WHOAMI
+- ACL CAT
+- ACL SETUSER
+- ACL GETUSER
+- ACL DELUSER
+- ACL LIST
+
+---
+
+## `AUTH` - Access Password protected Redis
+
+Once a password is set, it will not be possible to use Redis commands unless authenticated.
+
+```s
+# (error) NOAUTH Authentication required.
+```
+
+We can use the AUTH command to authenticate user and access a password protected Redis node.
+
+```s
+AUTH [username] password
+```
+
+> **Note:** When username is `default`, one can skip the `username` argument.
 
 ---
 
@@ -4439,7 +4495,7 @@ FLUSHALL
 
 ---
 
-# Data Persistence and Recovery
+# [Data Persistence and Recovery](https://redis.io/docs/manual/persistence/)
 
 You maybe wondering, **"How can an in-memory database persist data?"**
 
@@ -4461,7 +4517,53 @@ The most important thing to understand is the different trade-offs between the R
 
 ## RDB
 
+### Advantages of RDB
+
+1. RDB is a very compact single-file point-in-time representation of your Redis data. RDB files are perfect for backups. For instance you may want to archive your RDB files every hour for the latest 24 hours, and to save an RDB snapshot every day for 30 days. This allows you to easily restore different versions of the data set in case of disasters.
+
+2. RDB is very good for disaster recovery, being a single compact file that can be transferred to far data centers, or onto Amazon S3 (possibly encrypted).
+
+3. RDB maximizes Redis performances since the only work the Redis parent process needs to do in order to persist is forking a child that will do all the rest. The parent process will never perform disk I/O or alike.
+
+4. RDB allows faster restarts with big datasets compared to AOF.
+
+5. On replicas, RDB supports [partial resynchronizations after restarts and failovers](https://redis.io/topics/replication#partial-resynchronizations-after-restarts-and-failovers).
+
+### Disadvantages of RDB
+
+1. RDB is NOT good if you need to minimize the chance of data loss in case Redis stops working (for example after a power outage). You can configure different save points where an RDB is produced (for instance after at least five minutes and 100 writes against the data set, you can have multiple save points). However you'll usually create an RDB snapshot every five minutes or more, so in case of Redis stopping working without a correct shutdown for any reason you should be prepared to lose the latest minutes of data.
+
+2. RDB needs to **`fork()`** often in order to persist on disk using a child process. **`fork()`** can be time consuming if the dataset is big, and may result in Redis stopping serving clients for some milliseconds or even for one second if the dataset is very big and the CPU performance is not great. AOF also needs to **`fork()`** but less frequently and you can tune how often you want to rewrite your logs without any trade-off on durability.
+
+---
+
 ## AOF
+
+### Advantages of AOF
+
+1. Using AOF Redis is much more durable: you can have different fsync policies: no fsync at all, fsync every second, fsync at every query. With the default policy of fsync every second, write performance is still great. fsync is performed using a background thread and the main thread will try hard to perform writes when no fsync is in progress, so you can only lose one second worth of writes.
+
+2. The AOF log is an append-only log, so there are no seeks, nor corruption problems if there is a power outage. Even if the log ends with a half-written command for some reason (disk full or other reasons) the redis-check-aof tool is able to fix it easily.
+
+3. Redis is able to automatically rewrite the AOF in background when it gets too big. The rewrite is completely safe as while Redis continues appending to the old file, a completely new one is produced with the minimal set of operations needed to create the current data set, and once this second file is ready Redis switches the two and starts appending to the new one.
+
+4. AOF contains a log of all the operations one after the other in an easy to understand and parse format. You can even easily export an AOF file. For instance even if you've accidentally flushed everything using the FLUSHALL command, as long as no rewrite of the log was performed in the meantime, you can still save your data set just by stopping the server, removing the latest command, and restarting Redis again.
+
+### Disadvantages of AOF
+
+1. AOF files are usually bigger than the equivalent RDB files for the same dataset.
+
+2. AOF can be slower than RDB depending on the exact fsync policy. In general with fsync set to every second performance is still very high, and with fsync disabled it should be exactly as fast as RDB even under high load. Still RDB is able to provide more guarantees about the maximum latency even in the case of a huge write load.
+
+**On Redis < 7.0**
+
+3. AOF can use a lot of memory if there are writes to the database during a rewrite (these are buffered in memory and written to the new AOF at the end).
+
+4. All write commands that arrive during rewrite are written to disk twice.
+
+5. Redis could freeze writing and fsyncing these write commands to the new AOF file at the end of the rewrite.
+
+---
 
 ## Durability and Recovery
 
