@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: new-replica-set
+  labels:
+    type: busybox
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      type: busybox
+  template:
+    metadata:
+      name: busybox
+      labels:
+        type: busybox
+    spec:
+      containers:
+        - name: busybox
+          image: busybox
