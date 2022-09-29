@@ -56,7 +56,6 @@
     - [ClusterIP - Creating a Service](#clusterip---creating-a-service)
   - [Load Balancer](#load-balancer)
     - [Load Balancer - Creating a Service](#load-balancer---creating-a-service)
-- [Kubernetes on Cloud - AWS/GCP](#kubernetes-on-cloud---awsgcp)
 
 ---
 
@@ -376,27 +375,49 @@ In **`pod-definition.yml`**,
 apiVersion: v1
 kind: Pod
 metadata:
-  name: myapp-prod
+  name: postgres-pod
   labels:
-    app: myapp
-    type: front-end
+    app: postgres
+    type: database
 spec:
   containers:
-    - name: nginx-container
-      image: nginx
+    - name: postgres
+      image: postgres
+      ports:
+        - containerPort: 5432
+      env:
+        - name: POSTGRES_USER
+          value: 'postgres'
+        - name: POSTGRES_PASSWORD
+          value: 'postgres'
 ```
 
-1. **apiVersion** - The version of the Kubernetes API you're using to create the objects. Depending on what we are trying to create we must use the right apiVersion. For e.g. if we are working on pods, we can set the `apiVersion: v1`.
+1. **`apiVersion`** - The version of the Kubernetes API you're using to create the objects. Depending on what we are trying to create we must use the right apiVersion. For e.g. if we are working on pods, we can set the `apiVersion: v1`.
 
-2. **kind** - The type of object we are trying to create. Possible values: `Pod`, `ReplicaSet`, `Service`, `Deployment`.
+2. **`kind`** - The type of object we are trying to create. Possible values: `Pod`, `ReplicaSet`, `Service`, `Deployment`.
 
-3. **metadata** - The metadata is data about the object like its `name`, `labels` etc. This is the form of a dictionary. The `name` is a string value while the `labels` is a dictionary value. For example, if there are hundreds of pods running a frontend application and hundreds of pods running a backend application, it would be difficult to group these parts once deployed. If you label them as frontend or backend or database, you will be able to filter these Pods based on the label at a later point in time. It's important to note that under metadata you can only specify `name` or `label` or anything else that Kubernetes expects under metadata. You cannot add any other property as you wish under this. However, under labels, you can have any key-value pair as you see fit.
+3. **`metadata`** - The metadata is data about the object like its `name`, `labels` etc. This is the form of a dictionary.
 
-4. **spec** - We have specified the name of the Pod as `myapp-prod` but he haven't really specified the container or image we need in the Pod. The last section in the configuration file is the specification section or **`spec`**. Depending on the object we are going to create, this is where we would provide additional information to Kubernetes pertaining to that object. This is going to be different for different objects so it's important to understand or refer to the documentation section to get the right format for each since.
+   - **`name`** - The `name` is a string value while that refers to the name of the Kubernetes object.
+   - **`labels`** - `labels` is a dictionary value. For example, if there are hundreds of pods running a frontend application and hundreds of pods running a backend application, it would be difficult to group these parts once deployed. If you label them as `frontend` or `backend` or `database`, you will be able to filter these Pods based on the label at a later point in time.
 
-   Since we are creating a Pod with a single container in it, it is easy. **`spec`** is a dictionary, so we can add a property under it called `containers`. `containers` is a list or an array as the pods can have multiple containers within them. In this case, we will add a single item to the list, since we plan to have a single container for the Pod.
+> **Note**: It's important to note that under metadata you can only specify `name` or `label` or anything else that Kubernetes expects under metadata. You cannot add any other property as you wish under this. However, under **`labels`**, you can have any key-value pair as you see fit.
 
-Once the file is created, from the command line run the following to Create the Pod,
+4. **`spec`** - We have specified the name of the Pod as `myapp-prod` but he haven't really specified the container or image we need in the Pod. The last section in the configuration file is the specification section or **`spec`**. Depending on the Kubernetes object we are going to create, this is where we would provide additional information to Kubernetes pertaining to that object. This is going to be different for different objects so it's important to understand or refer to the documentation section to get the right format for each since.
+
+   Since we are creating a Pod with a single container in it, it is easy. **`spec`** is a dictionary, so we can add a property under it called `containers`.
+
+   - **`containers`** - `containers` is a list or an array of dictionaries as the pods can have multiple containers within them. In this case, we will add a single item to the list, since we plan to have a single container for the Pod. Each container object has certain required and optional fields.
+     - **`name`** - Name of the container. Auto-generated if not provided. (RECOMMENDED)
+     - **`image`** - Image that the container must be created from. By default attempts to fetch from Docker Hub. (MANDATORY)
+     - **`ports`** - A list of Ports to expose. `containerPort` refers to the port on the container that is to be exposed. Note that, `containerPort` is purely informational, that can be used by the DevOps personnel to expose the Pod externally via a [NodePort Service](#nodeport) for an actual use case. (OPTIONAL)
+     - **`env`** - A List of environment variables (Dictionaries of `name` and `value` pairings), if any. (OPTIONAL)
+       - **`name`** - The environment variable.
+       - **`value`** - The value of the environment variable.
+
+   > **Note:** Environment variables should not be hardcoded. We should use **ConfigMaps**, which are a topic to be explored later.
+
+Once the file is created, from the command line run the following to Create the Pod:
 
 ```s
 # Syntax
@@ -1027,9 +1048,5 @@ spec:
     app: nginx
     tier: frontend
 ```
-
----
-
-# Kubernetes on Cloud - AWS/GCP
 
 ---

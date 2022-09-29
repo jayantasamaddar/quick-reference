@@ -20,17 +20,18 @@
 
 # Pods
 
-| Command                                        | Function                                      |
-| ---------------------------------------------- | --------------------------------------------- |
-| `kubectl get pods`                             | Get list of pods.                             |
-| `kubectl get pods -o wide`                     | Get list of pods with additional information. |
-| `kubectl describe pod [NAME]`                  | Show detailed description related to a Pod.   |
-| `kubectl run [POD]`                            | Runs a Pod                                    |
-| `kubectl run [POD NAME] --image=[IMAGE]:[TAG]` | Run a container in a Pod from an image.       |
-| `kubectl create -f [FILE NAME]`                | Create a Kubernetes object from a config file |
-| `kubectl apply -f [FILE NAME]`                 | Apply a config file to a new or existing Pod  |
-| `kubectl delete pod [NAME]`                    | Delete Pod with name, `NAME`                  |
-| `kubectl edit pod [POD NAME]`                  | Edit the configuration of a running Pod       |
+| Command                                        | Function                                       |
+| ---------------------------------------------- | ---------------------------------------------- |
+| `kubectl get pods`                             | Get list of pods.                              |
+| `kubectl get pods -o wide`                     | Get list of pods with additional information.  |
+| `kubectl describe pod [NAME]`                  | Show detailed description related to a Pod.    |
+| `kubectl run [POD]`                            | Runs a Pod                                     |
+| `kubectl run [POD NAME] --image=[IMAGE]:[TAG]` | Run a container in a Pod from an image.        |
+| `kubectl create -f [FILE NAME]`                | Create a Kubernetes object from a config file  |
+| `kubectl apply -f [FILE NAME]`                 | Apply a config file to a new or existing Pod   |
+| `kubectl delete pod [NAME]`                    | Delete Pod with name, `NAME`                   |
+| `kubectl edit pod [POD NAME]`                  | Edit the configuration of a running Pod        |
+| `kubectl exec [POD NAME] -- printenv`          | List the Pod's container environment variables |
 
 ---
 
