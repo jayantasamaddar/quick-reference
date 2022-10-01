@@ -60,7 +60,7 @@
   - [Install Router](#install-router)
   - [Setup `router` with a Working Use Case](#setup-router-with-a-working-use-case)
     - [Overview](#overview-2)
-  - [Setup](#setup)
+    - [Setup](#setup)
 - [References](#references)
 
 # Introduction
@@ -145,6 +145,12 @@ Vuex is a State Manager for global state in larger applications.
 ## Options API vs Composition API
 
 Vue 3 has the Composition API, which aims to address code reusability and readability in Vue 3, especially in larger applications.
+
+The reasons why the Composition API was introduced in Vue 3 are:
+
+1. Improve Readability as components grow.
+2. Code reusability patterns in Vue 2 had drawbacks.
+3. Limited TypeScript support.
 
 ---
 
@@ -1542,7 +1548,7 @@ We want to setup a Router that does the following:
 
 ---
 
-## Setup
+### Setup
 
 1.  Inside the `src` folder, create a `router` folder. If you chose the `Router` option during the Vue Installation via CLI, then this would have been automatically created for you.
 
