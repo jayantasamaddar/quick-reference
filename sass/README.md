@@ -438,6 +438,111 @@ Next.js allows you to import SASS using both the `.scss` and `.sass` extensions.
 
 Refer to the **[Next.js docs](https://nextjs.org/docs/basic-features/built-in-css-support#sass-support)** for details.
 
+1. **Install SASS:**
+
+   ```s
+   # Using NPM
+   npm i -D sass
+
+   # Using YARN
+   yarn add -D sass
+   ```
+
+2. **Update Existing CSS to SCSS**
+
+   - Rename `globals.css` to **`globals.scss`**. Reflect this in the import in **`pages/_app.tsx`**.
+   - Rename `Home.module.css` to **`Home.module.scss`**. Reflect this in the import in **`pages/index.tsx`**.
+
+3. **Create `mixins` and `variables` as `partials`**
+
+   - In the `styles` directory, create two files, **`_variables.scss`** and **`_mixins.scss`** to hold `variables` and `mixins` respectively.
+   - They can be imported into **`Home.module.scss`** and **`globals.scss`** using **`@import/mixins`** and **`@import/variables`** at the top of the page:
+
+   ```scss
+   @import 'variables';
+   @import 'mixins';
+   ```
+
+4. **Create a Webpack config to have a better way to import styles from the styles folder**
+
+   We want the `variables`, `mixins` and any styles in `styles` folder be accessible to any component level scss file using a simple syntax as follows:
+
+   ```scss
+   @import '@styles/variables';
+   @import '@styles/mixins';
+   ```
+
+   This can be made possible by updating the webpack configuration to resolve the absolute path to the **`styles`** folder to **`@styles`** no matter which location of the project the `.scss` files inside the directory is accessed from:
+
+   In **`next.config.js`**,
+
+   ```js
+   const path = require('path');
+   /** @type {import('next').NextConfig} */
+   const nextConfig = {
+     reactStrictMode: true,
+     swcMinify: true,
+     webpack(config) {
+       config.resolve.alias = {
+         ...config.resolve.alias,
+         '@styles': path.resolve(__dirname, '/styles'),
+       };
+       return config;
+     },
+   };
+
+   module.exports = nextConfig;
+   ```
+
+5. **Make Nesting work**
+
+   If we choose to not nest, we can see how the `Home.module.scss` is setup and refer to `pages/index.tsx` to see how the CSS classes are applied to the various elements. This works the same way as regular CSS works inside Next.js.
+
+   However, nesting is one of the most important features of SASS. To get it to work in a Next.js project with CSS modules, we have to use the `:global` to switch to global scope.
+
+   Read more about [Exceptions in CSS Modules](https://github.com/css-modules/css-modules#exceptions).
+
+   **Example:**
+
+   ```s
+   # Files in components/Testimonial
+
+   ├── index.ts
+   ├── Testimonial.module.scss
+   └── Testimonial.tsx
+   ```
+
+   In `Testimonial.module.scss`,
+
+   ```scss
+   @import '@styles/mixins';
+   @import '@styles/variables';
+
+   .testimonial {
+     @include flexCenter(column) {
+       border: 1px solid $color-button;
+       width: 300px;
+     }
+     h4 {
+       padding: 15px 15px 0;
+       margin: 0;
+     }
+     p {
+       padding: 15px;
+     }
+
+     :global .testimonial_content {
+       @include flexCenter(column, center, flex-start);
+
+       :global .testimonial_context {
+         :global .testimonial_service {
+           padding-top: 5px;
+         }
+       }
+     }
+   }
+   ```
+
 ---
 
 # References
