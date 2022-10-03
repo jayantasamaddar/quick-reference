@@ -7,7 +7,8 @@
   - [Nesting](#nesting)
   - [Partials](#partials)
   - [Modules](#modules)
-  - [Mixins and Functions](#mixins-and-functions)
+  - [Mixins](#mixins)
+  - [Functions](#functions)
   - [Extend / Inheritance](#extend--inheritance)
   - [Operators](#operators)
   - [Conditionals](#conditionals)
@@ -36,7 +37,8 @@ The indented syntax and SCSS files are traditionally given the extensions `.sass
 - **[Nesting](#nesting)**
 - **[Partials](#partials)**
 - **[Modules](#modules)**
-- **[Mixins and Functions](#mixins-and-functions)**
+- **[Mixins](#mixins)**
+- **[Functions](#functions)**
 - **[Extend / Inheritance](#extend--inheritance)**
 - **[Operators](#operators)**
 - **[Conditionals](#conditionals)**
@@ -134,7 +136,7 @@ You can create partial SASS files that contain little snippets of CSS that you c
 
 ## Modules
 
-You don't have to write all your SASS in a single file. You can split it up however you want with the **`@use`** rule. This rule loads another SASS file as a _module_, which means you can refer to its **[variables](#variables)**, **[mixins and functions](#mixins-and-functions)** in your SASS file with a namespace based on the filename. Using a file will also include the CSS it generates in your compiled output!
+You don't have to write all your SASS in a single file. You can split it up however you want with the **`@use`** rule. This rule loads another SASS file as a _module_, which means you can refer to its **[variables](#variables)**, **[Mixins](#mixins-and-functions)** in your SASS file with a namespace based on the filename. Using a file will also include the CSS it generates in your compiled output!
 
 **Pre-processed SCSS:**
 
@@ -177,7 +179,7 @@ body {
 
 ---
 
-## Mixins and Functions
+## Mixins
 
 Some things in CSS are a bit tedious to write, especially with CSS3 and the many vendor prefixes that exist. A mixin lets you make groups of CSS declarations that you want to reuse throughout your site. It helps keep your SASS very **DRY**. You can even pass in values to make your mixin more flexible. Here's an example for **`theme`**.
 
@@ -222,6 +224,42 @@ To create a mixin you use the **`@mixin`** directive and give it a name. We've n
   background: DarkGreen;
   box-shadow: 0 0 1px rgba(0, 100, 0, 0.25);
   color: #fff;
+}
+```
+
+---
+
+## Functions
+
+Functions allow you to define complex operations on SassScript values that you can re-use throughout your stylesheet. They make it easy to abstract out common formulas and behaviors in a readable way.
+
+Here's an example for a container with `min-height` equal to viewport height minus the `height` of the header.
+
+**Pre-processed SASS:**
+
+```scss
+$header-height: 3rem;
+$header-margin: 0.75rem;
+
+@function headerHeight($height: $header-height, $margin: $header-margin) {
+  @return $height + 2 * $margin;
+}
+
+/** Usage */
+.container {
+  padding-top: calc(
+    100vh - headerHeight()
+  ); // Evaluates to `calc(100vh - 4.5rem)`
+}
+```
+
+> **Note:** Functions differ from **`mixins`** by the simple fact that **`functions`** always have to **`@return`** a **`value`** whereas mixins return consolidated groups of CSS declarations. Functions also do not need an **`@include`** to be called unlike **`mixins`**.
+
+**Post-processed CSS:**
+
+```css
+.container {
+  padding-top: calc(100vh - 4.5rem);
 }
 ```
 
