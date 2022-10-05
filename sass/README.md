@@ -351,7 +351,7 @@ Doing math in your CSS is very helpful. SASS has a handful of standard math oper
 **Pre-processed SCSS:**
 
 ```scss
-@use 'SASS:math';
+@use 'sass:math';
 
 .container {
   display: flex;
@@ -403,7 +403,7 @@ In fact, you can chain as many **`@else if`**s as you want after an **`@if`**. T
 **Pre-processed SCSS:**
 
 ```scss
-@use 'SASS:math';
+@use 'sass:math';
 
 @mixin triangle($size, $color, $direction) {
   height: 0;
