@@ -1,3 +1,18 @@
+# Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [What is Storybook?](#what-is-storybook)
+- [Why use Storybook?](#why-use-storybook)
+- [Installation](#installation)
+- [Configuration](#configuration)
+    - [Default Setup](#default-setup)
+    - [Customized Setup](#customized-setup)
+- [Theming with Storybook](#theming-with-storybook)
+  - [Setup](#setup)
+- [References](#references)
+
+---
+
 # What is Storybook?
 
 Storybook is an open source tool for building UI components and pages in isolation. It streamlines UI development, testing, and documentation.
@@ -14,7 +29,7 @@ Enter Storybook.js.
 
 # Installation
 
-```
+```s
 npx storybook init
 ```
 
@@ -25,39 +40,33 @@ npx storybook init
 When Storybook is installed, a `.storybook` directory is created in the root of the project. This directory contains a `main.js` file and a `preview.js` file. The defaults are as follows:-
 
 **main.js**
-    ```
-    module.exports = {
-        stories: [
-            "../src/**/*.stories.mdx",
-            "../src/**/*.stories.@(js|jsx|ts|tsx)",
-        ],
-        addons: [
-            "@storybook/addon-links",
-            "@storybook/addon-essentials",
-            "@storybook/addon-interactions"
-        ],
-        "framework": "@storybook/react"
-    }
-    ```
+
+```js
+module.exports = {
+  stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|jsx|ts|tsx)'],
+  addons: [
+    '@storybook/addon-links',
+    '@storybook/addon-essentials',
+    '@storybook/addon-interactions',
+  ],
+  framework: '@storybook/react',
+};
+```
 
 **preview.js**
-    ```
-    export const parameters = {
-        actions: { argTypesRegex: "^on[A-Z].*" },
-        controls: {
-            matchers: {
-            color: /(background|color)$/i,
-            date: /Date$/,
-            },
-        },
-    }
-    ```
+
+```js
+export const parameters = {
+  actions: { argTypesRegex: '^on[A-Z].*' },
+  controls: { matchers: { color: /(background|color)$/i, date: /Date$/ } },
+};
+```
 
 ### Customized Setup
 
 We can modify the default setup by modifying the `main.js` file.
 
-    ```
+    ```js
     /* eslint-disable no-param-reassign */
     const path = require('path');
     const { argv } = require('yargs');
@@ -102,6 +111,7 @@ We can modify the default setup by modifying the `main.js` file.
     ```
 
 **Where**,
+
 - `stories` - an array of globs that indicates the location of your story files, relative to main.js.
 - `addons` - a list of the addons you are using.
 - `webpackFinal` - custom webpack configuration.
@@ -110,3 +120,66 @@ We can modify the default setup by modifying the `main.js` file.
 - `features` - An object containing [feature flags](https://storybook.js.org/docs/react/configure/overview#feature-flags).
 
 ---
+
+# Theming with Storybook
+
+Ideally, you would like to be able to view how a component looks in different colour themes while storybook is running, without needing to change the theme manually and rebuilding.
+
+**For example:** You want to see how a Modal component looks in Dark Mode and Light Mode. The storybook canvas' background also needs synchronize with this. The ideal solution would be a plugin that allows theme toggling at a click and auto updates the component's props and styling and storybook's background.
+
+Fortunately, we have a plugin that does the job.
+
+## Setup
+
+Theming can be setup with various libraries or custom. Emotion.js and Styled Components (CSS-in-JS) provide theming options.
+
+1. We will first install **`@react-theming/storybook-addon`** as a `devDependency`.
+
+   ```s
+   # Using NPM
+   npm i -D @react-theming/storybook-addon
+
+   # Using YARN
+   yarn add -D @react-theming/storybook-addon
+   ```
+
+2. We add the addon the `.storybook/main.js` file.
+
+   ```js
+   module.exports = {
+     // other options
+     addons: [...otherAddons, '@react-theming/storybook-addon'],
+   };
+   ```
+
+3. Update the `.storybook/preview.js` by adding the `addDecorator` property as follows:
+
+   ```js
+   import { ThemeProvider } from 'path/to/ThemeProvider';
+   import { addDecorator } from '@storybook/react';
+   import { withThemes } from '@react-theming/storybook-addon';
+
+   // Make sure the lightTheme and darkTheme have a property, name: 'light' and name: 'dark', respectively.
+   import { lightTheme, darkTheme } from 'path/to/styles/themes';
+
+   export const parameters = {
+     actions: { argTypesRegex: '^on[A-Z].*' },
+     controls: {
+       matchers: {
+         color: /(background|color)$/i,
+         date: /Date$/,
+       },
+     },
+     addDecorators: addDecorator(
+       withThemes(ThemeProvider, [lightTheme, darkTheme])
+     ),
+   };
+   ```
+
+   > **Note:** This addon has ability to auto change background color when it detect a dark theme. By default it checks if the theme name contains 'dark'.
+
+---
+
+# References
+
+- **[@react-theming/storybook-addon](https://www.npmjs.com/package/@react-theming/storybook-addon)**
