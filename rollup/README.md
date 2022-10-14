@@ -1,6 +1,28 @@
+# Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [What is Rollup?](#what-is-rollup)
+- [The Project](#the-project)
+- [SVGR](#svgr)
+  - [Installation](#installation)
+  - [Adding script to `package.json`](#adding-script-to-packagejson)
+- [Building and Shipping the Icons Library](#building-and-shipping-the-icons-library)
+  - [Why Rollup as a module bundler of choice?](#why-rollup-as-a-module-bundler-of-choice)
+  - [Using `rollup` and `@rollup/plugin-babel`](#using-rollup-and-rollupplugin-babel)
+  - [Modifying Babel plugin options](#modifying-babel-plugin-options)
+    - [Installing other Babel Presets](#installing-other-babel-presets)
+  - [Building the package with Rollup](#building-the-package-with-rollup)
+  - [Additional DevDependencies to Consider](#additional-devdependencies-to-consider)
+  - [Pre-requisites before publishing as a NPM Package](#pre-requisites-before-publishing-as-a-npm-package)
+    - [Alternatives: - Using SVGR as a Rollup Plugin](#alternatives---using-svgr-as-a-rollup-plugin)
+      - [Installation](#installation-1)
+      - [Usage with Rollup](#usage-with-rollup)
+
+---
+
 # What is [Rollup](https://rollupjs.org/)?
 
-Rollup is a module bundler for JavaScript which compiles small pieces of code into something larger and more complex, such as a library or application. It uses the new standardized format for code modules included in the ES6 revision of JavaScript, instead of previous idiosyncratic solutions such as CommonJS and AMD. ES modules let you freely and seamlessly combine the most useful individual functions from your favorite libraries. This will eventually be possible natively everywhere, but Rollup lets you do it today.
+Rollup is a module bundler for JavaScript which compiles small pieces of code into something larger and more complex, such as a library or application. It uses the new standardized format for code modules included in the ES6 revision of JavaScript, instead of previous idiosyncratic solutions such as CommonJS and UMD. ES modules let you freely and seamlessly combine the most useful individual functions from your favorite libraries. This will eventually be possible natively everywhere, but Rollup lets you do it today.
 
 ---
 
@@ -10,13 +32,13 @@ Take the SVGs from the `assets` folder, which may come in various sizes and conv
 
 We will use some other tools apart from Rollup:-
 
-- `@svgr/cli` - a tool for converting SVG files into React Components
-- `rimraf` - a tool for deleting files and folders, used for cleanup. The linux command `rm -rf` is a good alternative (remove target folder and subfolders and files inside recursively and ignore errors).
-- Rollup plugins
-  - `@rollup/plugin-babel` - for transpiling ES6+ to ES5 at build time.
-  - [`@babel/plugin-transform-runtime`](https://babeljs.io/docs/en/babel-plugin-transform-runtime) - devDependency plugin that enables the re-use of Babel's injected helper code to save on codesize.
-  - [`@babel/runtime`](https://babeljs.io/docs/en/babel-runtime) - Sometimes Babel may inject some code in the output that is the same across files, and thus can be potentially re-used. This is meant to be used as a runtime **dependency** along with the Babel plugin `@babel/plugin-transform-runtime`.
-  - `rollup-plugin-filesize` - for calculating the size of the bundle
+- **`@svgr/cli`** - a tool for converting SVG files into React Components. Alternatives are to use **`@svgr/core`** or **`@svgr/rollup`**.
+- **`rimraf`** - a tool for deleting files and folders, used for cleanup. The linux command `rm -rf` is a good alternative (remove target folder and subfolders and files inside recursively and ignore errors).
+- **Rollup plugins**
+  - **`@rollup/plugin-babel`** - for transpiling ES6+ to ES5 at build time.
+  - **[`@babel/plugin-transform-runtime`](https://babeljs.io/docs/en/babel-plugin-transform-runtime)** - devDependency plugin that enables the re-use of Babel's injected helper code to save on codesize.
+  - **[`@babel/runtime`](https://babeljs.io/docs/en/babel-runtime)** - Sometimes Babel may inject some code in the output that is the same across files, and thus can be potentially re-used. This is meant to be used as a runtime `devDependency` along with the Babel plugin `@babel/plugin-transform-runtime`.
+  - **`rollup-plugin-filesize`** - for calculating the size of the bundle
 - Babel Plugins
 - Babel Presets
 
@@ -30,19 +52,21 @@ SVGR provides an official [`rollup.js`](https://rollupjs.org/) plugin to import 
 
 There are various ways of using SVGR, but we will use the CLI, because we want to run it as an NPM script and package up the output using Rollup.
 
-### Installation
+## Installation
 
-```
+```s
+# Using NPM
 npm i -D @svgr/cli rimraf
-# or use yarn
+
+# using YARN
 yarn add -D @svgr/cli rimraf
 ```
 
-### Adding script to `package.json`
+## Adding script to `package.json`
 
 Add a script to `package.json` to run SVGR:
 
-```
+```json
 "scripts": {
   "svgr": "svgr --icon --replace-attr-values '#5C5F62=currentColor' --out-dir src assets"
 }
@@ -93,7 +117,7 @@ To use `rollup` and `@rollup/plugin-babel` we will need to install them and crea
 
 **Default setup in `rollup.config.js`**:
 
-    ```
+    ```es6
     import { babel } from '@rollup/plugin-babel';
 
     const config = {
@@ -115,7 +139,7 @@ Where,
 
   Example of multiple outputs:-
 
-  ```
+  ```es6
   output: [
       { file: 'dist/index.esm.js', format: 'esm' },
       { file: 'dist/index.js', format: 'cjs' }
@@ -133,7 +157,7 @@ Here's a guide to setup the `rollup.config.js` file: [https://rollupjs.org/guide
 
 In **`package.json`** add the entry point of the file as `module` instead of `main` which chooses `commonJS` module by default:
 
-    ```
+    ```json
     "module": "dist/index.esm.js",
     ```
 
@@ -146,24 +170,25 @@ The babel plugin takes in a few [**options**](https://github.com/rollup/plugins/
 For our particular project, we need to modify certain options:
 
 - `babelHelpers` - We need to set this to `'runtime'` from `'bundled'`. It has to be used in combination with [`@babel/plugin-transform-runtime`](https://babeljs.io/docs/en/babel-plugin-transform-runtime).
-- Install the [`@babel/plugin-transform-runtime`](https://babeljs.io/docs/en/babel-plugin-transform-runtime) plugin as a **devDependency** and `@babel/runtime` as a **dependency**.
+- Install the [`@babel/plugin-transform-runtime`](https://babeljs.io/docs/en/babel-plugin-transform-runtime) and `@babel/runtime` as plugin as **`devDependencies`**.
 
-  ```
+  ```s
+  # Using NPM
+  npm i -D @babel/runtime
   npm i -D @babel/plugin-transform-runtime
+
+  # Using YARN
+  yarn add -D @babel/runtime
   yarn add -D @babel/plugin-transform-runtime
-  ```
-
-  and
-
-  ```
-  npm i @babel/runtime
-  yarn add @babel/runtime
   ```
 
 - Add `external: [/@babel\/runtime/]` to the `rollup.config.js`.
 - Modify `plugins` in `rollup.config.js` to include the `@babel/plugin-transform-runtime` babel plugin.
 
-  ```
+  In **`rollup.config.js`**,
+
+  ```es6
+  external: [/@babel\/runtime/]
   plugins: [
       babel({
           babelHelpers: 'runtime',
@@ -183,24 +208,21 @@ We will be using the [`@babel/preset-env`](https://babeljs.io/docs/en/babel-pres
 
 **Install the presets:**
 
-- via **npm**
+```s
+# Using NPM
+npm i -D @babel/preset-env @babel/preset-react
 
-  ```
-  npm i -D @babel/preset-env @babel/preset-react
-  ```
-
-- via **yarn**
-  ```
-  yarn add -D @babel/preset-env @babel/preset-react
-  ```
+# Using YARN
+yarn add -D @babel/preset-env @babel/preset-react
+```
 
 **Configure Presets**
 
 - Create a `.babelrc` file in the root directory of your project.
 
-Add the following to the `.babelrc` file:
+Add the following to the **`.babelrc`** file:
 
-    ```
+    ```json
     {
         "presets": [
             ["@babel/preset-env", { "targets": "defaults" }],
@@ -211,32 +233,36 @@ Add the following to the `.babelrc` file:
 
 - Add external support for `react` and `react-dom` to the `rollup.config.js` file.
 
-  ```
+  In **`rollup.config.js`**,
+
+  ```es6
   import { babel } from '@rollup/plugin-babel';
 
   const config = {
-  input: 'src/index.js',
-  output: {
+    input: 'src/index.js',
+    output: {
       file: 'dist/index.esm.js',
       format: 'esm',
-  },
-  external: [/@babel\/runtime/, 'react', 'react-dom'],
-  plugins: [
+    },
+    external: [/@babel\/runtime/, 'react', 'react-dom'],
+    plugins: [
       babel({
-          babelHelpers: 'runtime',
-          plugins: ['@babel/plugin-transform-runtime'],
+        babelHelpers: 'runtime',
+        plugins: ['@babel/plugin-transform-runtime'],
       }),
-  ],
+    ],
   };
 
   export default config;
   ```
 
+---
+
 ## Building the package with Rollup
 
-Add the following to your `package.json`:
+Add the following to your **`package.json`**:
 
-```
+```json
 "scripts": {
     "svgr": "svgr --icon --title-prop --replace-attr-values '#5C5F62=currentColor' --ext=jsx -d ./src/components/icons assets",
     "prebuild": "rimraf ./src && rimraf ./dist",
@@ -268,6 +294,8 @@ Add the following to your `package.json`:
 - `rollup-plugin-scss` - This plugin is used to convert SCSS files to ES6 modules.
 - `rollup-plugin-less` - This plugin is used to convert Less files to ES6 modules.
 - `rollup-plugin-stylus` - This plugin is used to convert Stylus files to ES6 modules.
+- `rollup-plugin-peer-deps-external` - This plugin is used to resolve peer dependencies and ensure we exclude them.
+- `@rollup/plugin-node-resolve` - This plugin is used to resolve any third-party node modules (dependencies) that are used by the project.
 
 ---
 
@@ -275,7 +303,7 @@ Add the following to your `package.json`:
 
 1. In our package.json file, we have to add the following:
 
-```
+```json
 "files": [
     "dist"
 ]
@@ -289,7 +317,7 @@ Add the following to your `package.json`:
 
   **For Example:**
 
-  ```
+  ```es6
   import { Icon } from '@ursa/icons';
 
   const IconExample = () => (
@@ -299,15 +327,11 @@ Add the following to your `package.json`:
 
 3. Once we can confirm that the components are working fine, we can publish the package to the NPM registry using:
 
-   Using **npm**:
-
-   ```
+   ```s
+   # Using NPM
    npm publish
-   ```
 
-   Using **yarn**:
-
-   ```
+   # Using YARN
    yarn publish
    ```
 
@@ -317,9 +341,11 @@ Add the following to your `package.json`:
 
 #### Installation
 
-```
+```s
+# Using NPM
 npm i -D @svgr/rollup
-# or use yarn
+
+# Using YARN
 yarn add -D @svgr/rollup
 ```
 
@@ -327,8 +353,8 @@ yarn add -D @svgr/rollup
 
 In **`rollup.config.js`**:
 
-```
-import svgr from '@svgr/rollup'
+```es6
+import svgr from '@svgr/rollup';
 
 export default {
   plugins: [svgr()],
@@ -337,17 +363,17 @@ export default {
     file: 'bundle.js',
     format: 'cjs',
   },
-}
+};
 ```
 
 In **`star.jsx`**:
 
-```
-import Star from './star.svg'
+```es6
+import Star from './star.svg';
 
 const App = () => (
   <div>
     <Star />
   </div>
-)
+);
 ```

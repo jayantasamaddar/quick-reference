@@ -14,7 +14,7 @@
   "author": "Jayanta Samaddar",
   "license": "ISC",
   "scripts": {
-    "svgr": "svgr --icon --title-prop --replace-attr-values '#5C5F62=currentColor' -d src assets",
+    "svgr": "svgr --icon --title-prop --replace-attr-values '#5C5F62=currentColor' -d src icons",
     "prebuild": "rm -rf ./src && rm -rf ./dist",
     "build": "yarn svgr && rollup -c",
     "dev": "rollup -c -w"
@@ -23,13 +23,11 @@
     "@babel/plugin-transform-runtime": "^7.18.5",
     "@babel/preset-env": "^7.18.2",
     "@babel/preset-react": "^7.17.12",
+    "@babel/runtime": "^7.19.4",
     "@rollup/plugin-babel": "^5.3.1",
     "@svgr/cli": "^6.2.1",
     "rimraf": "^3.0.2",
     "rollup": "^2.75.6",
     "rollup-plugin-filesize": "^9.1.2"
-  },
-  "dependencies": {
-    "@babel/runtime": "^7.18.3"
   }
 }
