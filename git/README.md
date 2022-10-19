@@ -111,7 +111,7 @@ Mainline Development refers to the idea of always integrating your workflow with
 
 **Example:** A single branch where everyone commits.
 
-```
+```s
 (C) --- (C) --- (C) main branch ---->
 ```
 
