@@ -17,7 +17,14 @@
     - [Overview: Structure](#overview-structure)
   - [IAM: Roles](#iam-roles)
 - [AWS CLI](#aws-cli)
-- [Installation](#installation)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+    - [Default Configuration](#default-configuration)
+    - [Profiles](#profiles)
+    - [Retrieving Configuration](#retrieving-configuration)
+    - [Updating Configuration](#updating-configuration)
+    - [Other Configuration Commands](#other-configuration-commands)
+    - [Other Configuration Settings](#other-configuration-settings)
 - [AWS SDK](#aws-sdk)
   - [Modular Packages for JavaScript](#modular-packages-for-javascript)
 
@@ -239,7 +246,7 @@ For these scenarios, you can delegate access to AWS resources using an IAM role.
 
 # AWS CLI
 
-# Installation
+## Installation
 
 **Install the AWS CLI (For Linux):**
 
@@ -261,6 +268,159 @@ aws --version
 
 ---
 
+## Configuration
+
+### Default Configuration
+
+Before the AWS CLI can be used to run queries on any service, we need to configure a default pair of Access Key Id and Secret. This is the primary access point for making queries to AWS via the AWS CLI.
+
+**Create default credentials:**
+
+```s
+aws configure
+
+# AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
+# AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+# Default region name [None]: ap-south-1
+# Default output format [None]: json
+```
+
+**Check `.aws` folder for two files: `credentials` and `config`**
+
+```s
+cat ~/.aws/credentials
+
+# [default]
+# aws_access_key_id = AKIAIOSFODNN7EXAMPLE
+# aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+```s
+cat ~/.aws/config
+
+# [default]
+# region = ap-south-1
+# output = json
+```
+
+The AWS CLI stores sensitive credential information that you specify with aws configure in a local file named `credentials`, in a folder named `.aws` in your home directory.
+
+---
+
+### Profiles
+
+A collection of settings is called a profile. By default, the AWS CLI uses the **`default`** profile. You can notice this in the `credentials` and `config` files in the folder named `.aws` in the your home directory.
+
+You can create and use additional named profiles with varying credentials and settings by specifying the `--profile` option and assigning a name.
+
+The following example creates a profile named `s3admin`.
+
+```s
+aws configure --profile s3admin
+
+# AWS Access Key ID [None]: AKIAI44QH8DHBEXAMPLE
+# AWS Secret Access Key [None]: je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY
+# Default region name [None]: us-east-1
+# Default output format [None]: text
+```
+
+You can then specify a `--profile [ profilename ]` and use the credentials and settings stored under that name.
+
+```s
+aws s3 ls --profile s3admin
+```
+
+Viewing the `credentials` and `config` files now show:
+
+```s
+cat ~/.aws/credentials
+
+# [default]
+# aws_access_key_id=AKIAIOSFODNN7EXAMPLE
+# aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+# [s3admin]
+# aws_access_key_id=AKIAI44QH8DHBEXAMPLE
+# aws_secret_access_key=je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY
+```
+
+```s
+cat ~/.aws/config
+
+# [default]
+# region=ap-south-`
+# output=json
+
+# [s3admin]
+# region=us-east-1
+# output=text
+```
+
+---
+
+### Retrieving Configuration
+
+We can use the `aws configure get [ setting ]` syntax to retrieve a particular setting.
+
+```s
+# Gets the `aws_access_key_id` from the `default` profile
+aws configure get aws_access_key_id
+
+# Gets the `aws_secret_access_key` from the `default` profile
+aws configure get aws_secret_access_key
+
+# Gets the `region` from the profile named `s3admin`.
+aws configure get region --profile s3admin
+
+# Gets the `output` from the profile named `s3admin`.
+aws configure get output --profile s3admin
+```
+
+---
+
+### Updating Configuration
+
+We can update the settings in two ways:
+
+1. **Overwrite**: To update these settings, run `aws configure` again (with or without the `--profile` parameter, depending on which profile you want to update) and enter new values as appropriate.
+
+2. **Using a Setter**: We can use `aws configure set [ setting ]` (with or without the `--profile [ profilename ]` parameter, depending on which profile you want to update) to only set a specific field. This overwrites only that particular field and leaves other fields as it is.
+
+   ```s
+   # Sets the `aws_access_key_id` in the `default` profile
+   aws configure set aws_access_key_id AKIAI44QH8DHBEXAMPLE
+
+   # Sets the `aws_secret_access_key` in the `default` profile
+   aws configure set aws_secret_access_key je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY
+
+   # Sets the `region` in the profile named `s3admin`.
+   aws configure set region us-west-2 --profile s3admin
+
+   # Sets the `output` in the profile named `s3admin`.
+   aws configure set output table --profile s3admin
+   ```
+
+---
+
+### Other Configuration Commands
+
+| Command                       | Function                                                  |
+| ----------------------------- | --------------------------------------------------------- |
+| `aws configure list-profiles` | List all your profile names                               |
+| `aws configure list`          | List all profile data                                     |
+| `aws configure import`        | Import CSV credentials generated from the AWS web console |
+
+---
+
+### Other Configuration Settings
+
+The following settings are supported in the `config` file. The values listed in the specified (or default) profile are used unless they are overridden by the presence of an environment variable with the same name, or a command line option with the same name. For more information on what order settings take precendence, see [Configuration settings and precedence](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-precedence)
+
+- [Global Settings](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-global)
+- [S3 Custom Command Settings](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-s3)
+
+---
+
 # AWS SDK
 
 ## [Modular Packages for JavaScript](https://aws.amazon.com/blogs/developer/modular-packages-in-aws-sdk-for-javascript/)
@@ -268,3 +428,7 @@ aws --version
 In v3 of AWS SDK for JavaScript, modularity was introduced by breaking the JavaScript SDK core into multiple packages and publishing each service as its own package. These packages are published under `@aws-sdk/` scope on NPM to make it easy to identify packages that are part of the official AWS SDK for JavaScript.
 
 ---
+
+```
+
+```
