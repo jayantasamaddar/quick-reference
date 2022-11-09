@@ -36,6 +36,35 @@
   - [EC2 Dedicated Instances](#ec2-dedicated-instances)
   - [EC2 Capacity Reservations](#ec2-capacity-reservations)
   - [Price Comparisons](#price-comparisons)
+- [EC2 Instance: Storage](#ec2-instance-storage)
+  - [Elastic Block Store (EBS) Volumes](#elastic-block-store-ebs-volumes)
+    - [EBS: Overview](#ebs-overview)
+    - [EBS: Creating and Assigning a Volume](#ebs-creating-and-assigning-a-volume)
+      - [Root Volume](#root-volume)
+      - [New Unassigned Volume](#new-unassigned-volume)
+    - [EBS: Volume Types](#ebs-volume-types)
+      - [General Purpose SSD](#general-purpose-ssd)
+      - [Provisioned IOPS (PIOPS) SSDs](#provisioned-iops-piops-ssds)
+      - [Hard Disk Drives (HDD)](#hard-disk-drives-hdd)
+    - [EBS: Snapshots](#ebs-snapshots)
+      - [EBS Snapshots: Overview](#ebs-snapshots-overview)
+      - [EBS Snapshots: Features](#ebs-snapshots-features)
+      - [EBS Snapshots: Creating a Snapshot](#ebs-snapshots-creating-a-snapshot)
+      - [EBS Snapshots: Copying Snapshots to Another Region](#ebs-snapshots-copying-snapshots-to-another-region)
+      - [EBS Snapshots: Create Volume from Snapshot](#ebs-snapshots-create-volume-from-snapshot)
+      - [EBS Snapshots: Recycle Bin](#ebs-snapshots-recycle-bin)
+      - [EBS Snapshots: Archiving](#ebs-snapshots-archiving)
+    - [EBS: Multi-Attach - io1 / io2 family](#ebs-multi-attach---io1--io2-family)
+  - [AMI](#ami)
+    - [AMI: Overview](#ami-overview)
+    - [AMI: Creating an AMI](#ami-creating-an-ami)
+  - [EC2 Instance Store](#ec2-instance-store)
+  - [Amazon Elastic File System (EFS)](#amazon-elastic-file-system-efs)
+    - [EFS: Overview](#efs-overview)
+    - [EFS: Create a File System](#efs-create-a-file-system)
+    - [EFS: Mounting the File System to an EC2 Instance](#efs-mounting-the-file-system-to-an-ec2-instance)
+  - [EBS vs EFS](#ebs-vs-efs)
+- [FAQs](#faqs)
 - [References](#references)
 
 ---
@@ -615,6 +644,447 @@ The AWS Certification exams will want you to know which type of instance is the 
 
 ---
 
+# EC2 Instance: Storage
+
+Let's look at the different storage options for EC2 Instances.
+
+## Elastic Block Store (EBS) Volumes
+
+### EBS: Overview
+
+An EBS (Elasic Block Store) Volume is a network drive that you can attach to your instances while they run. So far, if we've run an EC2 Instance, we have been using them without knowing.
+
+EBS Volumes allow us to persist data even after the Instance has been terminated. The purpose it serves is that, we can re-create a new EC2 Instance and mount the same EBS Volume to the new Instance.
+
+**Characteristics:**
+
+- It's a Network drive (i.e. not a physical drive).
+  - It uses the network to communicate the instance, which means there might be a bit of latency.
+- One EBS Volume can only be mounted to one EC2 Instance at a time. They can also be unattached, and attached only when there is a necessity.
+- Multiple EBS Volumes can be attached to the same EC2 Instance.
+- EBS Volumes can be detached from an EC2 Instance and attached to another one quickly. Think of them as a "Network USB stick" which can unmount from one instance and mount to another instance.
+- Bound to a specific Availability Zone: An EBS Volume in `ap-south-1a` cannot be attached to an Instance in `ap-south-1b`.
+- To move a volume across, you first need to snapshot it.
+- Has a one-time provisioned capacity (size in GiBs and IOPS).
+- Delete on Termination is possible, i.e. when the EC2 Instance is terminated, the EBS volume would be deleted. This option is also available during the creation of an EC2 Instance.
+  - By default: The root EBS Volume is deleted (attribute enabled).
+  - By default: Any other EBS Volume is not deleted (attribute disabled).
+- Can be controlled by the AWS CLI. For e.g. If you want to preserve the Root Volume after an Instance has been created with the Delete on Termination enabled, this can be done via the AWS CLI.
+- Free Tier: 30GB of Free EBS storage of General Purpose (SSD) or Magnetic per month.
+
+---
+
+### EBS: Creating and Assigning a Volume
+
+#### Root Volume
+
+The first volume is created via the Launching of a new Instance. Through the Launch Instance wizard we can create the EBS root volume, assign it to the instance with the following Volume settings:
+
+- **Size**: The size of the volume, in GiB. Default is `8` for `gp2` and `gp3`.
+  - `io1` and `io2`: 4 GiB to 16,384 GiB
+  - `gp2` and `gp3`: 1 GiB to 16,384 GiB
+  - `st1` and `sc1`: 125 GiB to 16,384 GiB
+  - Magnetic (`standard`): 1 GiB to 1024 GiB
+- **Volume type**:
+  - General Purpose SSDs: `gp2` or `gp3`. Default is `gp2`.
+  - Provisioned IOPS SSDs: `io1` or `io2`,
+  - Cold HDD: `sc1`,
+  - Throughput Optimized HDD: `st1`,
+  - Magnetic: `standard`
+- **IOPS**: The requested number of I/O operations per second that the volume can support. Default is `3000`. Learn more at [I/O characteristics and monitoring](https://docs.aws.amazon.com/console/ec2/ebs/volumes/types).
+- **Delete on Termination**: Whether to delete EBS storage on termination of EC2 Instance. Default is `Yes`.
+- **Encrypted**: Whether Volume is encrypted or not. Default is: `Not encrypted`.
+- **KMS key**: KMS keys are only applicable when encryption is set on this volume. Amazon EBS encryption uses AWS KMS keys when creating encrypted volumes and snapshots. EBS encrypts your volume with a data key using the industry-standard AES-256 algorithm. Your data key is stored on disk with your encrypted data, but not before EBS encrypts it with your KMS key. Your data key never appears on disk in plaintext. The same data key is shared by snapshots of the volume and any subsequent volumes created from those snapshots.
+- **Throughput**: Throughput that the volume can support specified for Streaming Optimized volumes. Default is `100` for `gp2` and `125` for `gp3`.
+
+By default, the Root Volume is created in the same Availability Zone as the Instance.
+
+---
+
+#### New Unassigned Volume
+
+These Volume settings above also show up if we attempt to create the EBS Volume standalone.
+
+To create the Volume,
+
+1. Go to the [Volumes page in the EC2 Console](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1#Volumes:)
+2. Click **Create Volume**
+3. Assign the Volume Settings.
+4. You may observe that two new setting shows up here which did not show up during the Launch Instance:
+   - Availability Zone (must be in the same AZ as the EC2 Instance it will need to be assigned to)
+   - Snapshot ID (to [create the Volume from a snapshot](#ebs-snapshots), which we will learn about in the next section)
+5. Click **Create Volume**. The Volume will be created and can now be assigned to an already running Instance in the same Availability Zone as soon as the `Volume state` turns from `Creating` to `Available`.
+6. To attach a Volume, select the Volume and then click `Actions` ---> `Attach Volume`. From the Attach Volume wizard, select a running Instance from the list and click `Attach Volume`. The Volume is now attached, indicated by its Volume state being `In use`. This is reflected back if we select the Instance in the [Instances page](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1#Instances:) and check the Storage panel. We will find this volume appear there.
+
+> **Note:** Attaching an EBS Volume is not enough to make it ready for use with the EC2 Instance. Check out [Make an EBS Volume available for use on Linux](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-using-volumes.html) to make it available for use. (This article is written during the preparation for the [AWS Developer Associate Certification](./../aws-certifications/aws-developer-associate/README.md) and it is out of scope for this. I will try to add this section here, later.)
+
+---
+
+### [EBS: Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html)
+
+#### General Purpose SSD
+
+- Cost-effective storage, low-latency
+- Use Cases:
+  - System boot volumes
+  - Virtual desktops
+  - Development and test environments
+- 1 GiB - 16 GiB
+- `gp3`
+  - Newer generation of General Purpose SSDs
+  - Baseline of 3,000 IOPS and throughput of 125 MiB/s
+  - Can increase IOPS up to 16,000 and throughput upto 1000 MiB/s independently
+- `gp2`
+  - Small gp2 volumes can burst IOPS to 3,000
+  - Size of the volume and IOPS are linked, max IOPS is 16,000
+  - 3 IOPS per GiB, means at 5,334 GiB we are at the max IOPS
+
+---
+
+#### Provisioned IOPS (PIOPS) SSDs
+
+- Use Cases:
+  - Critical business applications with sustained IOPS performance
+  - Applications that need more than 16,000 IOPS
+  - Great for database workloads (sensitive to storage performance and consistency)
+  - `io1` / `io2` (4 GiB - 16 TiB)
+    - Max PIOPS: 64,000 for Nitro EC2 instances & 32,000 for others
+    - Can increase PIOPS independently from storage size (just like `gp3`)
+    - `io2` has more durability and more IOPS per GiB (at the same price as `io1`)
+  - io2 Block Express (4 GiB - 16 TiB)
+    - Sub-millisecond latency
+    - Max PIOPS: 256,000 with an IOPS:GiB ratio of 1000:1
+  - Supports EBS Multi-attach
+
+---
+
+#### Hard Disk Drives (HDD)
+
+- Cannot be Boot volumes
+- 125 MiB to 16 TiB
+- Throughput Optimized HDD (`st1`)
+  - Big Data, Data warehouses, Log processing
+  - Max throughput 500 MiB/s - max IOPS 500
+- Cold HDD (`sc1`)
+  - For data that is infrequently accessed, i.e. archive data
+  - Scenarios where lowest cost is important
+  - Max throughput 250 MiB/s - max IOPS 250
+
+---
+
+### EBS: Snapshots
+
+#### EBS Snapshots: Overview
+
+You can back up the data on your Amazon EBS volumes to Amazon S3 by taking point-in-time snapshots. Snapshots are incremental backups, which means that only the blocks on the device that have changed after your most recent snapshot are saved. This minimizes the time required to create the snapshot and saves on storage costs by not duplicating data. Each snapshot contains all of the information that is needed to restore your data (from the moment when the snapshot was taken) to a new EBS volume. Snapshots across Availability Zones or Regions.
+
+It is considered a Best Practice (although not mandatory) to detach volume before taking a snapshot.
+
+---
+
+#### EBS Snapshots: Features
+
+- **EBS Snapshots Archive**
+  - Move a Snapshot to an "archive tier" that is 75% cheaper.
+  - Takes within 24 - 72 hours for restoring the archive.
+- **Recycle Bin for EBS Snapshots**
+  - Setup rules to retain deleted snapshots so you can recover them after an accidental deletion.
+  - Specify retention period (1 day - 1 year)
+- **Fast Snapshot Restore (FSR)**
+  - Force full initialization of snapshot to have no latency on first use.
+  - It is helpful when the snapshot is huge and there is a need to initialize an EBS volume or Instance out of it, very quickly.
+  - This feature is expensive, so be careful with it.
+
+---
+
+#### EBS Snapshots: Creating a Snapshot
+
+- Select the Volume and click `Actions` ---> `Create snapshot`
+- Describe the Snapshot and create the snapshot by clicking `Create snapshot`
+
+---
+
+#### EBS Snapshots: Copying Snapshots to Another Region
+
+- Go to the [Snapshots page](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1#Snapshots:) from the EC2 Console
+- Select the Snapshot and right click and `Copy snapshot` or click `Actions` ---> `Copy snapshot`
+- Select any Destination Region from the options. This is very handy if you want to have a Disaster Recovery Strategy to make sure your data is backed up in another region of AWS.
+
+---
+
+#### EBS Snapshots: Create Volume from Snapshot
+
+- Go to the [Snapshots page](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1#Snapshots:) from the EC2 Console
+- Select the Snapshot and right click and `Create volume from snapshot` or click `Actions` ---> `Create volume from snapshot`
+- Select the volume settings. Note: The `Snapshot ID` setting doesn't show up because the snapshot ID is already assigned as we are creating a volume from a snapshot. We can select the rest of the settings just like how we did when we [created a new volume](#new-unassigned-volume)
+- Click `Create volume` to create the volume
+
+We can go back to [Volumes](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1#Volumes:) and we will find the new volume show up there. We can confirm this was created via the Snapshot by checking the `Snapshot` field. It should have the same `Snapshot ID` as the snapshot that was used to create it.
+
+---
+
+#### EBS Snapshots: Recycle Bin
+
+The Recycle Bin is a feature to protect your Amazon EBS Snapshots and [Amazon Machine Images (AMIs)](#ami) from accidental deletion. We can set it up by creating a `Retention Rule`.
+
+- Go to the [Snapshots page](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1#Snapshots:) and click the `Recycle Bin`.
+- Click **Create retention rule**.
+- We can now modify the following settings:
+  - Retention rule name
+  - Retention rule description
+  - Resource type - `EBS Snapshots` or `Amazon Machine Image (AMI)`
+  - Apply to all resources
+  - Retention period
+- Click `Create retention rule` to finalize these retention rules.
+
+The **Retention rule** panel shows any created Retention rules.
+The **Resources** panel is supposed to show any corresponding resources (EBS Snapshots or Amazon Machine Images) that have been deleted. The first time it is deleted it is placed in the Recycle Bin. The Recycle Bin keeps it until the Retention period is over. However deleted Snapshots or AMIs can be **Recovered** from here.
+
+---
+
+#### EBS Snapshots: Archiving
+
+By default the Storage tier for EBS Volumes is `Standard`. We can move the Storage tier to `Archive` by archiving snapshots. Archiving a snapshot stores a full copy of the snapshot in the archive tier. After you archive the snapshot, you will not be able to use it. To use the snapshot then, you must first restore it.
+
+- Go to the [Snapshots page](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1#Snapshots:) from the EC2 Console
+- Select the Snapshot and right click and `Archive snapshot` or click `Actions` ---> `Archive snapshot`
+
+---
+
+### EBS: Multi-Attach - io1 / io2 family
+
+- The Multi-Attach feature is available to only the `io1` and `io2` family (Provisioned IOPS SSDs) of EBS Volumes
+- Attach the same EBS volume to multiple EC2 instances in the same Availability Zone
+- Each instance will have full Read and Write permissions to the high-performance volume
+- Use Cases:
+  - Achieve higher availability in clustered Linux applications (ex: Teradata)
+  - The application must manage concurrent write operations
+- Upto **`16`** EC2 Instances at a time
+- Must use a file system that is cluster-aware (not XFS, EX4 etc.)
+
+---
+
+## AMI
+
+### AMI: Overview
+
+What powers our EC2 Instances is an AMI.
+
+- AMI stands for Amazon Machine Image and they represent a customization of an EC2 Instance
+  - You can add your own Software, configuration, operating system, monitoring tool
+  - Creating our own AMI may give us a faster boot, configuration time because all your software is pre-packaged through the AMI
+  - AMIs are built for a specific region (and can be copied across regions if we want to leverage the AWS Global Infrastructure)
+  - You can launch EC2 Instances from:
+    - A Public AMI: AWS provided (e.g. Amazon Linux 2)
+    - Your own AMI: You make and maintain them yourself
+    - An AWS Marketplace AMI: An AMI someone else made (and potentially sells)
+
+---
+
+### AMI: Creating an AMI
+
+**Process:**
+
+- Start an EC2 Instance and then Customize it (by running scripts via EC2 User Data)
+- Stop the instance (for data integrity)
+- Build an AMI from it - this will also create EBS snapshots
+- Launch instances from this newly built AMI
+
+---
+
+## EC2 Instance Store
+
+EBS Volumes are Network drives with good but "limited" performance. But sometimes you want higher performance and that can happen through the **EC2 Instance Store**, which is a high-performance hardware disk attached onto your EC2 Instance.
+
+The EC2 Instance is a virtual machine but it is obviously attached to a real hardware server. Some of these servers do have disk space attached directly with a physical connection onto the server. And so a special type of EC2 Instance can leverage the **EC2 Instance Store**.
+
+The EC2 Instance Store has the following characteristics:
+
+- Better I/O performance, high throughput
+- EC2 Instance Store lose their storage if they're stopped (ephemeral) - cannot be used as a durable, long term place to store your data.
+- Good for buffer / cache / scratch data / temporary content
+- Risk of data loss if hardware fails
+- Backups and Replication are your responsibility
+
+---
+
+## Amazon Elastic File System (EFS)
+
+### EFS: Overview
+
+Amazon Elastic File System (Amazon EFS) is a Network File System that can be mounted on many EC2 Instances in different availability zones. it automatically grows and shrinks as you add and remove files with no need for management or provisioning.
+
+**Characteristics of Amazon EFS:**
+
+- Managed NFS (Network File System) that can be mounted on many EC2 Instances
+- EFS works with EC2 Instances in multi-AZ
+- Highly available, scalable, expensive (3x `gp2`), pay-per-use
+- Use cases:
+  - Content management: Web serving, data sharing, Wordpress
+- Uses NFSv4.1 Protocol
+- Uses Security group to control access to NFS
+- Compatible with Linux-based AMI (not Windows)
+- Encryption at rest using KMS
+- POSIX file system (~Linux) that has a standard file API
+- File system scales automatically, pay-per-use, no capacity planning is required
+
+**Performance Classes:**
+
+- **EFS Scale**
+  - 1000s of Concurrent NFS Clients, 10 GiB+ /s throughput
+  - Grow to Petabyte-scale network file system, automatically without provisioning capacity in advance
+- **Performance mode** (set at EFS creation time)
+  - General purpose (default): Latency-sensitive use cases (web server, CMS, etc)
+  - Max I/O: Higher latency, higher throughput, highly parallel (big data, media processing)
+- **Throughput mode**
+  - Bursting (1 TiB = 50 MiB/s + burst of upto 100 MiB/s)
+  - Provisioned: Set your throughput regardless regardless of storage size (e.g. 1 GiB/s for 1 TiB Storage)
+
+**Storage Classes**
+
+- Storage Tiers (Lifecycle Mangement feature - move files after `n` days)
+  - Standard: For frequently accessed files
+  - Infrequent access (EFS-IA): Cost to retrieve files when we retrieve them, lower price to store. Enable EFS-IA with a Lifecycle Policy
+- Availability & Durability
+  - Standard: Multi-AZ, great for production
+  - One Zone: One AZ, great for development, backup enabled by default, compatible with IA (EFS One Zone-IA, 90% in cost savings)
+
+---
+
+### EFS: Create a File System
+
+- Go to the **[EFS File System Page](https://ap-south-1.console.aws.amazon.com/efs?region=ap-south-1#/file-systems)** and click **`Create file system`**.
+
+- We have the following File System settings:
+
+  **General Settings**
+
+  - **Name**: Name your file system. (Optional)
+  - **Storage class**:
+    - **`Standard`**: Stores data redundantly across multiple AZs
+    - **`One Zone`**: Stores data redundantly within a single AZ
+  - **Automatic backups**:
+    - **`Enable automatic backups`**: Automatically backup your file system data with AWS Backup using recommended settings. Additional pricing applies.
+  - **Lifecycle management**: EFS Intelligent-Tiering uses Lifecycle Management to automatically achieve the right price and performance blend for your application by moving your files between the Standard and Standard-Infrequent Access storage classes.
+    - **`Transition into IA`**: Transition files from Standard to Standard-Infrequent Access.
+      - Options: 7, 14, 30, 60, 90 days since last access
+    - **`Transition out of IA`**: Transition files from Standard-Infrequent Access to Standard.
+      - Options: None and On first access
+  - **Performance mode**: Set your file system's performance mode based on IOPS required.
+    - **`General Purpose`**: Ideal for latency-sensitive use cases, like web serving environments and content management systems
+    - **`Max I/O`**: Scale to higher levels of aggregate throughput and operations per second
+  - **Throughput mode**: Set how your file system's throughput limits are determined.
+    - **`Bursting`**: Throughput scales with file system size
+    - **`Provisioned`**: Throughput fixed at specified amount
+  - **Encryption**: Choose to enable encryption of your file system's data at rest. Uses the AWS KMS service key (aws/elasticfilesystem) by default.
+
+- Select the General Settings and click **Next**
+
+- We have the following Network Settings:
+
+  - **Virtual Private Cloud (VPC)**: Choose the VPC where you want EC2 instances to connect to your file system.
+  - **Mount targets**: A mount target provides an NFSv4 endpoint at which you can mount an Amazon EFS file system. We recommend creating one mount target per Availability Zone. We need to create a specific Security Group for the File system.
+
+- Next, we have a File System policy which is optional. We will skip it for now. (This reference guide was created during the preparation for [AWS Developer Associate Certification](./../aws-certifications/aws-developer-associate) and the File System policy is out of scope, hence it is skipped for now. I will try to add this when possible)
+
+- Review and click **Create**.
+
+> **Note**: We do not have to select the volume capacity anywhere because EFS is on a Pay-as-you-go model as discussed earlier. The Free Tier offers 5 GB of EFS free for 12 months.
+
+---
+
+### EFS: Mounting the File System to an EC2 Instance
+
+- **Launch** a new EC2 Instance
+- In the **Configure storage** section, where it says **0 x File systems** click **Edit**. We will notice the following message: **You currently have no file systems on this instance. You must select a subnet before you can add an EFS file system.** This is because by default, we have no preference on subnet and we allow AWS to automatically assign a subnet from the AZs. Hence we need to do that first.
+- Go to the **Network settings** section and click **Edit**
+- Choose the `ap-south-1a` subnet.
+- Now if we go back to the **Configure storage** section we will see the message: "**You currently have no file systems on this instance. To add a file system, choose Add shared file system."** Let's do that by clicking the **Add shared file system** button.
+- We will notice the File system being added with a default mount point of `/mnt/efs/fs1`. This will **Automatically create and attach security groups** and **Automatically mount shared file system by attaching required user data script** which is great.
+- Click **`Launch`** to launch the instance.
+- To check if the EFS volume is correctly mounted, we can login to the EC2 Instance and write files to the mount point `/mnt/efs/fs1` by using:
+
+  ```s
+  echo "Hello world!" > /mnt/efs/fs1/helloworld.txt
+
+  cat /mnt/efs/fs1/helloworld.txt
+  # Prints: Hello world!
+  ```
+
+> **Note:** As we know, the same EFS file system can be mounted to multiple Instances, hence we can launch another instance and mount this same File system there as well. They will share files hence this `helloworld.txt` in the example above, will be available across Instances sharing this EFS File system across Availability Zones
+
+---
+
+## EBS vs EFS
+
+**EBS Volumes:**
+
+- Can be attached to only one instance at a time
+- Are locked at the Availability Zone (AZ) level
+- `gp2`: IO increases if the Disk space increases
+- `gp3` and `io1`: can Increase IO independently
+- Multi-Attach to upto 16 instances using `io1` and `io2` (Provisioned IOPS SSDs)
+- To Migrate an EBS volume across AZ
+  - Take a snapshot
+  - Copy the snapshot to another AZ
+  - EBS backups use IO and you shouldn't run them while your application is handling a lot of traffic.
+- Root EBS volumes of instances get terminated by default if the EC2 instance gets terminated (can be disabled).
+
+**EFS Volumes:**
+
+- Mounting of 100s of instances across AZ
+- EFS share website files (Wordpress)
+- Only for Linux instances (POSIX)
+- EFS has a higher price point than EBS
+- Can leverage EFS-IA for cost savings
+
+---
+
+# FAQs
+
+<details open>
+    <summary style="font-weight: bold; color: orange">
+        You have launched an EC2 instance with two EBS volumes, the Root volume type and the other EBS volume type to store the data. A month later you are planning to terminate the EC2 Instance. What's the default behaviour that will happen to each EBS volume?
+    </summary>
+    <br>
+    <p style="margin-left: 15px; font-weight: bold">
+        The root volume type will be deleted and the EBS volume type will not be deleted
+    </p>
+    <p style="padding-left: 15px">
+        The Root volume type will be deleted as its Delete on Termination attribute is checked by default. Any other EBS volume types will not be deleted as its Delete on Termination attribute is disabled by default.
+    </p>
+</details>
+
+<br>
+
+<details>
+    <summary style="font-weight: bold; color: orange">
+        What is EBS Multi-Attach?
+    </summary>
+    <br>
+    <span style="margin-left: 15px; font-weight: bold">
+        Attach the same EBS volume to multiple EC2 Instances in the same AZ
+    </span>
+</details>
+
+<br>
+
+<details>
+    <summary style="font-weight: bold; color: orange">
+        You have launched an EC2 instance with two EBS volumes, the Root volume type and the other EBS volume type to store the data. A month later you are planning to terminate the EC2 Instance. What's the default behaviour that will happen to each EBS volume?
+    </summary>
+    <br>
+    <p style="margin-left: 15px; font-weight: bold">
+        Use an EC2 Instance Store
+    </p>
+    <p style="padding-left: 15px">
+        You can run a database on an EC2 instance that uses an Instance store, but you'll have a problem that the data will be lost if the EC2 instance is stopped (it can be restarted without problems). One solution is that you can set up a replication mechanism on another EC2 instance with an Instance Store to have a standby copy. Another solution is to set up backup mechanisms for your data. It's all up to you to how you want to set up your architecture to validate your requirements. In this use case, it's around IOPS, so we have to choose an EC2 Instance Store as the closest match, EBS `io2` Block Express drive caps out at 256,000 IOPS.
+    </p>
+</details>
+
+---
+
 # References
 
 - [Compare EC2 Instance Types](https://instances.vantage.sh/)
+- [Make an EBS Volume available for use on Linux](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-using-volumes.html)
