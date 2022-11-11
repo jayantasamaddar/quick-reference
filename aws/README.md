@@ -428,7 +428,3 @@ The following settings are supported in the `config` file. The values listed in 
 In v3 of AWS SDK for JavaScript, modularity was introduced by breaking the JavaScript SDK core into multiple packages and publishing each service as its own package. These packages are published under `@aws-sdk/` scope on NPM to make it easy to identify packages that are part of the official AWS SDK for JavaScript.
 
 ---
-
-```
-
-```
