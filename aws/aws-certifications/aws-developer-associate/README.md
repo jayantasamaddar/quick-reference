@@ -6,12 +6,12 @@
 
 | 🔲  | Chapter                                                            | Expected | Completed |
 | --- | ------------------------------------------------------------------ | -------- | --------- |
-| 🔲  | Course Introduction - AWS Certified Developer Associate            | Nov 7    |           |
-| 🔲  | Getting Started with AWS                                           | Nov 7    |           |
-| 🔲  | IAM and AWS CLI                                                    | Nov 7    |           |
-| 🔲  | EC2 Fundamentals                                                   | Nov 8    |           |
-| 🔲  | EC2 Instance Storage                                               | Nov 8    |           |
-| 🔲  | AWS Fundamentals - ELB + ASG                                       | Nov 9    |           |
+| ✅  | Course Introduction - AWS Certified Developer Associate            | Nov 7    |           |
+| ✅  | Getting Started with AWS                                           | Nov 7    |           |
+| ✅  | IAM and AWS CLI                                                    | Nov 7    |           |
+| ✅  | EC2 Fundamentals                                                   | Nov 8    |           |
+| ✅  | EC2 Instance Storage                                               | Nov 8    |           |
+| ✅  | AWS Fundamentals - ELB + ASG                                       | Nov 9    |           |
 | 🔲  | AWS Fundamentals: RDS + Aurora + ElastiCache                       | Nov 9    |           |
 | 🔲  | Route 53                                                           | Nov 10   |           |
 | 🔲  | VPC Fundamentals                                                   | Nov 10   |           |
