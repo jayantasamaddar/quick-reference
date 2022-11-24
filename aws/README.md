@@ -21,12 +21,22 @@
   - [Configuration](#configuration)
     - [Default Configuration](#default-configuration)
     - [Profiles](#profiles)
+    - [MFA](#mfa)
     - [Retrieving Configuration](#retrieving-configuration)
     - [Updating Configuration](#updating-configuration)
     - [Other Configuration Commands](#other-configuration-commands)
     - [Other Configuration Settings](#other-configuration-settings)
+  - [Simulating command with `--dry-run`](#simulating-command-with---dry-run)
+  - [Decoding Messaging with `STS Decode`](#decoding-messaging-with-sts-decode)
+  - [AWS CLI Credentials Provider Chain](#aws-cli-credentials-provider-chain)
+  - [Signing AWS API Requests](#signing-aws-api-requests)
 - [AWS SDK](#aws-sdk)
+  - [AWS SDK: Overview](#aws-sdk-overview)
   - [Modular Packages for JavaScript](#modular-packages-for-javascript)
+- [AWS Limits (Quotas)](#aws-limits-quotas)
+  - [AWS Limits: Overview](#aws-limits-overview)
+  - [AWS Limits: Exponential Backoff Strategy](#aws-limits-exponential-backoff-strategy)
+- [References](#references)
 
 # Introduction to AWS
 
@@ -358,6 +368,54 @@ cat ~/.aws/config
 
 ---
 
+### MFA
+
+- To use MFA with the AWS CLI we need to create a temporary session.
+- To do so, we must use the **`STS GetSessionToken`** API call
+
+  ```s
+  aws sts get-session-token --serial-number [ arn-of-the-assigned-mfa-device ] --token-code [ code-from-token ] --duration-seconds 3600
+  ```
+
+  **Returns:**
+
+  ```json
+  {
+    "Credentials": {
+      "SecretAccessKey": "secret-access-key",
+      "SessionToken": "temporary-session-token",
+      "Expiration": "expiration-date-time",
+      "AccessKeyId": "access-key-id"
+    }
+  }
+  ```
+
+- Credentials are temporary.
+- Create a profile using `aws configure --profile [ profilename ]`
+- Open the `credentials` file using `nano ~/.aws/credentials`
+- Append the profile with `aws-session-token` and enter the session token that was returned.
+
+  **Example:**
+
+  ```yml
+  [default]
+  aws_access_key_id = AKIAU4VWPVW4GRAMAOU2
+  aws_secret_access_key = dZ+peWAyA6RGQkqANqDZKHgXzB/R39O0ZdUKZFUc
+
+  [mfa]
+  aws_access_key_id = access-key-id
+  aws_secret_access_key = secret-access-key
+  aws_session_token = temporary-session-token
+  ```
+
+- Now we can use the api calls using the `mfa` profile using,
+
+  ```s
+  aws s3 ls --profile mfa
+  ```
+
+---
+
 ### Retrieving Configuration
 
 We can use the `aws configure get [ setting ]` syntax to retrieve a particular setting.
@@ -421,10 +479,115 @@ The following settings are supported in the `config` file. The values listed in 
 
 ---
 
+## Simulating command with `--dry-run`
+
+- The `--dry-run` flag can be added to a `aws service` CLI command to simulate it.
+- This is useful to check if the policy permissions for the IAM role permit the operation or not.
+- Returns `UnauthorizedOperation` if permission denied
+- Returns `DryRunOperation` if permission not denied. Request would have succeeded, but DryRun flag is set.
+
+---
+
+## Decoding Messaging with `STS Decode`
+
+---
+
+## AWS CLI Credentials Provider Chain
+
+- The CLI will look for credentials in this order:
+
+  - **Command Line Options**: `--region`, `--output`, `--profile`
+  - **Environment Variables**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_SECRET_ACCESS_TOKEN`
+  - **CLI Credentials File**: `aws configure`, file: `~/.aws/credentials` on Linux
+  - **Container Credentials**: For ECS Tasks
+  - **Instance Profile Credentials**: for EC2 Instance Profiles
+
+- Best Practices:
+
+  - NEVER EVER STORE AWS Credentials in your Code
+  - Best practice is for Credentials to be inherited from the credentials chain, i.e.
+    - If you are working with AWS, use IAM Roles, i.e.
+      - EC2 Instance Roles for EC2 Instances
+      - ECS Roles for ECS Tasks
+      - Lambda Roles for Lambda Functions
+    - If working outside of AWS, use environment variables / named profiles
+
+---
+
+## [Signing AWS API Requests](https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html)
+
+- When you call the AWS HTTP API, you sign the request so that AWS can identify you, using your AWS credentials (AWS Access Key Id and AWS Secret Access Key)
+- **Note**: Some requests to Amazon S3 do not need to be signed
+- If you use the SDK or CLI, the HTTP requests are signed for you
+- When not using the SDK or CLI, you have to manually sign the AWS HTTP requests using Signature v4 (SigV4), which is an AWS Protocol:
+
+  - SigV4 ensures yours requests to AWS are signed using your credentials so that you are authenticated against AWS
+
+  - Examples of SigV4 usage:
+
+    - **Using HTTP Header**
+
+      ```yaml
+      GET https://iam.amazonaws.com/?Action=ListUsers&Version=2010-05-08 HTTP/1.1
+      Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20150830/us-east-1/iam/aws4_request,
+      SignedHeaders=content-type;host;x-amz-date,
+      Signature=5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7
+      content-type: application/x-www-form-urlencoded; charset=utf-8
+      host: iam.amazonaws.com
+      x-amz-date: 20150830T123600Z
+      ```
+
+    - Using Query String (ex: S3 pre-signed URLs)
+
+---
+
 # AWS SDK
+
+## AWS SDK: Overview
+
+- If no region is selected, `us-east-1` will be selected by default.
+- AWS CLI uses the Python SDK (`boto3`)
+- SDKs are available in multiple languages: `C++`, `Python`, `NodeJS`, `PHP`, `Java`, `JavaScript`, `.NET`, `Go`, `Ruby`, `Swift`, `Kotlin`, `Rust`
+
+---
 
 ## [Modular Packages for JavaScript](https://aws.amazon.com/blogs/developer/modular-packages-in-aws-sdk-for-javascript/)
 
 In v3 of AWS SDK for JavaScript, modularity was introduced by breaking the JavaScript SDK core into multiple packages and publishing each service as its own package. These packages are published under `@aws-sdk/` scope on NPM to make it easy to identify packages that are part of the official AWS SDK for JavaScript.
 
 ---
+
+# AWS Limits (Quotas)
+
+## AWS Limits: Overview
+
+- **API Rate Limits**:
+
+  - `DescribeInstances` API for EC2 has a limit of 100 calls per second
+  - `GetObject` on Amazon S3 has a limit of 5500 GET calls per second per prefix
+  - For Intermittent Errors: Implement Exponential Backoff Strategy
+  - For Consistent Errors: Request an API throttling limit increase
+
+- **Service Quotas (Service Limits)**: How many resources we can run of something
+  - Running On-Demand Standard Instances: `1152` vCPU
+  - You can request a service limit increase by opening a ticket OR
+  - You can request a service quota increase by using the **`Service Quotas API`** to do this programmatically
+
+---
+
+## AWS Limits: Exponential Backoff Strategy
+
+- We use Exponential Backoff when we get a `ThrottlingException` error intermittently
+- Retry mechanism already included in AWS SDK API calls
+- Must implement Exponential Backoff yourself if using the AWS API as-is or in specific cases
+  - Kind of errors that should be retried on an Exponential Backoff:
+    - Must only implement the retries on **`5xx server errors`** and Throttling Errors
+    - Do NOT implement on the **`4xx client errors`** (which means something has been sent wrong by your clients and not a server error)
+- The idea of Exponential Backoff is if we get a `5xx server error` or a `ThrottlingError` we wait `x` seconds for the first retry, `2x` seconds for the second retry, `4x` seconds for the third retry, `8x` seconds for the fourth retry, `16x` seconds for the fifth retry and so on. If the server is being queried by many requests, this reduces the load on the server over time and ensures that all requests may be processed over time.
+
+---
+
+# References
+
+- [AWS CLI Credentials Precedence](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#config-settings-and-precedence)
+- [Signing AWS Requests](https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html)

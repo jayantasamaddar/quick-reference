@@ -64,6 +64,7 @@
     - [EFS: Create a File System](#efs-create-a-file-system)
     - [EFS: Mounting the File System to an EC2 Instance](#efs-mounting-the-file-system-to-an-ec2-instance)
   - [EBS vs EFS](#ebs-vs-efs)
+- [EC2 Instance Metadata](#ec2-instance-metadata)
 - [FAQs](#faqs)
 - [References](#references)
 
@@ -1037,6 +1038,16 @@ Amazon Elastic File System (Amazon EFS) is a Network File System that can be mou
 - Only for Linux instances (POSIX)
 - EFS has a higher price point than EBS
 - Can leverage EFS-IA for cost savings
+
+---
+
+# EC2 Instance Metadata
+
+- The EC2 Instance Metadata refers to the information about the EC2 Instance.
+- Allows AWS EC2 Instances to learn about themselves.
+- The URL is http://169.254.169.254/latest/meta-data. `169.254.169.254` is an Internal IP to AWS, it will not work from your local computer. It will only work when logged into the EC2 Instance.
+- You can retrieve the IAM Role name from the metadata, but you CANNOT retrieve the IAM Policy.
+- The only way to test the policy is to use the **[AWS Policy Simulator](https://policysim.aws.amazon.com/)** or the `--dry-run` flag with a command.
 
 ---
 
