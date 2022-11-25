@@ -1,0 +1,120 @@
+# Deploy the following resources:
+## Application Load Balancer having a Target Group of EC2 Instances of type:
+### `t2.micro` running Ubuntu 22.04 with Nginx installed
+## Applications are only accessible via ALB (protected by Security Group rules)
+AWSTemplateFormatVersion: '2010-09-09'
+Mappings:
+  Region:
+    ApSouth1:
+      VPC: vpc-0accd6ee829f856ff
+      Subnets:
+        - subnet-09a2a6eec68d67bdb
+        - subnet-0d4d144fef99b7917
+        - subnet-0b0f3038e2c973ffd
+
+Resources:
+  # EC2 Instance with User Data
+  EC2WithUserData:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-south-1a
+      ImageId: ami-062df10d14676e201
+      InstanceType: t2.micro
+      KeyName: ec2-playground
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      UserData:
+        Fn::Base64: |
+          #! bin/bash
+          sudo apt update -y
+          sudo apt upgrade -y
+          sudo apt install -y nginx
+          sudo sed -i "/<\/h1>/a <p>Hostname: $(hostname -f)</p>" /var/www/html/index.nginx-debian.html
+          sudo reboot
+
+  # Security Group for EC2 Instance
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !FindInMap [Region, ApSouth1, VPC]
+      GroupName: CloudFormed-SecurityGroup-EC2
+      GroupDescription: Security Group for CloudFormed EC2
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: Allow incoming traffic from ELB only
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic to ALB
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+
+  # Security Group for Application Load Balancer
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !FindInMap [Region, ApSouth1, VPC]
+      GroupName: CloudFormed-SecurityGroup-ALB
+      GroupDescription: Security Group for CloudFormed ALB
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic out from ALB
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic to ALB
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+
+  # Application Load Balancer
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Name: cloudformed-alb
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets: !FindInMap [Region, ApSouth1, Subnets]
+
+  # Listener for Application Load Balancer
+  ELBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ELBTargetGroup
+      LoadBalancerArn: !Ref ElasticLoadBalancer
+      Protocol: HTTP
+      Port: 80
+
+  # Target Group for Application Load Balancer
+  ELBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: EC2InstancesWithUserData
+      Protocol: HTTP
+      ProtocolVersion: HTTP1
+      Port: 80
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+      Targets:
+        - Id: !Ref EC2WithUserData
+          Port: 80
+      TargetType: instance
+      VpcId: !FindInMap [Region, ApSouth1, VPC]

@@ -1,0 +1,11 @@
+# Basic EC2 Instance of type `t2.micro` running Ubuntu Server 22.04
+Resources:
+  MyBasicEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-south-1a
+      ImageId: ami-062df10d14676e201
+      InstanceType: t2.micro
+      KeyName: ec2-playground
+      SecurityGroups:
+        - launch-wizard-1
