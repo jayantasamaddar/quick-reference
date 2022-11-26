@@ -8,7 +8,8 @@
   - [Resources](#resources)
   - [Parameters](#parameters)
     - [Parameters: Overview](#parameters-overview)
-    - [Parameters: Settings](#parameters-settings)
+    - [Parameters: Types](#parameters-types)
+    - [Parameters: Properties](#parameters-properties)
     - [Psuedo Parameters](#psuedo-parameters)
   - [Mappings](#mappings)
   - [Outputs](#outputs)
@@ -157,28 +158,65 @@ Template helpers:
 - Parameters are extremely powerful, controlled and can prevent errors from happening in your templates thanks to types.
 - By making a value a parameter, you won't have to repupload a template to change its content. It's a bit more stable and bit modulized.
 - It is recommended to use a Parameter when the CloudFormation resource configuration is likely to change in the future.
+- You can have a maximum of 200 parameters in an AWS CloudFormation template.
+- Each parameter must be given a logical name (also called logical ID), which must be alphanumeric and unique among all logical names within the template.
+- Each parameter must be assigned a parameter type that is supported by AWS CloudFormation. For more information, see [Types](#parameters-types).
+- Each parameter must be assigned a value at runtime for AWS CloudFormation to successfully provision the stack. You can optionally specify a default value for AWS CloudFormation to use unless another value is provided.
+- Parameters must be declared and referenced from within the same template. You can reference parameters from the Resources and Outputs sections of the template.
 
 ---
 
-### Parameters: Settings
+### Parameters: Types
 
-- Types:
+AWS CloudFormation supports the following parameter types:
 
-  - String
-  - Number
-  - CommaDelimitedList
-  - List<Type>
-  - AWS Parameter (to help catch invalid values - match against existing values in the AWS Account)
+1. **`String`**: A literal string. E.g. `"MyUserName"`
+
+2. **`Number`**: An integer or float. AWS CloudFormation validates the parameter value as a number; however, when you use the parameter elsewhere in your template (for example, by using the Ref intrinsic function), the parameter value becomes a string. E.g. `888`
+
+3. **`List<Number>`**: An array of integers or floats that are separated by commas. AWS CloudFormation validates the parameter value as numbers; however, when you use the parameter elsewhere in your template (for example, by using the Ref intrinsic function), the parameter value becomes a list of strings. E.g. `"80, 20"`, when referenced by a Ref would result in `["80", "20"]`
+
+4. **`CommaDelimitedList`**: An array of literal strings that are separated by commas. The total number of strings should be one more than the total number of commas. Also, each member string is space trimmed. E.g. `"test,dev,prod"`, when referenced by a Ref would result in ["test","dev","prod"].
+
+5. **`AWS-Specific Parameter Types`**: AWS values such as Amazon EC2 key pair names and VPC IDs. For more information, see AWS-specific parameter types.
+
+   - **`AWS::EC2::AvailabilityZone::Name`**: An Availability Zone, such as `us-west-2a`.
+   - **`AWS::EC2::Image::Id`**: An Amazon EC2 image ID, such as `ami-0ff8a91507f77f867`. Note that the AWS CloudFormation console doesn't show a drop-down list of values for this parameter type.
+   - **`AWS::EC2::Instance::Id`**: An Amazon EC2 instance ID, such as `i-1e731a32`.
+   - **`AWS::EC2::KeyPair::KeyName`**: An Amazon EC2 key pair name.
+   - **`AWS::EC2::SecurityGroup::GroupName`**: An EC2-Classic or default VPC security group name, such as my-sg-abc.
+   - **`AWS::EC2::SecurityGroup::Id`**: A security group ID, such as `sg-a123fd85`.
+   - **`AWS::EC2::Subnet::Id`**: A subnet ID, such as `subnet-123a351e`.
+   - **`AWS::EC2::Volume::Id`**: An Amazon EBS volume ID, such as `vol-3cdd3f56`.
+   - **`AWS::EC2::VPC::Id`**: A VPC ID, such as `vpc-a123baa3`.
+   - **`AWS::Route53::HostedZone::Id`**: An Amazon Route 53 hosted zone ID, such as `Z23YXV4OVPL04A`.
+   - **`List<AWS::EC2::AvailabilityZone::Name>`**: An array of Availability Zones for a region, such as `us-west-2a, us-west-2b`.
+   - **`List<AWS::EC2::Image::Id>`**: An array of Amazon EC2 image IDs, such as `ami-0ff8a91507f77f867, ami-0a584ac55a7631c0c`. Note that the AWS CloudFormation console doesn't show a drop-down list of values for this parameter type.
+   - **`List<AWS::EC2::Instance::Id>`**: An array of Amazon EC2 instance IDs, such as `i-1e731a32, i-1e731a34`.
+   - **`List<AWS::EC2::SecurityGroup::GroupName>`**: An array of EC2-Classic or default VPC security group names, such as `my-sg-abc, my-sg-def`.
+   - **`List<AWS::EC2::SecurityGroup::Id>`**: An array of security group IDs, such as `sg-a123fd85, sg-b456fd85`.
+   - **`List<AWS::EC2::Subnet::Id>`**: An array of subnet IDs, such as `subnet-123a351e, subnet-456b351e`.
+   - **`List<AWS::EC2::Volume::Id>`**: An array of Amazon EBS volume IDs, such as `vol-3cdd3f56, vol-4cdd3f56`.
+   - **`List<AWS::EC2::VPC::Id>`**: An array of VPC IDs, such as `vpc-a123baa3, vpc-b456baa3`
+   - **`List<AWS::Route53::HostedZone::Id>`**: An array of Amazon Route 53 hosted zone IDs, such as `Z23YXV4OVPL04A, Z23YXV4OVPL04B`.
+
+6. **`SSM Parameter Types`**: Parameters that correspond to existing parameters in Systems Manager Parameter Store. You specify a Systems Manager parameter key as the value of the SSM parameter, and AWS CloudFormation fetches the latest value from Parameter Store to use for the stack. For more information, see [SSM parameter types](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html#aws-ssm-parameter-types).
+
+---
+
+### Parameters: Properties
 
 - Description
 - Constraints
 - Constraint Description (String)
 - MinLength/MaxLength
 - MinValue/MaxValue
-- Defaults
+- Default
 - AllowedValues (array)
 - AllowedPattern (regexp)
 - NoEcho (Boolean): Helpful when you want to pass a secret
+
+For greater details, check the **[Documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html#parameters-section-structure-properties)**.
 
 ---
 
