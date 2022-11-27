@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SQSPolicyForS3Bucket-jayanta-s3-bucket",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "s3.amazonaws.com"
+      },
+      "Action": ["SQS:SendMessage"],
+      "Resource": "arn:aws:sqs:ap-south-1:336463900088:S3EventsQueue",
+      "Condition": {
+        "ArnLike": {
+          "aws:SourceArn": "arn:aws:s3:*:*:jayanta-s3-bucket"
+        },
+        "StringEquals": {
+          "aws:SourceAccount": "336463900088"
+        }
+      }
+    }
+  ]
+}

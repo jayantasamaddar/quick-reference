@@ -1,0 +1,4 @@
+{
+  "maxReceiveCount": 10,
+  "deadLetterTargetArn": "arn:aws:sqs:ap-south-1:336463900088:S3EventsQueueDLQ"
+}
