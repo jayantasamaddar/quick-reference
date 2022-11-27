@@ -39,7 +39,7 @@
   - [S3 Replication: Create Replication Rule](#s3-replication-create-replication-rule)
 - [S3: Storage Classes](#s3-storage-classes)
   - [S3 Storage Classes: Overview](#s3-storage-classes-overview)
-  - [S3 Storage Classes: Durability & Availability](#s3-storage-classes-durability--availability)
+  - [S3 Storage Classes: Durability \& Availability](#s3-storage-classes-durability--availability)
   - [S3 Storage Classes: Types](#s3-storage-classes-types)
   - [S3 Storage Classes: Lifecycle Rules](#s3-storage-classes-lifecycle-rules)
     - [Lifecycle Rules: Overview](#lifecycle-rules-overview)
@@ -50,7 +50,28 @@
   - [S3 Event Notifications: Create an S3 Event Notification](#s3-event-notifications-create-an-s3-event-notification)
   - [S3 Event Notifications: Setup Amazon EventBridge](#s3-event-notifications-setup-amazon-eventbridge)
 - [S3: Performance](#s3-performance)
-- [S3: S3 Select & Glacier Select](#s3-s3-select--glacier-select)
+- [S3: S3 Select \& Glacier Select](#s3-s3-select--glacier-select)
+- [S3: Using the CLI](#s3-using-the-cli)
+  - [S3 API](#s3-api)
+    - [\`mb](#mb)
+    - [`cp`](#cp)
+    - [`mv`](#mv)
+    - [`sync`](#sync)
+    - [`ls`](#ls)
+    - [`presign`](#presign)
+    - [`website`](#website)
+    - [`rm`](#rm)
+    - [`rb`](#rb)
+  - [S3API API](#s3api-api)
+    - [`create-bucket`](#create-bucket)
+    - [`put-public-access-block`](#put-public-access-block)
+    - [`put-bucket-policy`](#put-bucket-policy)
+    - [`put-bucket-versioning`](#put-bucket-versioning)
+    - [`get-bucket-versioning`](#get-bucket-versioning)
+    - [`list-object-versions`](#list-object-versions)
+    - [`delete-object`](#delete-object)
+    - [`delete-objects`](#delete-objects)
+    - [`delete-bucket`](#delete-bucket)
 - [References](#references)
 
 ---
@@ -989,7 +1010,766 @@ You can use the Amazon S3 Event Notifications feature to receive notifications w
 
 ---
 
+# S3: Using the CLI
+
+## S3 API
+
+### [`mb](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/mb.html)
+
+Creates a S3 bucket.
+
+**Syntax:**
+
+```s
+aws s3 mb [S3Uri] \
+ --region [Region] \ # The region to use. Overrides config/env settings.
+ --profile [Profile] \ # Use a specific profile from your credential file.
+```
+
+**Example:**
+
+```s
+aws s3 mb s3://jayanta-s3-bucket
+```
+
+**Response:**
+
+make_bucket: jayanta-s3-bucket
+
+---
+
+### [`cp`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/cp.html)
+
+Copies a local file(s) or S3 object(s) to another location locally or in S3.
+
+- Can Copy Local file(s) to S3
+- Can Copy S3 file(s) to Local Disk
+- Can Copy Files within the same S3 bucket
+- Can Copy Files across S3 buckets
+- Can Recursively copy files to and from S3
+
+**Syntax:**
+
+```s
+aws s3 cp [source] [destination] \
+  --acl ["private" | "public-read" | "public-read-write" | "authenticated-read" | "aws-exec-read", "bucket-owner-read" | "bucket-owner-full-control" | "log-delivery-write"] \
+  --expires [ISO 8601 Timestamp] \
+  --dryrun \ # execute as a dryrun
+  --recursive \ # Recursively copy all non-versioned objects
+  --quiet \ # Do not show copy related logs in the console
+  --exclude [RegExPattern] \
+  --include [RegExPattern] \
+  --storage-class [STANDARD | REDUCED_REDUNDANCY | STANDARD_IA | ONEZONE_IA | INTELLIGENT_TIERING | GLACIER | DEEP_ARCHIVE | GLACIER_IR] \ # Defaults to "STANDARD"
+  --sse ["AES256" | "aws:kms"] \
+  --sse-c ["AES256"] \
+  --sse-c-key [EncryptionKeyBlob] \
+  --sse-kms-key-id [KMSKeyID] \
+  --sse-c-copy-source [DecryptingAlgorithm | "AES256"] \ # Defaults to "AES256"
+  --sse-c-copy-source-key [EncryptionKeyBlob] \ # `--sse-c-copy-source` must be specified as well
+  --copy-props [none|metadata-directive|default] \
+  --expected-size [bytes] \
+  --only-show-errors \
+  --request-payer requester # Confirms that the requester knows that they will be charged for the request
+```
+
+Where,
+
+- **The S3 location must be a S3 URI**
+
+**EXAMPLES:**
+
+1. **Copying a local file to S3**
+
+   ```s
+   aws s3 cp ~/hello.txt s3://jayanta-s3-bucket/
+   ```
+
+   **Response:**
+
+   ```
+   upload: ./hello.txt to s3://jayanta-s3-bucket/hello.txt
+   ```
+
+2. **Copying a file from S3 to S3**
+
+   ```s
+   aws s3 cp s3://jayanta-s3-bucket/hello.txt s3://jayanta-s3-bucket/copied/hello.txt
+   ```
+
+   **Response:**
+
+   ```
+   copy: s3://jayanta-s3-bucket/hello.txt to s3://jayanta-s3-bucket/copied/hello.txt
+   ```
+
+3. **Copying an S3 object to a local file**
+
+   ```s
+   aws s3 cp s3://jayanta-s3-bucket/hello.txt ~/hello1.txt
+   ```
+
+   **Response:**
+
+   ```
+   download: s3://jayanta-s3-bucket/policy.json to ./policy1.json
+   ```
+
+4. **Recursively copies S3 objects to a local directory**
+
+   ```s
+   aws s3 cp s3://jayanta-s3-bucket . --recursive
+   ```
+
+   **Response:**
+
+   ```
+   download: s3://mybucket/test1.txt to test1.txt
+   download: s3://mybucket/test2.txt to test2.txt
+   ```
+
+5. **Recursively copying local files to S3**
+
+   ```s
+   aws s3 cp ~/s3TestFolder s3://jayanta-s3-bucket --recursive
+   ```
+
+   **Response:**
+
+   ```
+   upload: s3TestFolder/hello.txt to s3://jayanta-s3-bucket/hello.txt
+   upload: s3TestFolder/quickbrownfox.txt to s3://jayanta-s3-bucket/quickbrownfox.txt
+   ```
+
+---
+
+### [`mv`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/mv.html)
+
+Moves a local file(s) or S3 object(s) to another location locally or in S3.
+
+- Can Move Local file(s) to S3
+- If Move is done at the same location, the file is renamed.
+- Can Move S3 file(s) to Local Disk
+- Can Move Files within the same S3 bucket
+- Can Move Files across S3 buckets
+- Can Recursively Move files to and from S3
+
+**Syntax:**
+
+```s
+aws s3 mv [source] [destination] \
+  --acl ["private" | "public-read" | "public-read-write" | "authenticated-read" | "aws-exec-read", "bucket-owner-read" | "bucket-owner-full-control" | "log-delivery-write"] \
+  --expires [ISO 8601 Timestamp] \
+  --dryrun \ # execute as a dryrun
+  --recursive \ # Recursively move all non-versioned objects
+  --quiet \ # Do not show move related logs in the console
+  --exclude [RegExPattern] \
+  --include [RegExPattern] \
+  --storage-class [STANDARD | REDUCED_REDUNDANCY | STANDARD_IA | ONEZONE_IA | INTELLIGENT_TIERING | GLACIER | DEEP_ARCHIVE | GLACIER_IR] \ # Defaults to "STANDARD"
+  --sse ["AES256" | "aws:kms"] \
+  --sse-c ["AES256"] \
+  --sse-c-key [EncryptionKeyBlob] \
+  --sse-kms-key-id [KMSKeyID] \
+  --sse-c-copy-source [DecryptingAlgorithm | "AES256"] \ # Defaults to "AES256"
+  --sse-c-copy-source-key [EncryptionKeyBlob] \ # `--sse-c-copy-source` must be specified as well
+  --copy-props [none|metadata-directive|default] \
+  --expected-size [bytes] \
+  --only-show-errors \
+  --request-payer requester # Confirms that the requester knows that they will be charged for the request
+```
+
+Where,
+
+- **The S3 location must be a S3 URI**
+
+**EXAMPLES:**aws s3 mv s3://jayanta-s3-bucket/quickbrownfox.txt s3://jayanta-s3-bucket/thefoxandthelazydog.txt
+
+1. **Moving a local file to S3**
+
+   ```s
+   aws s3 mv ~/hello.txt s3://jayanta-s3-bucket/
+   ```
+
+   **Response:**
+
+   ```
+   upload: ./hello.txt to s3://jayanta-s3-bucket/hello.txt
+   ```
+
+2. **Renaming a file on S3**
+
+   ```s
+   aws s3 mv s3://jayanta-s3-bucket/quickbrownfox.txt s3://jayanta-s3-bucket/thefoxandthelazydog.txt
+   ```
+
+   **Response:**
+
+   ```
+   move: s3://jayanta-s3-bucket/quickbrownfox.txt to s3://jayanta-s3-bucket/thefoxandthelazydog.txt
+   ```
+
+3. **Moving a file from S3 to S3**
+
+   ```s
+   aws s3 mv s3://jayanta-s3-bucket/thefoxandthelazydog.txt s3://jayanta-s3-bucket/fox
+   ```
+
+   **Response:**
+
+   ```
+   move: s3://jayanta-s3-bucket/thefoxandthelazydog.txt to s3://jayanta-s3-bucket/fox
+   ```
+
+4. **Moving an S3 object to a local file**
+
+   ```s
+   aws s3 mv s3://jayanta-s3-bucket/hello.txt ~/hello1.txt
+   ```
+
+   **Response:**
+
+   ```
+   download: s3://jayanta-s3-bucket/policy.json to ./policy1.json
+   ```
+
+5. **Recursively moving S3 objects to a local directory**
+
+   ```s
+   aws s3 mv s3://jayanta-s3-bucket . --recursive
+   ```
+
+   **Response:**
+
+   ```
+   download: s3://mybucket/test1.txt to test1.txt
+   download: s3://mybucket/test2.txt to test2.txt
+   ```
+
+6. **Recursively moving local files to S3**
+
+   ```s
+   aws s3 mv ~/s3TestFolder s3://jayanta-s3-bucket --recursive
+   ```
+
+   **Response:**
+
+   ```
+   upload: s3TestFolder/hello.txt to s3://jayanta-s3-bucket/hello.txt
+   upload: s3TestFolder/quickbrownfox.txt to s3://jayanta-s3-bucket/quickbrownfox.txt
+   ```
+
+---
+
+### [`sync`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/sync.html)
+
+Syncs directories and S3 prefixes. Recursively copies new and updated files from the source directory to the destination. Only creates folders in the destination if they contain one or more files.
+
+**Syntax:**
+
+```s
+aws s3 sync [source] [destination] \
+  --acl ["private" | "public-read" | "public-read-write" | "authenticated-read" | "aws-exec-read", "bucket-owner-read" | "bucket-owner-full-control" | "log-delivery-write"] \
+  --expires [ISO 8601 Timestamp] \
+  --dryrun \ # execute as a dryrun
+  --recursive \ # Recursively delete all non-versioned objects
+  --quiet \ # Do not show delete logs in the console
+  --exclude [RegExPattern] \
+  --include [RegExPattern] \
+  --storage-class [STANDARD | REDUCED_REDUNDANCY | STANDARD_IA | ONEZONE_IA | INTELLIGENT_TIERING | GLACIER | DEEP_ARCHIVE | GLACIER_IR] \ # Defaults to "STANDARD"
+  --sse ["AES256" | "aws:kms"] \
+  --sse-c ["AES256"] \
+  --sse-c-key [EncryptionKeyBlob] \
+  --sse-kms-key-id [KMSKeyID] \
+  --sse-c-copy-source [DecryptingAlgorithm | "AES256"] \ # Defaults to "AES256"
+  --sse-c-copy-source-key [EncryptionKeyBlob] \ # `--sse-c-copy-source` must be specified as well
+  --copy-props [none|metadata-directive|default] \
+  --expected-size [bytes] \
+  --only-show-errors \
+  --request-payer requester # Confirms that the requester knows that they will be charged for the request
+```
+
+**Example:**
+
+```s
+aws s3 sync ~/s3TestFolder s3://jayanta-s3-bucket/S3TestFolder
+```
+
+**Response:**
+
+```
+upload: s3TestFolder/hello.txt to s3://jayanta-s3-bucket/S3TestFolder/hello.txt
+upload: s3TestFolder/quickbrownfox.txt to s3://jayanta-s3-bucket/S3TestFolder/quickbrownfox.txt
+upload: s3TestFolder/testSync.txt to s3://jayanta-s3-bucket/S3TestFolder/testSync.txt
+```
+
+---
+
+### [`ls`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/ls.html)
+
+List S3 objects and common prefixes under a prefix or all S3 buckets.
+
+> **Note:** The `--output` and `--no-paginate` arguments are ignored for this command.
+
+**Syntax:**
+
+```s
+aws s3 ls [S3Uri | NONE] \
+ --recursive \
+ --human-readable \
+ --summarize \
+```
+
+1. **Show all Buckets**
+
+   ```s
+   aws s3 ls
+   ```
+
+   **Response:**
+
+   ```
+   2022-11-21 17:15:37 elasticbeanstalk-ap-south-1-336463900088
+   2022-11-27 12:00:19 jayanta-s3-bucket
+   ```
+
+2. **Show all objects inside a S3 bucket**
+
+   ```s
+   aws s3 ls s3://jayanta-s3-bucket --recursive
+   ```
+
+   **Response:**
+
+   ```
+   2022-11-27 13:24:00         13 S3TestFolder/hello.txt
+   2022-11-27 13:24:00         44 S3TestFolder/quickbrownfox.txt
+   ```
+
+---
+
+### [`presign`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/presign.html)
+
+Generate a pre-signed URL for an Amazon S3 object. This allows anyone who receives the pre-signed URL to retrieve the S3 object with an HTTP GET request. All presigned URL’s now use sigv4 so the region needs to be configured explicitly.
+
+**Syntax:**
+
+```s
+aws s3 presign [S3Uri] \
+ --expires-in [Seconds | 3600]
+```
+
+Where,
+
+- `--expires-in` (integer): Number of seconds until the pre-signed URL expires. Default is `3600` seconds. Maximum is `604800` seconds.
+
+**Example:**
+
+```s
+aws s3 presign s3://jayanta-s3-bucket/test2.txt \
+  --expires-in 604800
+```
+
+**Response:**
+
+```
+https://jayanta-s3-bucket.s3.ap-south-1.amazonaws.com/key?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAEXAMPLE123456789%2F20210621%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210621T041609Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=EXAMBLE1234494d5fba3fed607f98018e1dfc62e2529ae96d844123456
+```
+
+---
+
+### [`website`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/website.html)
+
+Set the website configuration for a bucket.
+
+**Syntax:**
+
+```s
+aws s3 website [S3Uri] \
+ --index-document [suffix]
+ --error-document [errorKey]
+```
+
+Where,
+
+- **`--index-document`** (string): A suffix that is appended to a request that is for a directory on the website endpoint (e.g. if the suffix is index.html and you make a request to samplebucket/images/ the data that is returned will be for the object with the key name images/index.html) The suffix must not be empty and must not include a slash character.
+
+- **`--error-document`** (string): The object key name to use when a 4XX class error occurs.
+
+**Example:**
+
+```s
+aws s3 website s3://jayanta-s3-bucket --index-document index.html --error-document error.html
+```
+
+---
+
+### [`rm`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/rm.html)
+
+Deletes an S3 object.
+
+**Syntax:**
+
+```s
+aws s3 rm [S3Uri] \
+  --dryrun \ # execute as a dryrun
+  --recursive \ # Recursively delete all non-versioned objects
+  --quiet \ # Do not show delete logs in the console
+  --exclude [RegExPattern] \
+  --include [RegExPattern] \
+  --only-show-errors \ # Only show errors in the console
+  --page-size [Number] \
+  --request-payer requester # Confirms that the requester knows that they will be charged for the request
+```
+
+**Example: Recursively delete all objects in a S3 Bucket that has versioning disabled in quiet mode**
+
+```s
+aws s3 rm s3://jayanta-s3-bucket --recursive --quiet
+```
+
+---
+
+### [`rb`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/rb.html)
+
+Deletes an empty S3 bucket. A bucket must be completely empty of objects and versioned objects before it can be deleted. However, the `--force` parameter can be used to delete the non-versioned objects in the bucket before the bucket is deleted.
+
+**Syntax:**
+
+```s
+aws s3 rm [S3Uri] \
+ --force
+```
+
+Where,
+
+- `S3Uri`: The Bucket URI
+- `--force`: Deletes all objects in the bucket including the bucket itself. Note that versioned objects will not be deleted in this process which would cause the bucket deletion to fail because the bucket would not be empty.
+
+  > Note: To delete versioned objects, use:
+  >
+  > - The **[`s3api delete-object`]** command with the `--version-id` parameter to delete one versioned object at a time.
+  > - The **[`s3api delete-objects`](#delete-objects)** command with the `--delete` option taking the versioned objects queried using [`list-object-versions`](#list-object-versions), to delete multiple/all objects.
+
+**Example 1: Delete an empty bucket**
+
+```s
+aws s3 rb s3://jayanta-s3-bucket
+```
+
+**Example 2: Delete the non-versioned objects before deleting the bucket**
+
+```s
+aws s3 rb s3://jayanta-s3-bucket --force
+```
+
+**Response:**
+
+remove_bucket: jayanta-s3-bucket
+
+---
+
+## S3API API
+
+### [`create-bucket`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/create-bucket.html)
+
+Creates a new S3 bucket.
+
+By default, the bucket is created in the US East (N. Virginia) Region (`us-east-1`). You can optionally specify a Region in the request body. You might choose a Region to optimize latency, minimize costs, or address regulatory requirements. For example, if you reside in Europe, you will probably find it advantageous to create buckets in the Europe (Ireland) Region.
+
+**Syntax:**
+
+```s
+aws s3api create-bucket \
+  --bucket [GloballyUniqueBucketName] \
+  --region [Region] \
+  --create-bucket-configuration LocationConstraint=[Region]
+```
+
+**Example:**
+
+```s
+aws s3api create-bucket \
+  --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+  --region ap-south-1
+  --create-bucket-configuration LocationConstraint=ap-south-1
+```
+
+---
+
+### [`put-public-access-block`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-public-access-block.html)
+
+Creates or modifies the **`PublicAccessBlock`** configuration for an Amazon S3 bucket. To use this operation, you must have the **`s3:PutBucketPublicAccessBlock`** permission.
+
+**Syntax:**
+
+```s
+aws s3api put-public-access-block \
+  --bucket [BucketName] \
+  --public-access-block-configuration BlockPublicAcls=boolean,IgnorePublicAcls=boolean,BlockPublicPolicy=boolean,RestrictPublicBuckets=boolean
+```
+
+**Example: Block public access completely**
+
+```s
+aws s3api put-public-access-block \
+  --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+  --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+```
+
+---
+
+### [`put-bucket-policy`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-bucket-policy.html)
+
+Applies an Amazon S3 bucket policy to an Amazon S3 bucket. If you are using an identity other than the root user of the Amazon Web Services account that owns the bucket, the calling identity must have the **`PutBucketPolicy`** permissions on the specified bucket and belong to the bucket owner’s account in order to use this operation.
+
+If you don’t have **`PutBucketPolicy`** permissions, Amazon S3 returns a `403 Access Denied error`. If you have the correct permissions, but you’re not using an identity that belongs to the bucket owner’s account, Amazon S3 returns a `405 Method Not Allowed` error.
+
+> **Note**: As a security precaution, the root user of the Amazon Web Services account that owns a bucket can always use this operation, even if the policy explicitly denies the root user the ability to perform this action.
+
+**Syntax**:
+
+```s
+aws s3api put-bucket-policy \
+  --bucket [BucketName] \
+  --policy [PolicyJSONString | JSONFilePathURL]
+```
+
+**Example**:
+
+```s
+aws s3api put-bucket-policy \
+  --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+  --policy file:///home/jayantasamaddar/Work/quick-reference/aws/monitoring/assets/s3policy.json
+```
+
+---
+
+### [`put-bucket-versioning`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-bucket-versioning.html)
+
+Sets the versioning state of an existing bucket.
+
+You can set the versioning state with one of the following values:
+
+- **Enabled**: Enables versioning for the objects in the bucket. All objects added to the bucket receive a unique version.
+- **Suspended**: Disables versioning for the objects in the bucket. All objects added to the bucket receive the version ID null.
+
+In order to enable MFA Delete, you must be the bucket owner. If you are the bucket owner and want to enable MFA Delete in the bucket versioning configuration, you must include the `x-amz-mfa` request header and the Status and the **`MfaDelete`** request elements in a request to set the versioning state of the bucket.
+
+**Syntax:**
+
+```s
+aws s3api put-bucket-versioning \
+ --bucket [BucketName] \
+ --versioning-configuration MFADelete=["Enabled"|"Disabled"],Status=["Enabled"|"Disabled"] \
+ --mfa [DeviceSerialNumber AuthenticationCode] # Required if versioning is configured with MFA enabled
+```
+
+**Example:**
+
+```s
+aws s3api put-bucket-versioning \
+ --bucket "jayanta-s3-bucket" \
+ --versioning-configuration Status=Enabled
+```
+
+**Response:**
+
+None
+
+(use **[`aws s3api get-bucket-versioning`](#get-bucket-versioning)** to check)
+
+---
+
+### [`get-bucket-versioning`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/get-bucket-versioning.html)
+
+Returns the versioning state of a bucket.
+
+To retrieve the versioning state of a bucket, you must be the bucket owner.
+
+This implementation also returns the MFA Delete status of the versioning state. If the MFA Delete status is enabled, the bucket owner must use an authentication device to change the versioning state of the bucket.
+
+If the versioning state has never been set on a bucket, it has no versioning state; a **`GetBucketVersioning`** request does not return a versioning state value.
+
+**Syntax:**
+
+```s
+aws s3api get-bucket-versioning --bucket [BucketName]
+```
+
+**Example:**
+
+```s
+aws s3api get-bucket-versioning --bucket jayanta-s3-bucket
+```
+
+**Response: If Bucket Versioning is Enabled**
+
+```json
+{
+  "Status": "Enabled"
+}
+```
+
+---
+
+### [`list-object-versions`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/list-object-versions.html)
+
+Returns metadata about all versions of the objects in a bucket. You can also use request parameters as selection criteria to return metadata about a subset of all the object versions.
+
+> **Note**:
+>
+> - To use this operation, you must have permissions to perform the **`s3:ListBucketVersions`** action. Be aware of the name difference.
+> - To use this operation, you must have **READ** access to the bucket.
+> - A 200 OK response can contain valid or invalid XML. Make sure to design your application to parse the contents of the response and handle it appropriately.
+
+`list-object-versions` is a paginated operation. Multiple API calls may be issued in order to retrieve the entire data set of results. You can disable pagination by providing the `--no-paginate` argument. When using `--output` text and the `--query` argument on a paginated response, the `--query` argument must extract data from the results of the following query expressions: `Versions`, `DeleteMarkers`, `CommonPrefixes`
+
+**Syntax:**
+
+```s
+aws s3api list-object-versions \
+ --bucket [BucketName] \
+ --output [json|text|table|yaml|yaml-stream] \
+ --query [JMESPathQueryFilter]
+```
+
+**Example:**
+
+```s
+aws s3api list-object-versions \
+ --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+```
+
+**Response:**
+
+```json
+{
+  "Versions": [
+    {
+      "ETag": "\"d41d8cd98f00b204e9800998ecf8427e\"",
+      "Size": 0,
+      "StorageClass": "STANDARD",
+      "Key": "AWSLogs/336463900088/CloudTrail-Digest/",
+      "VersionId": "null",
+      "IsLatest": true,
+      "LastModified": "2022-11-27T05:47:59+00:00",
+      "Owner": {
+        "ID": "361bd2122fc9fc14028f71099415497160d1c4521906aba4ef590b0fab39151b"
+      }
+    },
+    {
+      "ETag": "\"d41d8cd98f00b204e9800998ecf8427e\"",
+      "Size": 0,
+      "StorageClass": "STANDARD",
+      "Key": "AWSLogs/336463900088/CloudTrail/",
+      "VersionId": "null",
+      "IsLatest": true,
+      "LastModified": "2022-11-27T05:47:59+00:00",
+      "Owner": {
+        "ID": "361bd2122fc9fc14028f71099415497160d1c4521906aba4ef590b0fab39151b"
+      }
+    },
+    {
+      "ETag": "\"a3f37dbb365ee9c34a60a695117771d8\"",
+      "Size": 4507,
+      "StorageClass": "STANDARD",
+      "Key": "AWSLogs/336463900088/CloudTrail/ap-south-1/2022/11/27/336463900088_CloudTrail_ap-south-1_20221127T0500Z_JDGrCnhiCAnXixjI.json.gz",
+      "VersionId": "null",
+      "IsLatest": true,
+      "LastModified": "2022-11-27T05:49:31+00:00",
+      "Owner": {
+        "ID": "361bd2122fc9fc14028f71099415497160d1c4521906aba4ef590b0fab39151b"
+      }
+    }
+  ]
+}
+```
+
+---
+
+### [`delete-object`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/delete-object.html)
+
+Removes the null version (if there is one) of an object and inserts a delete marker, which becomes the latest version of the object. If there isn’t a null version, Amazon S3 does not remove any objects but will still respond that the command was successful.
+
+**Syntax:**
+
+```s
+aws s3api delete-object \
+ --bucket [BucketName] \
+ --key [ObjectKey] \
+ --mfa [DeviceSerialNumber AuthenticationCode] # Required if versioning is configured with MFA enabled \
+ --version-id [ObjectVersionId] \ # To delete a specific version
+ --request-payer requester # Confirms that the requester knows that they will be charged for the request
+```
+
+**Example: Delete an object**
+
+```s
+aws s3api delete-object \
+ --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+ --key test.txt
+```
+
+**Response:**
+
+```json
+{
+  "VersionId": "9_gKg5vG56F.TTEUdwkxGpJ3tNDlWlGq",
+  "DeleteMarker": true
+}
+```
+
+---
+
+### [`delete-objects`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/delete-objects.html)
+
+This action enables you to delete multiple objects from a bucket using a single HTTP request. If you know the object keys that you want to delete, then this action provides a suitable alternative to sending individual delete requests, reducing per-request overhead.
+
+The request contains a list of up to 1000 keys that you want to delete.
+
+**Syntax:**
+
+```s
+aws s3api delete-objects
+ --bucket [BucketName]
+ --delete Objects=[{Key=string,VersionId=string},{Key=string,VersionId=string}],Quiet=boolean
+ --mfa [DeviceSerialNumber AuthenticationCode] # Required if versioning is configured with MFA enabled
+```
+
+**Example: Empty a S3 bucket (delete all objects including those versioned)**
+
+```s
+aws s3api delete-objects \
+ --bucket "aws-cloudtrail-logs-336463900088-38430ad1" \
+ --delete "$(aws s3api list-object-versions \
+ --bucket 'aws-cloudtrail-logs-336463900088-38430ad1' \
+ --output=json \
+ --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}')"
+```
+
+---
+
+### [`delete-bucket`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/delete-bucket.html)
+
+Deletes the S3 bucket. All objects (including all object versions and delete markers) in the bucket must be deleted before the bucket itself can be deleted.
+
+**Syntax:**
+
+```s
+aws s3api delete-bucket
+ --bucket [BucketName]
+```
+
+**Example:**
+
+```s
+aws s3api delete-bucket
+ --bucket "aws-cloudtrail-logs-336463900088-7a23c688"
+```
+
+---
+
 # References
 
 - [S3 Storage Classes](https://aws.amazon.com/s3/storage-classes/)
 - [Amazon S3 Pricing](https://aws.amazon.com/s3/pricing)
+- [Empty S3 Bucket](https://towardsthecloud.com/aws-cli-empty-s3-bucket)
