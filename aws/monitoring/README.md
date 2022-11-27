@@ -9,6 +9,8 @@
   - [CloudWatch Custom Metrics](#cloudwatch-custom-metrics)
   - [CloudWatch Logs](#cloudwatch-logs)
     - [CloudWatch Logs: Overview](#cloudwatch-logs-overview)
+    - [CloudWatch Logs: Log Stream](#cloudwatch-logs-log-stream)
+    - [CloudWatch Logs: Log Groups](#cloudwatch-logs-log-groups)
     - [CloudWatch Logs: Sources](#cloudwatch-logs-sources)
     - [CloudWatch Logs: Metric Filter \& Insights](#cloudwatch-logs-metric-filter--insights)
     - [CloudWatch Logs: EC2 Instance Recovery](#cloudwatch-logs-ec2-instance-recovery)
@@ -27,13 +29,38 @@
   - [EventBridge: Schema Registry](#eventbridge-schema-registry)
   - [EventBridge: Resource-Based Policy](#eventbridge-resource-based-policy)
   - [Amazon EventBridge vs CloudWatch Events](#amazon-eventbridge-vs-cloudwatch-events)
+- [AWS X-Ray](#aws-x-ray)
+  - [Debugging in Production: Old Way](#debugging-in-production-old-way)
+  - [X-Ray: Overview](#x-ray-overview)
+  - [X-Ray: Tracing](#x-ray-tracing)
+  - [X-Ray: Concepts](#x-ray-concepts)
+  - [X-Ray: Setup](#x-ray-setup)
+  - [X-Ray: Get Started](#x-ray-get-started)
+  - [X-Ray Troubleshooting](#x-ray-troubleshooting)
+  - [X-Ray: Instrumentation in your code](#x-ray-instrumentation-in-your-code)
+  - [X-Ray: Sampling Rules](#x-ray-sampling-rules)
+    - [Sampling Rules: Overview](#sampling-rules-overview)
+  - [Sampling Rules: Custom Sampling Rules](#sampling-rules-custom-sampling-rules)
+  - [X-Ray: APIs](#x-ray-apis)
+  - [X-Ray Integration with Elastic Beanstalk](#x-ray-integration-with-elastic-beanstalk)
+  - [Xray Integration with ECS](#xray-integration-with-ecs)
+    - [Method 1: Daemon as Container](#method-1-daemon-as-container)
+    - [Method 2: Sidecar](#method-2-sidecar)
+    - [Method 3: Fargate Clusters](#method-3-fargate-clusters)
+- [AWS CloudTrail](#aws-cloudtrail)
+  - [CloudTrail: Overview](#cloudtrail-overview)
+  - [CloudTrail: Events](#cloudtrail-events)
+    - [CloudTrail Events: Types of Events](#cloudtrail-events-types-of-events)
+    - [CloudTrail Events: Event Retention](#cloudtrail-events-event-retention)
+  - [CloudTrail: Create a Trail](#cloudtrail-create-a-trail)
 - [Using the AWS CLI](#using-the-aws-cli)
-  - [CloudWatch](#cloudwatch-1)
+  - [CloudWatch API](#cloudwatch-api)
     - [`put-metric-data`](#put-metric-data)
-  - [Logs](#logs)
+  - [Logs API](#logs-api)
+    - [`create-log-group`](#create-log-group)
     - [`put-metric-filter`](#put-metric-filter)
     - [`put-subscription-filter`](#put-subscription-filter)
-  - [Events](#events)
+  - [Events API](#events-api)
     - [`create-event-bus`](#create-event-bus)
     - [`describe-event-bus`](#describe-event-bus)
     - [`create-archive`](#create-archive)
@@ -45,6 +72,10 @@
     - [`remove-targets`](#remove-targets)
     - [`delete-rule`](#delete-rule)
     - [`delete-event-bus`](#delete-event-bus)
+  - [CloudTrail API](#cloudtrail-api)
+    - [`create-trail`](#create-trail)
+    - [`delete-trail`](#delete-trail)
+- [References](#references)
 
 ---
 
@@ -56,19 +87,19 @@ We know how to deploy applications. What we may not know is
 
 # Monitoring in AWS
 
-- **AWS CloudWatch**:
+- **[AWS CloudWatch](#cloudwatch)**
 
   - Metrics: Collect and track key metrics
   - Logs: Collect, monitor, analyze and store logs
   - Events: Send notifications when certain events happen in your AWS
   - Alarms: React in real-time to metrics/events
 
-- **AWS X-Ray**:
+- **[AWS X-Ray](#aws-x-ray)**
 
   - Troubleshooting application performance (e.g. latency) and errors
   - Distributed tracing of microservices
 
-- **AWS CloudTrail**:
+- **[AWS CloudTrail](#aws-cloudtrail)**
 
   - Internal monitoring of API calls made
   - Audit changes to AWS Resources by your users
@@ -123,13 +154,32 @@ We know how to deploy applications. What we may not know is
 - You can use Amazon CloudWatch Logs to monitor, store, and access your log files from Amazon Elastic Compute Cloud (Amazon EC2) instances, AWS CloudTrail, Route 53, and other sources.
 - **Log groups**: arbitrary name, usually representing an application
 - **Log stream**: instances within application, log files, containers
-- Can define log expiration policies (never expire, 30 days, etc)
+- Can define log expiration policies (Default: `never expire`, `30 days`, etc)
 - CloudWatch Logs cans end logs to:
   - Amazon S3 (exports)
   - Kinesis Data Streams
   - Kinesis Data Firehose
   - AWS Lambda
   - ElasticSearch
+
+---
+
+### CloudWatch Logs: Log Stream
+
+A log stream is a sequence of log events that share the same source. Each separate source of logs in CloudWatch Logs makes up a separate log stream.
+
+---
+
+### CloudWatch Logs: Log Groups
+
+A Log Group is a group of log streams that share the same retention, monitoring and access control settings.
+
+- You can create up to `20,000` log groups per account.
+- You must use the following guidelines when naming a log group:
+  - Log group names must be unique within a region for an AWS account.
+  - Log group names can be between `1` and `512` characters long.
+  - Log group names consist of the following characters: `a-z`, `A-Z`, `0-9`, `_` (underscore), `-` (hyphen), `/` (forward slash), `.` (period), and `#` (number sign)
+- When you create a log group, by default the log events in the log group never expire. To set a retention policy so that events expire and are deleted after a specified time, use **`PutRetentionPolicy`**.
 
 ---
 
@@ -417,9 +467,497 @@ Just like we have S3 Bucket Policy for S3 or SQS resource policy for SQSQs, we c
 
 ---
 
+# AWS X-Ray
+
+## Debugging in Production: Old Way
+
+- Test locally
+- Add log statements everywhere
+- Re-deploy in production
+- Log formats differ across applications using CloudWatch and analytics is hard
+- Debugging monolithic architecture "easy", distributed architecture "hard"
+- No common views of your entire architecture
+
+Enter AWS X-Ray
+
+---
+
+## X-Ray: Overview
+
+**AWS X-Ray** provides a complete view of requests as they travel through your application and filters visual data across payloads, functions, traces, services, APIs, and more with no-code and low-code motions.
+
+![X-Ray Overview](assets/x-ray-overview.png)
+
+**Advantages**:
+
+- Troubleshoot the performance of applications and identify bottlenecks
+- Understand dependencies in a microservices architecture
+- Pinpoint service issues
+- Review request behaviour
+- Find errors and exceptions
+- Answer questions such as: Are we meeting time SLA in terms of latency or time to process a request?
+- Understand which service is throttling us
+- Identify users that are impacted
+- X-Ray is graphical so even non-technical people can help troubleshoot
+
+**Compatibility**:
+
+- AWS Lambda
+- Beanstalk
+- ECS
+- ELB
+- API Gateway
+- EC2 Instances or any application server (even On-Premise)
+
+**Security:**
+
+- IAM for authorization
+- KMS for encryption at rest
+
+**Perpetual Free Tier:**
+
+- The first `100,000` traces recorded each month are free.
+- The first `1,000,000` traces retrieved or scanned each month are free.
+
+---
+
+## X-Ray: Tracing
+
+- Tracing is an end-to-end way of following a **request** made to an application server.
+- Each component dealing with the request adds its own **trace**.
+- Tracing is made of segments (+ sub-segments).
+- Annotations can be added to traces to provide extra-information.
+- What can we trace:
+  - Every request
+  - Sample request (as a % for example or a rate per minute)
+- X-Ray service collects data from all the different services.
+- Service map is computed from all the segments and traces.
+
+---
+
+## X-Ray: Concepts
+
+- **Segments**: Each application / service will send them
+- **Subsegments**: If you need more details in your Segments
+- **Trace**: Segments collected together to form an end-to-end trace
+- **Sampling**: Decrease the amount of requests sent to X-Ray, reduce cost
+- **Annotations**: Key-value pairs used to **index** traces and use with **filters**
+- **Metadata**: Key-value pairs, **NOT indexed**, can not use for searching
+
+- The X-Ray Daemon / Agent has a config to send traces cross-account:
+  - Make sure the IAM permissions are correct - the agent will automatically assume the correct role
+  - This allows to have a central account for all your application tracing
+
+---
+
+## X-Ray: Setup
+
+1. **Your code (Java, Python, Node.js, Go, .NET) must import the AWS SDK**
+
+   - Very little code modification needed
+   - The X-Ray SDK will then capture:
+     - Calls to the AWS services
+     - HTTP / HTTPS requests
+     - Database Calls (MySQL, PostgreSQL, DynamoDB)
+     - Queue Calls (SQS), etc.
+
+2. **[Install the X-Ray daemon or enable the X-Ray AWS Integration](https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon.html)**
+
+   The AWS X-Ray SDK does not send trace data directly to AWS X-Ray. To avoid calling the service every time your application serves a request, the SDK sends the trace data to a daemon, which collects segments for multiple requests and uploads them in batches. Use a script to run the daemon alongside your application.
+
+   - X-Ray daemon works as a low-level UDP packet interceptor (Linux / Windows / Mac)
+   - AWS Lambda / other AWS services that have integrations with X-Ray, will already run the daemon for you
+   - Each application must also have the IAM permissions to write data to X-Ray
+
+---
+
+## X-Ray: Get Started
+
+1. Go to the [X-Ray Console](https://ap-south-1.console.aws.amazon.com/xray/home?region=ap-south-1#/welcome)
+2. Click the **`Get started`** button
+3. Select sample or your own application and click **`Next`**.
+4. Select your programming language and click **`Next`**. Options are:
+   - Node.js
+   - Java
+   - C# .NET
+   - Python
+   - Go
+5. Follow the instructions on this page and click **`Done`** after completion.
+
+---
+
+## X-Ray Troubleshooting
+
+1. **If X-Ray is not working on EC2**
+
+   - Ensure the EC2 IAM Role has the proper write permissions to X-Ray.
+   - Ensure the EC2 Instance is running the [X-Ray Daemon](#x-ray-setup).
+
+2. **Enable X-Ray on AWS Lambda**
+
+   - Ensure it has an IAM execution role with proper policy (**`AWSX-RayWriteOnlyAccess`**).
+   - Ensure that X-Ray is imported in the code and X-Ray integration is enabled on AWS Lambda.
+
+---
+
+## X-Ray: Instrumentation in your code
+
+- In the context of computer programming, **instrumentation** refers to the measure of a product's performance, in order to diagnose errors and to write trace information.
+- To instrument your application code, use the X-Ray SDK
+- Instrumenting our code to get trace information from our code into the X-Ray service:
+
+  **Example for `Node.js` and `Express`**
+
+  ```js
+  const express = require('express');
+  const AWSXRay = require('aws-xray-sdk');
+
+  const app = express();
+
+  app.use(AWSXRay.express.openSegment('MyApp'));
+
+  app.get('/', (req, res) => {
+    res.render('index');
+  });
+
+  app.use(AWSXRay.express.closeSegment());
+  ```
+
+- Many SDK require only configuration changes.
+- You can modify your application code to customize and annotate the data that the SDK sends to X-Ray, using **interceptors**, **filters**, **handlers**, **middleware**
+
+---
+
+## X-Ray: Sampling Rules
+
+### Sampling Rules: Overview
+
+- With sampling rules, you control the amount of data that you record.
+- You can modify sampling rules without changing your code or do anything with the X-Ray SDK.
+- By default, the X-Ray SDK records the first request each second and 5% of any additional requests.
+  - **One request per second** is the **`reservoir`**, which ensures that at least one trace is record each second, as long as the service is receiving requests.
+  - **5%** is the **`rate`** at which additional requests beyond the reservoir size are sampled.
+
+---
+
+## Sampling Rules: Custom Sampling Rules
+
+- You can create your own rules with the reservoir and rate.
+
+---
+
+## X-Ray: APIs
+
+**Write APIs**
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "xray:PutTraceSegments",
+    "xray:PutTelemetryRecords",
+    "xray:GetSamplingRules",
+    "xray:GetSamplingTargets",
+    "xray:GetSamplingStatisticSummaries"
+  ],
+  "Resources": ["*"]
+}
+```
+
+- **`PutTraceSegments`**: Uploads segment documents to AWS X-Ray
+- **`PutTelemetryRecords`**: Used by the AWS X-Ray daemon to upload telemetry
+  - SegmentsReceivedCount
+  - SegmentsRejectedCount
+  - BackendConnectionErrors
+- **`GetSamplingRules`**: Retrieve all sampling rules (to know what / when to send)
+- **`GetSamplingTargets`** & **`GetSamplingStatisticSummaries`**: Advanced APIs related to **`GetSamplingRules`**
+- The X-Ray Daemon needs to have an IAM policy authorizing the correct API calls to function correctly.
+
+**Read APIs**
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "xray:GetSamplingRules",
+    "xray:GetSamplingTargets",
+    "xray:GetSamplingStatisticSummaries",
+    "xray:BatchGetTraces",
+    "xray:GetServiceGraph",
+    "xray:GetTraceGraph",
+    "xray:GetTraceSummaries",
+    "xray:GetGroups",
+    "xray:GetGroup",
+    "xray:GetTimeSeriesServiceStatistics"
+  ],
+  "Resources": ["*"]
+}
+```
+
+- **`GetServiceGraph`**: Main graph
+- **`BatchGetTraces`**: Retrieves a list of traces specified by ID. Each trace is a collection of segment documents that originate from a single request.
+- **`GetTraceSummaries`**: Retrieves the ID and annotations for traces available for a specified time frame using an optional filter. To get the full traces, pass the trace IDs to **`BatchGetTraces`**.
+- **`GetTraceGraph`**: Retrieves a service graph for one or more specific trace IDs.
+
+---
+
+## [X-Ray Integration with Elastic Beanstalk](https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon-beanstalk.html)
+
+- AWS Elastic Beanstalk platforms include the X-Ray Daemon.
+- You can run the Daemon by:
+
+  1. Go to the Elastic Beanstalk application Configuration --> **Software** --> **`Edit`** ---> **AWS X-Ray** --> **`Enable`**
+
+  2. Setting an option in the Elastic Beanstalk console or with a configuration file in `.ebextensions/xray-daemon.config`.
+
+  ```yml
+  option_settings:
+    aws:elasticbeanstalk:xray:
+      XRayEnabled: true
+  ```
+
+- Make sure to give your EC2 Instance Profile the correct IAM Role (with permissions) so that the X-Ray Daemon can function correctly.
+- Then make sure your application code is instrumented with the X-Ray SDK to send the traces.
+
+> **Note**: The X-Ray Daemon is not provided for Multi-Docker container, you will have to manage the X-Ray Daemon yourself.
+
+---
+
+## [Xray Integration with ECS](https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon-ecs.html)
+
+### Method 1: Daemon as Container
+
+- Run the X-Ray Daemon as a container in each of the EC2 Instances
+- Map ports correctly
+
+---
+
+### Method 2: Sidecar
+
+- Run the X-Ray Daemon side-by-side as a sidecar per application container
+
+**Example Task Definition:**
+
+```json
+{
+  "name": "xray-daemon",
+  "image": "123456789012.dkr.ecr.us-east-2.amazonaws.com/xray-daemon",
+  "cpu": 32,
+  "memoryReservation": 256,
+  "portMappings" : [
+      {
+          "hostPort": 0,
+          "containerPort": 2000,
+          "protocol": "udp"
+      }
+   ]
+},
+{
+  "name": "scorekeep-api",
+  "image": "123456789012.dkr.ecr.us-east-2.amazonaws.com/scorekeep-api",
+  "cpu": 192,
+  "memoryReservation": 512,
+  "environment": [
+      { "name" : "AWS_REGION", "value" : "us-east-2" },
+      { "name" : "NOTIFICATION_TOPIC", "value" : "arn:aws:sns:us-east-2:123456789012:scorekeep-notifications" },
+      { "name" : "AWS_XRAY_DAEMON_ADDRESS", "value" : "xray-daemon:2000" }
+  ],
+  "portMappings" : [
+      {
+          "hostPort": 5000,
+          "containerPort": 5000
+      }
+  ],
+  "links": [
+    "xray-daemon"
+  ]
+}
+```
+
+---
+
+### Method 3: Fargate Clusters
+
+- We do not have control over the underlying instances, so we cannot use the X-Ray Daemon Container
+- We have to use the X-Ray Container as a sidecar pattern
+- Fargate Task will now consist of the Application Container and the X-Ray Container as a Sidecar to the App Container
+
+---
+
+# AWS CloudTrail
+
+## CloudTrail: Overview
+
+**AWS CloudTrail** is a web service that records Amazon Web Services API calls for your Amazon Web Services account and delivers log files to an Amazon S3 bucket. The recorded information includes the identity of the user, the start time of the Amazon Web Services API call, the source IP address, the request parameters, and the response elements returned by the service.
+
+![CloudTrail: Overview](assets/cloudtrail-overview.png)
+
+- Provides governance, compliance and audit for your AWS Account.
+- CloudTrail is enabled by default.
+- Get an history of events / API calls made within your AWS Account by:
+  - Console
+  - SDK
+  - CLI
+  - AWS Services
+- Can put logs from CloudTrail into CloudWatch logs or Amazon S3.
+- A trail can be applied to All Regions (default) or Single Region.
+- **Use Case**:
+
+  - If a resource is deleted in AWS, investigate CloudTrail first.
+
+- **Free Tier**:
+
+  - AWS CloudTrail logs management events across AWS services by default and is available for at no charge.
+  - You can view, search, and download the most recent 90-day history of your account’s control plane activity at no additional cost using CloudTrail in the CloudTrail console or by using the CloudTrail lookup-events API.
+
+---
+
+## CloudTrail: Events
+
+### CloudTrail Events: Types of Events
+
+1. **Management Events**:
+
+   - Operations that are performed on resources in your AWS account.
+   - Examples:
+     - Configuring Security (IAM **`AttachRolePolicy`**)
+     - Configuring rules for routing data (Amazon EC2 **`CreateSubnet`**)
+     - Setting up logging (AWS CloudTrail **`CreateTrail`**)
+   - By default, trails are configured to log management events.
+   - Can separate **Read Events** (that don't modify resources) from **Write Events** (that may modify resources)
+
+2. **Data Events**:
+
+   - By default, Data Events are not logged as they are high volume operations.
+   - Amazon S3 object-level activity (e.g. **`GetObject`**, **`DeleteObject`**, **`PutObject`**). Can separate Read and Write Events.
+   - AWS Lambda function execution activity (the **`Invoke API`**)
+
+3. **CloudTrail Insights Events**:
+
+   ![CloudTrail Insights Events](assets/cloudtrail-insights.png)
+
+   - Must be enabled. Paid service.
+   - Enable **CloudTrail Insights to detect unusual activity** in your account.
+     - Inaccurate resource provisioning
+     - Hitting service limits
+     - Bursts of AWS IAM actions
+     - Gaps in periodic maintenance activity
+   - CloudTrail Insights analyzes normal management events to create a baseline.
+   - And then continuously analyze **write** events to detect unusual patterns.
+     - Anamolies appear in the CloudTrail console.
+     - Event is sent to Amazon S3.
+     - An EventBridge event is generated (for automation needs)
+
+---
+
+### CloudTrail Events: Event Retention
+
+![CloudTrail Events: Event Retention](assets/cloudtrail-events-retention.png)
+
+- Events are stored by default for 90 days in CloudTrail.
+- To keep events beyond this period, log them to S3 and use Athena to analyze them.
+
+---
+
+## CloudTrail: Create a Trail
+
+- Go to the **[CloudTrail Dashboard](https://ap-south-1.console.aws.amazon.com/cloudtrail/home?region=ap-south-1#/dashboard)** and click **`Create trail`** to launch the wizard.
+
+- Enter the following information:
+
+  1. **General details**: A trail created in the console is a multi-region trail.
+
+     - **Trail name**: Enter a display name for your trail. 3-128 characters. Only letters, numbers, periods, underscores, and dashes are allowed.
+
+     - **Storage location**: Options are:
+
+       - **`Create new S3 bucket`**
+       - **`Use existing S3 bucket`**
+
+     - **Trail log bucket and folder**: Enter a new S3 bucket name and folder (prefix) to store your logs. Bucket names must be globally unique. Logs will be stored in `aws-cloudtrail-logs-336463900088-9a601ada/AWSLogs/336463900088`
+
+     - **Log file SSE-KMS encryption**: **`Enabled`** / **`Disabled`**
+
+     - **Customer managed AWS KMS key**: **`New`** / **`Existing`**
+
+     - **AWS KMS alias**: KMS key and S3 bucket must be in the same region.
+
+     - **Addition settings**:
+       - **Log file validation:** **`Enabled`** (default) / **`Disabled`**
+       - **SNS notification delivery**: **`Enabled`** / **`Disabled`** (default) For SNS notification for every log file delivery, choose `Enabled` to be notified each time a log is delivered to your bucket. CloudTrail stores multiple events in a log file. **When you enable this option, Amazon SNS notifications are sent for every log file delivery to your S3 bucket, not for every event.**
+         - **Create a new SNS topic**: (if **`SNS notification delivery`** is `Enabled`)
+           - `New`
+           - `Existing`
+
+  2. **CloudWatch Logs** (optional): Configure CloudWatch Logs to monitor your trail logs and notify you when specific activity occurs. Standard CloudWatch and CloudWatch Logs charges apply.
+
+     - **CloudWatch Logs**: **`Enabled`** / **`Disabled`**
+
+  3. **Tags**: You can add one or more tags to help you manage and organize your resources, including trails.
+
+- Click **`Next`** to **Choose Log Events**
+
+- Enter the following information:
+
+  4. **Events**: Record API activity for individual resources, or for all current and future resources in AWS account.
+
+     - **Event type**: Choose the type of events that you want to log.
+       - **`Management Events`**: Capture management operations performed on your AWS resources. (default)
+       - **`Data Events`**: Log the resource operations performed on or within a resource.
+       - **`Insights Events`**: Identify unusual activity, errors, or user behavior in your account.
+
+  5. **Management events**: Management events show information about management operations performed on resources in your AWS account.
+
+     > No additional charges apply to log management events on this trail because this is your first copy of management events.
+
+     - **API Activity**: Choose the activities you want to log.
+
+       - **Read**: **`Enable`** (default) / **`Disable`**
+       - **Write**: **`Enable`** / **`Disable`** (default)
+       - **Exclude AWS KMS events**: **`Enable`** / **`Disable`** (default)
+       - **Exclude Amazon RDS Data API events**: **`Enable`** / **`Disable`** (default)
+
+  6. **Data events**: **ADDITIONAL CHARGES APPLY!** Data events show information about the resource operations performed on or within a resource.
+
+     - **Data event type**: Choose the source of data events to log. Options available are:
+
+       - `S3`
+       - `Lambda`
+       - `DynamoDB`
+       - `Managed Blockchain`
+       - `S3 Object Lambda`
+       - `Lake Formation`
+       - `EBS direct APIs`
+       - `S3 Access Point`
+       - `DynamoDB Streams`
+
+     - **Log selector template**:
+
+       - `Log all events`
+       - `Log readOnly events`
+       - `Log writeOnly events`
+       - `Custom`
+
+     - **Selector name** (optional): 1,000 character limit
+
+     - Click **`Add Data event type`** to add a new Data event
+
+  7. **Insights events**: **ADDITIONAL CHARGES APPLY!** Identify unusual activity, errors, or user behavior in your account.
+
+     - **Choose Insights types**: Insights measure unusual activity against a seven-day baseline.
+
+       - **`API call rate`**: A measurement of write-only management API calls that occur per minute against a baseline API call volume. Options: **`Enable`** / **`Disable`**
+       - **`API error rate`**: A measurement of management API calls that result in error codes. The error is shown if the API call is unsuccessful. Options: **`Enable`** / **`Disable`**
+
+- Click **`Next`** to Review.
+
+- Click **`Create Trail`** to create the Trail.
+
+---
+
 # Using the AWS CLI
 
-## CloudWatch
+## CloudWatch API
 
 ### [`put-metric-data`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudwatch/put-metric-data.html)
 
@@ -449,7 +987,34 @@ aws cloudwatch put-metric-data \
 
 ---
 
-## Logs
+## Logs API
+
+### [`create-log-group`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/logs/create-log-group.html)
+
+Creates a log group with the specified name.
+
+**Syntax:**
+
+```s
+aws logscreate-log-group \
+ --log-group-name [LogGroupName] \
+ --kms-key-id [KMSKey | KMSKeyARN] \
+ --tags [key1=string,key2=string,...]
+
+```
+
+**Example:**
+
+```s
+aws logs create-log-group \
+ --log-group-name DemoLogGroup
+```
+
+**Response:**
+
+None
+
+---
 
 ### [`put-metric-filter`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/logs/put-metric-filter.html)
 
@@ -523,7 +1088,7 @@ aws logs put-subscription-filter \
 
 ---
 
-## Events
+## Events API
 
 ### [`create-event-bus`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/events/create-event-bus.html)
 
@@ -922,3 +1487,178 @@ aws events delete-event-bus --event-bus-name DemoEventBus
 None
 
 ---
+
+## CloudTrail API
+
+### [`create-trail`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudtrail/create-trail.html)
+
+Creates a trail that specifies the settings for delivery of log data to an Amazon S3 bucket.
+When you create a trail, you enable ongoing delivery of events as log files to an Amazon S3 bucket that you specify. Creating a trail has many benefits, including:
+
+- A record of events that extends past 90 days.
+- The option to automatically monitor and alarm on specified events by sending log events to **Amazon CloudWatch Logs**.
+- The option to query logs and analyze AWS service activity with **Amazon Athena**.
+
+**Syntax:**
+
+```s
+aws cloudtrail create-trail \
+ --name [TrailName] \
+ --s3-bucket-name [S3BucketName] \
+ --s3-key-prefix [S3KeyPrefix] \
+ --sns-topic-name [TopicName] \
+ --include-global-service-events \
+ --is-multi-region-trail \
+ --enable-log-file-validation \
+ --cloud-watch-logs-role-arn [CloudWatchLogsARN] \
+ --cloud-watch-logs-log-group-arn [CloudWatchLogsLogGroupARN] \
+ --kms-key-id [KMSKey | KMSKeyARN] \
+ --is-organization-trail \
+ --tags-list [key1=string,key2=string,...]
+```
+
+Where,
+
+- **`--name`**: Specifies the name of the trail. See the Documentation for criteria.
+- **`--s3-bucket-name`**: Specifies the name of the Amazon S3 bucket designated for publishing log files. See Amazon S3 Bucket Naming Requirements.
+- **`--s3-key-prefix`**: Specifies the Amazon S3 key prefix that comes after the name of the bucket you have designated for log file delivery. Maximum length is 200 characters.
+- **`--sns-topic-name`**: Specifies the name of the Amazon SNS topic defined for notification of log file delivery. The maximum length is 256 characters.
+- **`--include-global-service-events`**: Specifies whether the trail is publishing events from global services such as IAM to the log files.
+- **`--is-multi-region-trail`**: Specifies whether the trail is created in the current region or in all regions. The default is `false`, which creates a trail only in the region you signed in. As a best practice, consider creating trails that log events in all regions.
+- **`--enable-log-file-validation`**: Specifies whether log file integrity validation is enabled. The default is `false`.
+- **`--cloud-watch-logs-log-group-arn`**: Specifies a log group name using an Amazon Resource Name (ARN), a unique identifier that represents the log group to which CloudTrail logs will be delivered. Not required unless you specify **`CloudWatchLogsRoleArn`**.
+- **`--cloud-watch-logs-role-arn`**: Specifies the role for the CloudWatch Logs endpoint to assume to write to a user's log group.
+- **`--kms-key-id`**: Specifies the KMS Key ID to use to encrypt the files delivered by CloudTrail. The value can be:
+  - An alias name prefixed by `alias/`, or
+  - A fully specified ARN to an alias, or
+  - A fully specified ARN to a key, or
+  - A globally unique identifier
+- **`--is-organization-trail`**: Speifies whether the trail is created for all accounts in an organization in Organizations or only for the current AWS account. The default is `false` and cannot be made true unless the account has Administrator access.
+- **`--tags-list`**: A list of tags: Custom key-value pair.
+
+**How to make it work:**
+
+1. **Create a S3 Bucket**
+
+   ```s
+   aws s3api create-bucket \
+     --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+     --create-bucket-configuration LocationConstraint=ap-south-1 \
+   ```
+
+2. **Block S3 Bucket from Public Access**
+
+   ```s
+   aws s3api put-public-access-block \
+    --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+    --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+   ```
+
+3. **[Attach S3 Bucket Policy with a Bucket Policy that allows CloudTrail to write to the S3 Bucket](https://github.com/awsdocs/aws-cloudtrail-user-guide/blob/master/doc_source/create-s3-bucket-policy-for-cloudtrail.md)**
+
+   In **`s3policy.json`**,
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "AWSCloudTrailAclCheck20150319",
+         "Effect": "Allow",
+         "Principal": {
+           "Service": "cloudtrail.amazonaws.com"
+         },
+         "Action": "s3:GetBucketAcl",
+         "Resource": "arn:aws:s3:::aws-cloudtrail-logs-336463900088-7a23c688",
+         "Condition": {
+           "StringEquals": {
+             "AWS:SourceArn": "arn:aws:cloudtrail:ap-south-1:336463900088:trail/DemoCloudTrail"
+           }
+         }
+       },
+       {
+         "Sid": "AWSCloudTrailWrite20150319",
+         "Effect": "Allow",
+         "Principal": {
+           "Service": "cloudtrail.amazonaws.com"
+         },
+         "Action": "s3:PutObject",
+         "Resource": "arn:aws:s3:::aws-cloudtrail-logs-336463900088-7a23c688/AWSLogs/336463900088/*",
+         "Condition": {
+           "StringEquals": {
+             "s3:x-amz-acl": "bucket-owner-full-control",
+             "AWS:SourceArn": "arn:aws:cloudtrail:ap-south-1:336463900088:trail/DemoCloudTrail"
+           }
+         }
+       }
+     ]
+   }
+   ```
+
+   ```s
+   # Add Bucket Policy to Bucket
+   aws s3api put-bucket-policy \
+    --bucket "aws-cloudtrail-logs-336463900088-7a23c688" \
+    --policy file:///home/jayantasamaddar/Work/quick-reference/aws/monitoring/assets/s3policy.json
+   ```
+
+4. **Create the Trail**
+
+   ```s
+   aws cloudtrail create-trail \
+   --name DemoCloudTrail \
+   --s3-bucket-name "aws-cloudtrail-logs-336463900088-7a23c688" \
+   --include-global-service-events \
+   --is-multi-region-trail \
+   --enable-log-file-validation
+   ```
+
+   **Response:**
+
+   ```json
+   {
+     "Name": "DemoCloudTrail",
+     "S3BucketName": "aws-cloudtrail-logs-336463900088-7a23c688",
+     "IncludeGlobalServiceEvents": true,
+     "IsMultiRegionTrail": true,
+     "TrailARN": "arn:aws:cloudtrail:ap-south-1:336463900088:trail/DemoCloudTrail",
+     "LogFileValidationEnabled": true,
+     "IsOrganizationTrail": false
+   }
+   ```
+
+5. **Start Logging**
+
+   Starts the recording of Amazon Web Services API calls and log file delivery for a trail. For a trail that is enabled in all regions, this operation must be called from the region in which the trail was created. This operation cannot be called on the shadow trails (replicated trails in other regions) of a trail that is enabled in all regions.
+
+   ```s
+   aws cloudtrail start-logging --name DemoCloudTrail
+   ```
+
+---
+
+### `delete-trail`
+
+Deletes a trail. This operation must be called from the region in which the trail was created. DeleteTrail cannot be called on the shadow trails (replicated trails in other regions) of a trail that is enabled in all regions.
+
+**Syntax:**
+
+```s
+aws cloudtrail delete-trail --name [TrailName]
+```
+
+**Example:**
+
+```s
+aws cloudtrail delete-trail --name DemoCloudTrail
+```
+
+**Response:**
+
+None
+
+---
+
+# References
+
+- **[Loading AWS CLI parameters from a file - AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-parameters-file.html)**
