@@ -2,32 +2,31 @@
 
 - [Table of Contents](#table-of-contents)
 - [Messaging: Primer](#messaging-primer)
-- [SQS](#sqs)
-  - [SQS: Overview](#sqs-overview)
-  - [SQS: Visibility Timeouts](#sqs-visibility-timeouts)
-  - [SQS: Dead Letter Queue (DLQ)](#sqs-dead-letter-queue-dlq)
-    - [DLQ: Overview](#dlq-overview)
-    - [DLQ: Redrive to Source](#dlq-redrive-to-source)
-  - [SQS: Delay Queues](#sqs-delay-queues)
-  - [SQS: Long-Polling](#sqs-long-polling)
-  - [SQS: SQS Extended Client](#sqs-sqs-extended-client)
-  - [SQS: FIFO Queues](#sqs-fifo-queues)
-    - [FIFO Queues: Overview](#fifo-queues-overview)
-    - [FIFO Queues: De-duplication](#fifo-queues-de-duplication)
-    - [FIFO Queues: Message Grouping](#fifo-queues-message-grouping)
+- [Overview](#overview)
+- [Visibility Timeouts](#visibility-timeouts)
+- [Dead Letter Queue (DLQ)](#dead-letter-queue-dlq)
+  - [DLQ: Overview](#dlq-overview)
+  - [DLQ: Redrive to Source](#dlq-redrive-to-source)
+- [Delay Queues](#delay-queues)
+- [Long-Polling](#long-polling)
+- [SQS Extended Client](#sqs-extended-client)
+- [FIFO Queues](#fifo-queues)
+  - [FIFO Queues: Overview](#fifo-queues-overview)
+  - [FIFO Queues: De-duplication](#fifo-queues-de-duplication)
+  - [FIFO Queues: Message Grouping](#fifo-queues-message-grouping)
 - [Using the CLI](#using-the-cli)
-  - [SQS](#sqs-1)
-    - [`create-queue`](#create-queue)
-    - [`get-queue-url`](#get-queue-url)
-    - [`list-queues`](#list-queues)
-    - [`set-queue-attributes`](#set-queue-attributes)
-    - [`send-message`](#send-message)
-    - [`send-message-batch`](#send-message-batch)
-    - [`receive-message`](#receive-message)
-    - [`change-message-visibility`](#change-message-visibility)
-    - [`change-message-visibility-batch`](#change-message-visibility-batch)
-    - [`delete-message`](#delete-message)
-    - [`delete-message-batch`](#delete-message-batch)
+- [SQS](#sqs)
+  - [`create-queue`](#create-queue)
+  - [`get-queue-url`](#get-queue-url)
+  - [`list-queues`](#list-queues)
+  - [`set-queue-attributes`](#set-queue-attributes)
+  - [`send-message`](#send-message)
+  - [`send-message-batch`](#send-message-batch)
+  - [`receive-message`](#receive-message)
+  - [`change-message-visibility`](#change-message-visibility)
+  - [`change-message-visibility-batch`](#change-message-visibility-batch)
+  - [`delete-message`](#delete-message)
+  - [`delete-message-batch`](#delete-message-batch)
 - [References](#references)
 
 ---
@@ -36,11 +35,9 @@
 
 ---
 
-# SQS
+# Overview
 
-## SQS: Overview
-
-Amazon SQS is a reliable, highly-scalable hosted queue for storing messages as they travel between applications or microservices. Amazon SQS moves data between distributed application components and helps you decouple these components.
+**Amazon SQS** is a reliable, highly-scalable hosted queue for storing messages as they travel between applications or microservices. Amazon SQS moves data between distributed application components and helps you decouple these components.
 
 **An Amazon SQS message has three basic states:**
 
@@ -56,13 +53,21 @@ Amazon SQS is a reliable, highly-scalable hosted queue for storing messages as t
 
 ---
 
-## SQS: Visibility Timeouts
+# Visibility Timeouts
+
+When a consumer receives and processes a message from a queue, the message remains in the queue. Amazon SQS doesn't automatically delete the message. Because Amazon SQS is a distributed system, there's no guarantee that the consumer actually receives the message (for example, due to a connectivity issue, or due to an issue in the consumer application). Thus, the consumer must delete the message from the queue after receiving and processing it.
+
+Immediately after a message is received, it remains in the queue. To prevent other consumers from processing the message again, Amazon SQS sets a visibility timeout, a period of time during which Amazon SQS prevents other consumers from receiving and processing the message.
+
+- The default visibility timeout for a message is 30 seconds.
+- The minimum is `0` seconds.
+- The maximum is `12` hours (`43200` seconds).
 
 ---
 
-## SQS: Dead Letter Queue (DLQ)
+# Dead Letter Queue (DLQ)
 
-### DLQ: Overview
+## DLQ: Overview
 
 Amazon SQS supports dead-letter queues (DLQ), which other queues (source queues) can target for messages that can't be processed (consumed) successfully.
 
@@ -78,7 +83,7 @@ If a consumer fails to process a message within the visibility timeout the mesag
 
 ---
 
-### DLQ: Redrive to Source
+## DLQ: Redrive to Source
 
 - Feature to help consume messages in the DLQ to understand what is wrong with them.
 - When our code is fixed, we can redrive the messages from the DLQ back to the source queue (or any other queue) in batches without writing custom code.
@@ -86,7 +91,7 @@ If a consumer fails to process a message within the visibility timeout the mesag
 
 ---
 
-## SQS: Delay Queues
+# Delay Queues
 
 Delay queues let you postpone the delivery of new messages to consumers for a number of seconds.
 
@@ -100,11 +105,11 @@ Delay queues let you postpone the delivery of new messages to consumers for a nu
 
 Delay queues are similar to visibility timeouts because both features make messages unavailable to consumers for a specific period of time. The difference between the two is that, for delay queues, a message is hidden **when it is first added to queue**, whereas for visibility timeouts a message is hidden **only after it is consumed from the queue**. The following diagram illustrates the relationship between delay queues and visibility timeouts.
 
-![SQS: Delay Queues](assets/sqs-delay-queues-diagram.png)
+![Delay Queues](assets/sqs-delay-queues-diagram.png)
 
 ---
 
-## SQS: Long-Polling
+# Long-Polling
 
 When the wait time for the **`ReceiveMessage`** API action is greater than `0`, long polling is in effect.
 
@@ -115,7 +120,7 @@ When the wait time for the **`ReceiveMessage`** API action is greater than `0`, 
 
 ---
 
-## SQS: SQS Extended Client
+# SQS Extended Client
 
 The default message size limit is `256 KB`, but we need to send large messages, say over 1 GB. We can do so using the SQS Extended Client which is a Java Library.
 
@@ -123,9 +128,9 @@ The default message size limit is `256 KB`, but we need to send large messages, 
 
 ---
 
-## SQS: FIFO Queues
+# FIFO Queues
 
-### FIFO Queues: Overview
+## FIFO Queues: Overview
 
 In FIFO (First-In-First-Out) Queues, the first message to enter the Queue, will be the first one to leave the queue (ordering of messages in the queue is preserved).
 
@@ -145,7 +150,7 @@ FIFO queues have all the capabilities of the standard queues, but are designed t
 
 ---
 
-### FIFO Queues: De-duplication
+## FIFO Queues: De-duplication
 
 - De-duplication interval is 5 minutes
 - Two de-duplication methods:
@@ -155,7 +160,7 @@ FIFO queues have all the capabilities of the standard queues, but are designed t
 
 ---
 
-### FIFO Queues: Message Grouping
+## FIFO Queues: Message Grouping
 
 - If you specify the same **`MessageGroupID`** (mandatory parameter for FIFO Queues) in a SQS FIFO Queue, you can only have one consumer and all messages are in order.
 - To get ordering at the level of the subset of messages, specify different values for **`MessageGroupID`**.
@@ -169,9 +174,9 @@ The idea is to have multiple consumers, consuming from a different **`MessageGro
 
 # Using the CLI
 
-## SQS
+# SQS
 
-### `create-queue`
+## `create-queue`
 
 Creates a new standard or FIFO queue. You can pass one or more attributes in the request. Keep the following in mind:
 
@@ -373,7 +378,7 @@ aws sqs create-queue \
 
 ---
 
-### [`get-queue-url`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/get-queue-url.html)
+## [`get-queue-url`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/get-queue-url.html)
 
 Get the URL of a Queue.
 
@@ -399,7 +404,7 @@ aws sqs get-queue-url --queue-name S3EventsQueue
 
 ---
 
-### [`list-queues`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/list-queues.html)
+## [`list-queues`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/list-queues.html)
 
 Returns a list of your queues in the current region. The response includes a maximum of `1000` results. If you specify a value for the optional **`QueueNamePrefix`** parameter, only queues with a name that begins with the specified value are returned.
 
@@ -440,7 +445,7 @@ aws sqs list-queues
 
 ---
 
-### [`set-queue-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/set-queue-attributes.html)
+## [`set-queue-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/set-queue-attributes.html)
 
 Sets the value of one or more queue attributes. When you change a queue’s attributes, the change can take up to 60 seconds for most of the attributes to propagate throughout the Amazon SQS system. Changes made to the **`MessageRetentionPeriod`** attribute can take up to 15 minutes.
 
@@ -501,7 +506,7 @@ None
 
 ---
 
-### [`send-message`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/send-message.html)
+## [`send-message`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/send-message.html)
 
 Delivers a message to the specified queue.
 
@@ -532,7 +537,7 @@ aws sqs send-message \
 
 ---
 
-### [`send-message-batch`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/send-message-batch.html)
+## [`send-message-batch`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/send-message-batch.html)
 
 Delivers up to ten messages to the specified queue. This is a batch version of **`SendMessage`**. For a FIFO queue, multiple messages within a single batch are enqueued in the order they are sent.
 
@@ -566,7 +571,7 @@ aws sqs send-message-batch \
 
 ---
 
-### [`receive-message`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/receive-message.html)
+## [`receive-message`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/receive-message.html)
 
 Retrieves one or more messages (up to 10), from the specified queue. Using the **`WaitTimeSeconds`** parameter enables long-poll support. For more information, see Amazon SQS Long Polling in the Amazon SQS Developer Guide.
 
@@ -625,7 +630,7 @@ aws sqs receive-message \
 
 ---
 
-### [`change-message-visibility`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/change-message-visibility.html)
+## [`change-message-visibility`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/change-message-visibility.html)
 
 Changes the visibility timeout of a specified message in a queue to a new value. The default visibility timeout for a message is 30 seconds. The minimum is 0 seconds. The maximum is 12 hours.
 
@@ -673,7 +678,7 @@ None
 
 ---
 
-### [`change-message-visibility-batch`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/change-message-visibility-batch.html)
+## [`change-message-visibility-batch`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/change-message-visibility-batch.html)
 
 Changes the visibility timeout of multiple messages. This is a batch version of **`ChangeMessageVisibility`**. The result of the action on each message is reported individually in the response. You can send up to `10` **`ChangeMessageVisibility`** requests with each **`ChangeMessageVisibilityBatch`** action.
 
@@ -695,7 +700,7 @@ aws sqs delete-message-batch \
 
 ---
 
-### [`delete-message`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/delete-message.html)
+## [`delete-message`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/delete-message.html)
 
 Deletes the specified message from the specified queue. To select the message to delete, use the **`ReceiptHandle`** of the message (**_not_** the `MessageId` which you receive when you send the message). Amazon SQS can delete a message from a queue even if a visibility timeout setting causes the message to be locked by another consumer. Amazon SQS automatically deletes messages left in a queue longer than the retention period configured for the queue.
 
@@ -727,7 +732,7 @@ None
 
 ---
 
-### [`delete-message-batch`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/delete-message-batch.html)
+## [`delete-message-batch`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/delete-message-batch.html)
 
 Deletes up to ten messages from the specified queue. This is a batch version of **`DeleteMessage`**. The result of the action on each message is reported individually in the response.
 
@@ -759,4 +764,5 @@ aws sqs delete-message-batch \
 
 # References
 
-- **Amazon SQS** | **[API Docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/Welcome.html)** | **[CLI Commands](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/index.html#cli-aws-sqs)** | **[JavaScript SDK](https://github.com/aws/aws-sdk-js-v3/tree/main/clients/client-sqs)**
+- Amazon SQS | [API Docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/Welcome.html) | [CLI Commands](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/index.html#cli-aws-sqs) | [JavaScript SDK](https://github.com/aws/aws-sdk-js-v3/tree/main/clients/client-sqs)
+- [FIFO Queues: Delivery Logic](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues-understanding-logic.html)
