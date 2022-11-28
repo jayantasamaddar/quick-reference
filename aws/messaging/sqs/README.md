@@ -15,7 +15,6 @@
   - [FIFO Queues: De-duplication](#fifo-queues-de-duplication)
   - [FIFO Queues: Message Grouping](#fifo-queues-message-grouping)
 - [Using the CLI](#using-the-cli)
-- [SQS](#sqs)
   - [`create-queue`](#create-queue)
   - [`get-queue-url`](#get-queue-url)
   - [`list-queues`](#list-queues)
@@ -152,7 +151,7 @@ FIFO queues have all the capabilities of the standard queues, but are designed t
 
 ## FIFO Queues: De-duplication
 
-- De-duplication interval is 5 minutes
+- De-duplication interval is `5 minutes`. i.e. refuses a duplicate message within 5 minutes of its match.
 - Two de-duplication methods:
 
   - **Content-based deduplication**: As soon as a message is sent into SQS, a SHA-256 hash of the message body is done. If the same hash is encountered again, the message is considered a duplicate and will be refused.
@@ -162,21 +161,19 @@ FIFO queues have all the capabilities of the standard queues, but are designed t
 
 ## FIFO Queues: Message Grouping
 
-- If you specify the same **`MessageGroupID`** (mandatory parameter for FIFO Queues) in a SQS FIFO Queue, you can only have one consumer and all messages are in order.
+- If you specify the same or no **`MessageGroupID`** (mandatory parameter for FIFO Queues) in a SQS FIFO Queue, you can only have one consumer and all messages are in order they are sent.
 - To get ordering at the level of the subset of messages, specify different values for **`MessageGroupID`**.
   - Messages that will share a common **`MessageGroupID`** will be in order within the group.
   - Each group ID can have a different consumer (parallel processing!)
   - **IMPORTANT**: Ordering across groups is not guaranteed
 
-The idea is to have multiple consumers, consuming from a different **`MessageGroupID`**, on the same message queue.
+The idea is to have multiple consumers, each consuming from a different **`MessageGroupID`**, on the same message queue.
 
 ---
 
 # Using the CLI
 
-# SQS
-
-## `create-queue`
+## [`create-queue`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/create-queue.html)
 
 Creates a new standard or FIFO queue. You can pass one or more attributes in the request. Keep the following in mind:
 
