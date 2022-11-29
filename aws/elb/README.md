@@ -55,6 +55,25 @@
     - [Predictive Scaling](#predictive-scaling)
     - [Notable Scaling Metrics](#notable-scaling-metrics)
   - [Auto-Scaling Group - Scaling Cooldowns](#auto-scaling-group---scaling-cooldowns)
+- [Using the CLI](#using-the-cli)
+  - [`create-load-balancer`](#create-load-balancer)
+  - [`create-target-group`](#create-target-group)
+  - [`register-targets`](#register-targets)
+  - [`deregister-targets`](#deregister-targets)
+  - [`create-listener`](#create-listener)
+  - [`create-rule`](#create-rule)
+  - [`modify-load-balancer-attributes`](#modify-load-balancer-attributes)
+    - [`modify-load-balancer-attributes`: Overview and Syntax](#modify-load-balancer-attributes-overview-and-syntax)
+    - [Example 1: Deletion Protection Enabled](#example-1-deletion-protection-enabled)
+    - [Example 2: Enable Access Logs](#example-2-enable-access-logs)
+  - [`modify-target-group-attributes`](#modify-target-group-attributes)
+    - [`modify-target-group-attributes`: Overview and Syntax](#modify-target-group-attributes-overview-and-syntax)
+    - [Example 1: Modify the deregistration delay timeout](#example-1-modify-the-deregistration-delay-timeout)
+    - [Example 2: Apply sticky sessions and modify the stickiness settings of an ALB](#example-2-apply-sticky-sessions-and-modify-the-stickiness-settings-of-an-alb)
+  - [`delete-rule`](#delete-rule)
+  - [`delete-listener`](#delete-listener)
+  - [`delete-load-balancer`](#delete-load-balancer)
+  - [`delete-target-group`](#delete-target-group)
 
 ---
 
@@ -706,7 +725,7 @@ The idea behind the concept is that, it will give some time for your Instances t
 
 Once the connection is being drained, the ELB will stop sending the request to the EC2 Instance that is being drained while being de-registered.
 
-The default is 300 seconds. We can set this between 1-3600 seconds
+The default is `300` seconds. We can set this between `1` - `3600` seconds
 
 Can be disabled altogether by setting the value to 0.
 
@@ -778,5 +797,644 @@ Default: 300 seconds
 During the cooldown period the ASG will not launch of terminate additional instances (to allow for metrics to stabilize)
 
 > **Tip**: Use a ready-to-use AMI to reduce configuration time in order to be serving requests faster and reduce the cooldown period.
+
+---
+
+# [Using the CLI](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/index.html#cli-aws-elbv2)
+
+## [`create-load-balancer`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-load-balancer.html)
+
+**Syntax:**
+
+```s
+aws elbv2 create-load-balancer \
+ --name [LoadBalancerName] \
+ --scheme ["internet-facing" | "internal"] \
+ --type ["application" | "network" | "gateway"] \
+ --ip-address-type ["ipv4" | "dualstack"] \
+ --subnets ["subnet-id1" "subnet-id2" ...] \
+ --security-groups ["sg-1" "sg-2" ...]
+```
+
+**Example:**
+
+```s
+aws elbv2 create-load-balancer \
+ --name HelloWorld-Lambda-ALB \
+ --scheme internet-facing \
+ --type application \
+ --ip-address-type ipv4 \
+ --subnets "subnet-09a2a6eec68d67bdb" "subnet-0d4d144fef99b7917" "subnet-0b0f3038e2c973ffd" \
+ --security-groups "sg-0f6d8f14fb92f34b2" "sg-08898963c33d367e6"
+```
+
+**Response:**
+
+```json
+{
+  "LoadBalancers": [
+    {
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:ap-south-1:336463900088:loadbalancer/app/HelloWorld-Lambda-ALB/04cfb586fb76a5fe",
+      "DNSName": "HelloWorld-Lambda-ALB-1843611492.ap-south-1.elb.amazonaws.com",
+      "CanonicalHostedZoneId": "ZP97RAFLXTNZK",
+      "CreatedTime": "2022-11-29T07:42:29.130000+00:00",
+      "LoadBalancerName": "HelloWorld-Lambda-ALB",
+      "Scheme": "internet-facing",
+      "VpcId": "vpc-0accd6ee829f856ff",
+      "State": {
+        "Code": "provisioning"
+      },
+      "Type": "application",
+      "AvailabilityZones": [
+        {
+          "ZoneName": "ap-south-1a",
+          "SubnetId": "subnet-09a2a6eec68d67bdb",
+          "LoadBalancerAddresses": []
+        },
+        {
+          "ZoneName": "ap-south-1c",
+          "SubnetId": "subnet-0b0f3038e2c973ffd",
+          "LoadBalancerAddresses": []
+        },
+        {
+          "ZoneName": "ap-south-1b",
+          "SubnetId": "subnet-0d4d144fef99b7917",
+          "LoadBalancerAddresses": []
+        }
+      ],
+      "SecurityGroups": ["sg-0f6d8f14fb92f34b2", "sg-08898963c33d367e6"],
+      "IpAddressType": "ipv4"
+    }
+  ]
+}
+```
+
+---
+
+## [`create-target-group`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-target-group.html)
+
+**Syntax:**
+
+```s
+   aws elbv2 create-target-group \
+    --name [TargetGroupName] \
+    --target-type ["instance" | "ip" | "lambda" | "alb"] \
+    --health-check-protocol ["HTTP"|"HTTPS"|"TCP"]
+```
+
+**Example:**
+
+```s
+   aws elbv2 create-target-group \
+    --name HelloWorld-LambdaFunction-TG \
+    --target-type "lambda"
+```
+
+**Response:**
+
+```json
+{
+  "TargetGroups": [
+    {
+      "TargetGroupArn": "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c",
+      "TargetGroupName": "HelloWorld-LambdaFunction-TG",
+      "HealthCheckEnabled": false,
+      "HealthCheckIntervalSeconds": 35,
+      "HealthCheckTimeoutSeconds": 30,
+      "HealthyThresholdCount": 5,
+      "UnhealthyThresholdCount": 2,
+      "HealthCheckPath": "/",
+      "Matcher": {
+        "HttpCode": "200"
+      },
+      "TargetType": "lambda",
+      "IpAddressType": "ipv4"
+    }
+  ]
+}
+```
+
+---
+
+## [`register-targets`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/register-targets.html)
+
+Registers the specified targets with the specified target group.
+
+If the target is an EC2 instance, it must be in the **`running`** state when you register it.
+
+By default, the load balancer routes requests to registered targets using the protocol and port for the target group. Alternatively, you can override the port for a target when you register it. You can register each EC2 instance or IP address with the same target group multiple times using different ports.
+
+> **Note**: With a **Network Load Balancer**, you cannot register instances by Instance ID if they have the following instance types: C1, CC1, CC2, CG1, CG2, CR1, CS1, G1, G2, HI1, HS1, M1, M2, M3, and T1. You can register instances of these types by IP address.
+
+**Syntax:**
+
+```s
+aws elbv2 register-targets \
+ --target-group-arn [TargetGroupARN] \
+ --targets [Id=id1 Id=id2 ...]
+```
+
+**Example:**
+
+```s
+aws elbv2 register-targets \
+ --target-group-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c" \
+ --targets Id="arn:aws:lambda:ap-south-1:336463900088:function:HelloWorld"
+```
+
+**Response:**
+
+None
+
+---
+
+## [`deregister-targets`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/deregister-targets.html)
+
+Deregisters the specified targets from the specified target group. After the targets are deregistered, they no longer receive traffic from the load balancer.
+
+**Syntax:**
+
+```s
+aws elbv2 deregister-targets \
+ --target-group-arn [TargetGroupARN] \
+ --targets [Id=id1 Id=id2 ...]
+```
+
+**Example:**
+
+```s
+aws elbv2 deregister-targets \
+ --target-group-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c" \
+ --targets Id="arn:aws:lambda:ap-south-1:336463900088:function:HelloWorld"
+```
+
+**Response:**
+
+None
+
+---
+
+## [`create-listener`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-listener.html)
+
+Creates a listener for the specified Application Load Balancer, Network Load Balancer, or Gateway Load Balancer.
+
+This operation is idempotent, which means that it completes at most one time. If you attempt to create multiple listeners with the same settings, each call succeeds.
+
+**Syntax:**
+
+```s
+aws elbv2 create-listener \
+ --load-balancer-arn [LoadBalancerARN] \
+ --protocol ["HTTP"|"HTTPS"|"TCP"|"TLS"|"UDP"|"TCP_UDP"|"GENEVE"] \
+ --port [PORT] \
+ --ssl-policy [SSLPolicy] \
+ --certificates [CertificateArn=[CertificateARN],IsDefault=[boolean] ... ]
+ --default-actions [Type=["forward"|"fixed-response"|"redirect"],TargetGroupArn=[TargetGroupARN] ...]
+```
+
+**Example**
+
+```s
+aws elbv2 create-listener \
+ --load-balancer-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:loadbalancer/app/HelloWorld-Lambda-ALB/04cfb586fb76a5fe" \
+ --protocol HTTP \
+ --port 80 \
+ --default-actions Type=forward,TargetGroupArn="arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c"
+```
+
+**Response:**
+
+```json
+{
+  "Listeners": [
+    {
+      "ListenerArn": "arn:aws:elasticloadbalancing:ap-south-1:336463900088:listener/app/HelloWorld-Lambda-ALB/04cfb586fb76a5fe/0763ea2fc1e77ecc",
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:ap-south-1:336463900088:loadbalancer/app/HelloWorld-Lambda-ALB/04cfb586fb76a5fe",
+      "Port": 80,
+      "Protocol": "HTTP",
+      "DefaultActions": [
+        {
+          "Type": "forward",
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c",
+          "ForwardConfig": {
+            "TargetGroups": [
+              {
+                "TargetGroupArn": "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c",
+                "Weight": 1
+              }
+            ],
+            "TargetGroupStickinessConfig": {
+              "Enabled": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## [`create-rule`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-rule.html)
+
+Creates a rule for the specified listener. The listener must be associated with an Application Load Balancer.
+
+Each rule consists of a priority, one or more actions, and one or more conditions. Rules are evaluated in priority order, from the lowest value to the highest value. When the conditions for a rule are met, its actions are performed. If the conditions for no rules are met, the actions for the default rule are performed. For more information, see **[Listener Rules](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-listeners.html#listener-rules)**.
+
+**Syntax:**
+
+```s
+aws elbv2 create-rule \
+ --listener-arn [ListenerARN] \
+ --priority [PriorityNumber] \
+ --conditions [JSONFilePathURL]
+ --actions [Type=["forward"|"fixed-response"|"redirect"],TargetGroupArn=[TargetGroupARN] ...]
+```
+
+**Example 1: To create a rule using a path condition and a forward action**
+
+The following `create-rule` example creates a rule that forwards requests to the specified target group if the URL contains the specified pattern.
+
+In `conditions-pattern.json`,
+
+```json
+[
+  {
+    "Field": "path-pattern",
+    "PathPatternConfig": {
+      "Values": ["/images/*"]
+    }
+  }
+]
+```
+
+**Run:**
+
+```s
+aws elbv2 create-rule \
+  --listener-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:listener/app/my-load-balancer/50dc6c495c0c9188/f2f7dc8efc522ab2" \
+  --priority 5 \
+  --conditions file://conditions-pattern.json
+  --actions Type=forward,TargetGroupArn="arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/my-targets/73e2d6bc24d8a067"
+```
+
+---
+
+## [`modify-load-balancer-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/modify-load-balancer-attributes.html)
+
+### `modify-load-balancer-attributes`: Overview and Syntax
+
+Modifies the specified attributes of the specified Application Load Balancer, Network Load Balancer, or Gateway Load Balancer.
+
+If any of the specified attributes can’t be modified as requested, the call fails. Any existing attributes that you do not modify retain their current values.
+
+**Common Use Cases:**
+
+1. Enable / Disable Deletion Protection
+2. Enable / Disable Cross-Zone Load Balancing
+3. Enable / Disable Access Logs to be stored in S3
+4. Enable / Disable setting to preserve the `Host` header
+5. Change the Processing Mode for the `X-Forwarded-For` header: `append`, `preserve`, `remove`
+6. Enable / Disable setting to make `X-Forwarded-For` header preserve the source port
+
+**Syntax:**
+
+```s
+aws elbv2 modify-load-balancer-attributes \
+ --load-balancer-arn "LoadBalancerARN" \
+ --attributes [Key=[AttributeKey],Value=[AttributeValue] ...]
+```
+
+Where,
+
+- **`load-balancer-arn`**: The Amazon Resource Name (ARN) of the load balancer.
+
+- **`--attributes`**: List of attributes for the Load Balancer,
+
+  - **Key** (string): The name of the attribute.
+
+    The following attributes are supported by all load balancers:
+
+    - **`deletion_protection.enabled`**: Indicates whether deletion protection is enabled. The value is `true` or `false` . The default is `false`.
+
+    - **`load_balancing.cross_zone.enabled`**: Indicates whether cross-zone load balancing is enabled. The possible values are `true` and `false`. The default for Network Load Balancers and Gateway Load Balancers is `false`. The default for Application Load Balancers is `true`, and cannot be changed.
+
+    **The following attributes are supported by both Application Load Balancers and Network Load Balancers:**
+
+    - **`access_logs.s3.enabled`**: Indicates whether access logs are enabled. The value is `true` or `false`. The default is `false`.
+
+    - **`access_logs.s3.bucket`**: The name of the S3 bucket for the access logs. This attribute is required if access logs are enabled. The bucket must exist in the same region as the load balancer and have a bucket policy that grants Elastic Load Balancing permissions to write to the bucket.
+
+    - **`access_logs.s3.prefix`**: The prefix for the location in the S3 bucket for the access logs.
+
+    - **`ipv6.deny_all_igw_traffic`** - Blocks internet gateway (IGW) access to the load balancer. It is set to false for internet-facing load balancers and true for internal load balancers, preventing unintended access to your internal load balancer through an internet gateway.
+
+    **The following attributes are supported by only Application Load Balancers:**
+
+    - **`idle_timeout.timeout_seconds`**: The idle timeout value, in seconds. The minimum is `1` second. The maximum is `4000` seconds. The default is `60` seconds.
+
+    - **`routing.http.desync_mitigation_mode`**: Determines how the load balancer handles requests that might pose a security risk to your application. The possible values are `monitor`, `defensive`, and `strictest`. The default is `defensive`.
+
+    - **`routing.http.drop_invalid_header_fields.enabled`**: Indicates whether HTTP headers with invalid header fields are removed by the load balancer (`true`) or routed to targets (`false`). The default is `false`.
+
+    - **`routing.http.preserve_host_header.enabled`**: Indicates whether the Application Load Balancer should preserve the Host header in the HTTP request and send it to the target without any change. The possible values are `true` and `false`. The default is `false`.
+
+    - **`routing.http.x_amzn_tls_version_and_cipher_suite.enabled`**: Indicates whether the two headers (`x-amzn-tls-version` and `x-amzn-tls-cipher-suite` ), which contain information about the negotiated TLS version and cipher suite, are added to the client request before sending it to the target. The `x-amzn-tls-version` header has information about the TLS protocol version negotiated with the client, and the `x-amzn-tls-cipher-suite` header has information about the cipher suite negotiated with the client. Both headers are in OpenSSL format. The possible values for the attribute are `true` and `false`. The default is `false`.
+
+    - **`routing.http.xff_client_port.enabled`**: Indicates whether the `X-Forwarded-For` header should preserve the source port that the client used to connect to the load balancer. The possible values are true and `false` . The default is `false`.
+
+    - **`routing.http.xff_header_processing.mode`**: Enables you to modify, preserve, or remove the `X-Forwarded-For` header in the HTTP request before the Application Load Balancer sends the request to the target. The possible values are `append`, `preserve`, and `remove`. The default is `append`.
+
+      - If the value is `append`, the Application Load Balancer adds the client IP address (of the last hop) to the `X-Forwarded-For` header in the HTTP request before it sends it to targets.
+
+      - If the value is `preserve`, the Application Load Balancer preserves the `X-Forwarded-For` header in the HTTP request, and sends it to targets without any change.
+
+      - If the value is `remove`, the Application Load Balancer removes the `X-Forwarded-For` header in the HTTP request before it sends it to targets.
+
+    - **`routing.http2.enabled`**: Indicates whether HTTP/2 is enabled. The possible values are `true` and `false`. The default is `true` . Elastic Load Balancing requires that message header names contain only alphanumeric characters and hyphens.
+
+    - **`waf.fail_open.enabled`**: Indicates whether to allow a WAF-enabled load balancer to route requests to targets if it is unable to forward the request to Amazon Web Services WAF. The possible values are `true` and `false`. The default is `false`.
+
+  - **Value** (string): Value of the attribute
+
+---
+
+### Example 1: Deletion Protection Enabled
+
+```s
+aws elbv2 modify-load-balancer-attributes \
+ --load-balancer-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:loadbalancer/app/my-load-balancer/50dc6c495c0c9188" \
+ --attributes Key=deletion_protection.enabled,Value=true
+```
+
+---
+
+### Example 2: Enable Access Logs
+
+```s
+aws elbv2 modify-load-balancer-attributes \
+ --load-balancer-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:loadbalancer/app/my-load-balancer/50dc6c495c0c9188" \
+ --attributes Key=access_logs.s3.bucket,Value=my-loadbalancer-logs Key=access_logs.s3.prefix,Value=myapp
+```
+
+---
+
+## [`modify-target-group-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/modify-target-group-attributes.html)
+
+### `modify-target-group-attributes`: Overview and Syntax
+
+Modifies the specified attributes of the specified target group.
+
+**Syntax:**
+
+```s
+aws elbv2 modify-target-group-attributes
+ --target-group-arn [TargetGroupARN]
+ --attributes [ListOfAttributes]
+```
+
+Where,
+
+- **`target-group-arn`**: The Amazon Resource Name (ARN) of the target group.
+
+- **`--attributes`**: List of attributes for the Target Group,
+
+  - **Key** (string): The name of the attribute
+
+    - **`deregistration_delay.timeout_seconds`**: The amount of time, in seconds, for Elastic Load Balancing to wait before changing the state of a deregistering target from draining to unused . The range is `0` - `3600` seconds. The default value is `300` seconds.
+
+      > **Note:** If the target is a Lambda function, this attribute is not supported.
+
+    - **`stickiness.enabled`**: Indicates whether target stickiness is enabled. The value is `true` or `false`. The default is `false`.
+
+    - **`stickiness.type`**: Indicates the type of stickiness. The possible values are:
+
+      - For Application Load Balancers: `lb_cookie` and `app_cookie`
+      - For Network Load Balancers: `source_ip`
+      - For Gateway Load Balancers: `source_ip_dest_ip` and `source_ip_dest_ip_proto`
+
+    **The following attributes are supported by Application Load Balancers and Network Load Balancers:**
+
+    - **`load_balancing.cross_zone.enabled`**: Indicates whether cross zone load balancing is enabled. The value is `true`, `false` or `use_load_balancer_configuration`. The default is `use_load_balancer_configuration`.
+
+    - **`target_group_health.dns_failover.minimum_healthy_targets.count`**: The minimum number of targets that must be healthy. If the number of healthy targets is below this value, mark the zone as unhealthy in DNS, so that traffic is routed only to healthy zones. The possible values are `off` or an integer from `1` to the `maximum number of targets`. The default is `off`.
+
+    - **`target_group_health.dns_failover.minimum_healthy_targets.percentage`**: The minimum percentage of targets that must be healthy. If the percentage of healthy targets is below this value, mark the zone as unhealthy in DNS, so that traffic is routed only to healthy zones. The possible values are `off` or an integer from `1` to `100`. The default is `off`.
+
+    - **`target_group_health.unhealthy_state_routing.minimum_healthy_targets.count`**: The minimum number of targets that must be healthy. If the number of healthy targets is below this value, send traffic to all targets, including unhealthy targets. The possible values are `1` to the `maximum number of targets`. The default is `1`.
+
+    - **`target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage`**: The minimum percentage of targets that must be healthy. If the percentage of healthy targets is below this value, send traffic to all targets, including unhealthy targets. The possible values are `off` or an integer from `1` to `100`. The default is `off`.
+
+    **The following attributes are supported only if the load balancer is an Application Load Balancer and the target is an instance or an IP address:**
+
+    - **`load_balancing.algorithm.type`**: The load balancing algorithm determines how the load balancer selects targets when routing requests. The value is `round_robin` or `least_outstanding_requests`. The default is `round_robin`.
+
+    - **`slow_start.duration_seconds`**: The time period, in seconds, during which a newly registered target receives an increasing share of the traffic to the target group. After this time period ends, the target receives its full share of traffic. The range is 30-900 seconds (15 minutes). The default is 0 seconds (disabled).
+
+    - **`stickiness.app_cookie.cookie_name`**: Indicates the name of the application-based cookie. Names that start with the following prefixes are not allowed: `AWSALB`, `AWSALBAPP`, and `AWSALBTG`; they’re reserved for use by the load balancer.
+
+    - **`stickiness.app_cookie.duration_seconds`**: The time period, in seconds, during which requests from a client should be routed to the same target. After this time period expires, the application-based cookie is considered stale. The range is 1 second to 1 week (604800 seconds). The default value is 1 day (86400 seconds).
+
+    - **`stickiness.lb_cookie.duration_seconds`**: The time period, in seconds, during which requests from a client should be routed to the same target. After this time period expires, the load balancer-generated cookie is considered stale. The range is 1 second to 1 week (604800 seconds). The default value is 1 day (86400 seconds).
+
+    **The following attribute is supported only if the load balancer is an Application Load Balancer and the target is a Lambda function:**
+
+    - **`lambda.multi_value_headers.enabled`**: Indicates whether the request and response headers that are exchanged between the load balancer and the Lambda function include arrays of values or strings. The value is `true` or `false`. The default is `false`. If the value is `false` and the request contains a duplicate header field name or query parameter key, the load balancer uses the last value sent by the client.
+
+    **The following attributes are supported only by Network Load Balancers:**
+
+    - **`deregistration_delay.connection_termination.enabled`**: Indicates whether the load balancer terminates connections at the end of the deregistration timeout. The value is `true` or `false`. The default is `false`.
+
+    - **`preserve_client_ip.enabled`**: Indicates whether client IP preservation is enabled. The value is `true` or `false` . The default is `false` if the target group type is IP address and the target group protocol is `TCP` or `TLS`. Otherwise, the default is `true`. Client IP preservation cannot be disabled for `UDP` and `TCP_UDP` target groups.
+
+    - **`proxy_protocol_v2.enabled`** - Indicates whether Proxy Protocol version 2 is enabled. The value is `true` or `false`. The default is `false`.
+
+    **The following attributes are supported only by Gateway Load Balancers:**
+
+    - **`target_failover.on_deregistration`**: Indicates how the Gateway Load Balancer handles existing flows when a target is deregistered. The possible values are `rebalance` and `no_rebalance`. The default is `no_rebalance`. The two attributes (**`target_failover.on_deregistration`** and **`target_failover.on_unhealthy`**) can’t be set independently. The value you set for both attributes must be the same.
+
+    - **`target_failover.on_unhealthy`**: Indicates how the Gateway Load Balancer handles existing flows when a target is unhealthy. The possible values are `rebalance` and `no_rebalance`. The default is `no_rebalance`. The two attributes (**`target_failover.on_deregistration`** and **`target_failover.on_unhealthy`**) cannot be set independently. The value you set for both attributes must be the same.
+
+  - **Value** (string): Value of the attribute
+
+---
+
+### Example 1: Modify the deregistration delay timeout
+
+This example sets the deregistration delay timeout to the specified value for the specified target group. [Read more about Deregistration delay](#elb-connection-draining--deregistration-delay)
+
+```s
+aws elbv2 modify-target-group-attributes \
+ --target-group-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/EC2TargetGroup" \
+ --attributes Key=deregistration_delay.timeout_seconds,Value=600
+```
+
+**Response:**
+
+```json
+{
+  "Attributes": [
+    {
+      "Value": "600",
+      "Key": "deregistration_delay.timeout_seconds"
+    }
+  ]
+}
+```
+
+---
+
+### Example 2: Apply sticky sessions and modify the stickiness settings of an ALB
+
+This example enables the sticky sessions and modifies the stickiness type and duration. [Read more about Applying Sticky Sessions](#sticky-sessions-applying-sticky-sessions-to-existing-load-balancer)
+
+```s
+aws elbv2 modify-target-group-attributes \
+ --target-group-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/EC2TargetGroup" \
+ --attributes Key=stickiness.enabled,Value=true Key=stickiness.type,Value="lb.cookie" Key=stickiness.lb_cookie.duration_seconds,Value=86400
+```
+
+**Response:**
+
+```json
+{
+  "Attributes": [
+    {
+      "Value": "false",
+      "Key": "stickiness.enabled"
+    },
+    {
+      "Value": "lb_cookie",
+      "Key": "stickiness.type"
+    },
+    {
+      "Value": "86400",
+      "Key": "stickiness.lb_cookie.duration_seconds"
+    }
+  ]
+}
+```
+
+**Example 3: Enable Multi-value headers (for Target Group, target type: Lambda Function)**
+
+Allows request and response headers exchanged between the load balancer and the Lambda function to use arrays. Otherwise, the load balancer uses the last value it receives.
+
+```s
+aws elbv2 modify-target-group-attributes \
+ --target-group-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c" \
+ --attributes Key=lambda.multi_value_headers.enabled,Value=true
+```
+
+Response:
+
+```json
+{
+  "Attributes": [
+    {
+      "Key": "lambda.multi_value_headers.enabled",
+      "Value": "true"
+    }
+  ]
+}
+```
+
+---
+
+## [`delete-rule`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-rule.html)
+
+Deletes the specified rule.
+
+You can’t delete the default rule.
+
+**Syntax:**
+
+```s
+aws elbv2 delete-rule --rule-arn [RuleARN]
+```
+
+**Example:**
+
+```s
+aws elbv2 delete-rule --rule-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:listener-rule/app/Demo-ALB/50dc6c495c0c9188/f2f7dc8efc522ab2/1291d13826f405c3"
+```
+
+**Response:**
+
+None
+
+---
+
+## [`delete-listener`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-listener.html)
+
+Deletes the specified listener.
+
+Alternatively, your listener is deleted when you delete the load balancer to which it is attached.
+
+**Syntax:**
+
+```s
+aws elbv2 delete-listener \
+ --load-balancer-arn [LoadBalancerARN]
+```
+
+**Example:**
+
+```s
+aws elbv2 delete-listener \
+ --load-balancer-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:listener/app/HelloWorld-Lambda-ALB/04cfb586fb76a5fe/f2f7dc8efc522ab2"
+```
+
+---
+
+## [`delete-load-balancer`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-load-balancer.html)
+
+Deletes the specified Application Load Balancer, Network Load Balancer, or Gateway Load Balancer. Deleting a load balancer also deletes its listeners.
+
+You can’t delete a load balancer if deletion protection is enabled. If the load balancer does not exist or has already been deleted, the call succeeds.
+
+Deleting a load balancer does not affect its registered targets. For example, your EC2 instances continue to run and are still registered to their target groups. If you no longer need these EC2 instances, you can stop or terminate them.
+
+**Syntax:**
+
+```s
+delete-load-balancer \
+ --load-balancer-arn [LoadBalancerARN]
+```
+
+**Example:**
+
+```s
+delete-load-balancer \
+ --load-balancer-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:loadbalancer/app/HelloWorld-Lambda-ALB/04cfb586fb76a5fe"
+```
+
+**Response:**
+
+None
+
+---
+
+## [`delete-target-group`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-target-group.html)
+
+Deletes the specified target group.
+
+You can delete a target group if it is not referenced by any actions. Deleting a target group also deletes any associated health checks. Deleting a target group does not affect its registered targets. For example, any EC2 instances continue to run until you stop or terminate them.
+
+**Syntax:**
+
+```s
+aws elbv2 delete-target-group \
+ --target-group-arn [TargetGroupARN]
+```
+
+**Example:**
+
+```s
+aws elbv2 delete-target-group \
+ --target-group-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:targetgroup/HelloWorld-LambdaFunction-TG/701c7f3fcdbd4d9c"
+```
+
+**Response:**
+
+None
 
 ---
