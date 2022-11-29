@@ -4,7 +4,9 @@
 - [Infrastructure as Code](#infrastructure-as-code)
 - [AWS CloudFormation: Overview](#aws-cloudformation-overview)
 - [AWS CloudFormation: How does it work?](#aws-cloudformation-how-does-it-work)
-- [Template Components](#template-components)
+- [AWS CloudFormation: Template](#aws-cloudformation-template)
+  - [Template Anatomy](#template-anatomy)
+  - [Template helpers](#template-helpers)
   - [Resources](#resources)
   - [Parameters](#parameters)
     - [Parameters: Overview](#parameters-overview)
@@ -13,11 +15,14 @@
     - [Psuedo Parameters](#psuedo-parameters)
   - [Mappings](#mappings)
   - [Outputs](#outputs)
+    - [Outputs: Overview](#outputs-overview)
+    - [Outputs: Cross-Stack Output](#outputs-cross-stack-output)
+    - [Outputs: Cross-Stack Reference](#outputs-cross-stack-reference)
   - [Conditions](#conditions)
   - [Intrinsic Functions](#intrinsic-functions)
     - [Intrinsic Functions: Overview](#intrinsic-functions-overview)
 - [Setting VS-Code to prevent Lint Errors](#setting-vs-code-to-prevent-lint-errors)
-- [AWS CloudFormation: Using the AWS CLI](#aws-cloudformation-using-the-aws-cli)
+- [Using the AWS CLI](#using-the-aws-cli)
   - [`create-stack`](#create-stack)
   - [`list-stacks`](#list-stacks)
   - [`describe-stacks`](#describe-stacks)
@@ -110,18 +115,38 @@ Then CloudFormation creates all these infrastructure for us, in the right order,
 
 ---
 
-# Template Components
+# AWS CloudFormation: Template
 
-Template components:
+## Template Anatomy
 
-1. **`Resources`**: Your AWS resources declared in the template (mandatory)
-2. **`Parameters`**: The dynamic inputs for your template.
-3. **`Mappings`**: The static variables for your template. (E.g. environment variables)
-4. **`Outputs`**: References to what has been created
-5. **`Conditionals`**: List of conditions to perform resource creation
-6. **`Metadata`**:
+A template is a JSON or YAML formatted text file that describes your AWS infrastructure.
+The following example shows a YAML-formatted template fragment.
 
-Template helpers:
+```yml
+AWSTemplateFormatVersion: 'version date' - The latest template format version is "2010-09-09" and is currently the only valid value
+
+Description: String - Description of the AWS CloudFormation Template
+
+Metadata: template metadata - arbitrary objects that provide details about the template.
+
+Parameters: set of parameters - the dynamic variables for your template that can be overridden during each stack creation
+
+Rules: set of rules - conditions that determine if AWS CloudFormation applies the assertions
+
+Mappings: set of mappings - static list of hard-coded variables for the template
+
+Conditions: set of conditions - list of conditions to perform resource creation
+
+Transform: set of transforms - macros that AWS CloudFormation uses to process your template.
+
+Resources: set of resources - Your AWS resources declared in the template (mandatory)
+
+Outputs: set of outputs - references to what has been created that can be further reused
+```
+
+---
+
+## Template helpers
 
 1. **`References`**: Link your stuff within your template
 2. **`Functions`**: Transform data within your template
@@ -153,15 +178,24 @@ Template helpers:
 
 - Parameters are a way to provide inputs to your AWS CloudFormation template
 - They are important to know about if:
+
   - You want to reuse your templates across the company.
   - Some inputs cannot be determined ahead of time, for e.g. the key-pair you are going to link to EC2 Instances
+
 - Parameters are extremely powerful, controlled and can prevent errors from happening in your templates thanks to types.
+
 - By making a value a parameter, you won't have to repupload a template to change its content. It's a bit more stable and bit modulized.
+
 - It is recommended to use a Parameter when the CloudFormation resource configuration is likely to change in the future.
+
 - You can have a maximum of 200 parameters in an AWS CloudFormation template.
+
 - Each parameter must be given a logical name (also called logical ID), which must be alphanumeric and unique among all logical names within the template.
+
 - Each parameter must be assigned a parameter type that is supported by AWS CloudFormation. For more information, see [Types](#parameters-types).
+
 - Each parameter must be assigned a value at runtime for AWS CloudFormation to successfully provision the stack. You can optionally specify a default value for AWS CloudFormation to use unless another value is provided.
+
 - Parameters must be declared and referenced from within the same template. You can reference parameters from the Resources and Outputs sections of the template.
 
 ---
@@ -275,6 +309,8 @@ Resources:
 
 ## Outputs
 
+### Outputs: Overview
+
 - The **[Outputs](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html)** section declares optional output values that we can import into other stacks (if you export them first)! Thus, we can link Cloudformation Templates with the help of Outputs.
 - You can also view outputs in the AWS Console or using the AWS CLI.
 - They're very useful for example if you define a network CloudFormation and output the variables such as VPC ID and your Subnet IDs.
@@ -304,7 +340,27 @@ Outputs:
       Name: SSHSecurityGroup
 ```
 
-**Importing the value in a Cross Stack Reference on another stack using the `Fn::ImportValue` function:**
+### Outputs: Cross-Stack Output
+
+- The benefits of a CloudFormation template shine when they can be deployed Cross-Zone.
+- Thus we need a way to have Cross-Stack Output so that for every new stack created with the same template, we continue to have new exported Outputs, all of which can be re-used.
+- Dynamic Export Names / Cross-Stack Output is made possible with the combination use of the [**`Fn:Sub`** Function](#intrinsic-functions-overview) with [Pseudo-Parameters](#psuedo-parameters).
+- If the example below: Every `AWS::StackName` is different. Therefore the same template, generating new stacks will continue to create new Exports without any conflict.
+
+```yml
+Outputs:
+  StackVPC:
+    Description: The ID of the VPC
+    Value: !Ref MyVPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPCID'
+```
+
+---
+
+### Outputs: Cross-Stack Reference
+
+We can import an Output exported from another stack using the **`Fn::ImportValue`** function. this allows for Cross-Stack reference.
 
 ```yml
 Resources:
@@ -458,21 +514,53 @@ We need to whitelist CloudFormation intrinsic functions tags. Otherwise you will
 
 ---
 
-# AWS CloudFormation: Using the AWS CLI
+# Using the AWS CLI
 
-## `create-stack`
+## [`create-stack`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/create-stack.html)
+
+Creates a stack as specified in the template. After the call completes successfully, the stack creation starts. You can check the status of the stack through the DescribeStacks operation.
 
 **Syntax:**
 
 ```s
+# Either specify `--template-body` or `--template-url`, not both
 aws cloudformation create-stack \
  --stack-name [name] \
- --template-body [filePathToTemplateFile]
+ --template-body [filePathToTemplateFile] \
+ --template-url [S3BucketURL | SSM URL] \
+ --parameters [Parameters] \
+ --notification-arns [SNSTopicARN1, SNSTopicARN2, ...] \
+ --disable-rollback \
+ --on-failure ["DO_NOTHING" | "ROLLBACK" | "DELETE"] \
+ --timeout-in-minutes [Minutes] \
+ --capabilities ["CAPABILITY_IAM"| "CAPABILITY_NAMED_IAM" | "CAPABILITY_AUTO_EXPAND"] \
+ --tags [Key=string,Value=string, ...]
+
 ```
 
-**[List of all options](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/create-stack.html)**
+**Example 1: Base Networking Stack (VPC, Subnets and Security Groups)**
 
-**Example 1: Basic Ubuntu EC2 Instance**
+```s
+aws cloudformation create-stack \
+ --stack-name ApSouth1Defaults \
+ --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/base-networking-stack.yml
+```
+
+**Example 2: Networking Stack but with Custom Parameters entered for VPC and Subnets**
+
+> **Note:**
+>
+> - Uses the **[`base-networking-stack.yml`](templates/base-networking-stack.yml)** template
+> - Parameters need to be declared in the CloudFormation Template
+
+```s
+aws cloudformation create-stack \
+ --stack-name SecondNetworkingStack \
+ --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/base-networking-stack.yml \
+ --parameters ParameterKey=VPC,ParameterValue="vpc-0accd6ee829f856ff" ParameterKey=Subnets,ParameterValue="subnet-09a2a6eec68d67bdb,subnet-0d4d144fef99b7917,subnet-0b0f3038e2c973ffd"
+```
+
+**Example 3: Basic Ubuntu EC2 Instance**
 
 ```s
 aws cloudformation create-stack \
@@ -480,12 +568,33 @@ aws cloudformation create-stack \
  --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/basic-ec2-template.yml
 ```
 
-**Example 2:**
+**Example 4: EC2 Instance with UserData**
 
 ```s
 aws cloudformation create-stack \
  --stack-name ec2-with-userData \
  --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/ec2-with-userData.yml
+```
+
+**Example 5: EC2 Instance accessible only through Application Load Balancer**
+
+![EC2 Instance accessible only through Application Load Balancer](assets/ec2-with-alb.png)
+
+**Workflow:**
+
+1. Create a Security group for the Application Load Balancer - `ALBSecurityGroup` that allows traffic from Port `80` and/or Port `443` and allows traffic through Port `80` and/or Port `443`.
+2. Create a Security Group for the EC2 Instance - `EC2SecurityGroup` that only allows traffic from the `ALBSecurityGroup`.
+3. Create an Application Load Balancer with the Security Group set to `ALBSecurityGroup`.
+4. Create an EC2 Instance with the Security group set to `EC2SecurityGroup`.
+5. Create a Target Group - `ELBTargetGroup` to route requests from Port `80` to registered targets and register the EC2 Instance.
+6. Create a Listener for the Application Load Balancer, that checks for connection requests, using the `HTTP` protocol at port `80`, forwarding traffic to the `ELBTargetGroup`.
+
+> We will be using the CloudFormation Template at **[`templates/ec2-with-ALB-SG-TG.yml`](templates/ec2-with-ALB-SG-TG.yml)**
+
+```s
+aws cloudformation create-stack \
+ --stack-name EC2InstanceWithFrontFacingALB \
+ --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/ec2-with-ALB-SG-TG.yml
 ```
 
 **Response:**
@@ -498,7 +607,7 @@ aws cloudformation create-stack \
 
 ---
 
-## `list-stacks`
+## [`list-stacks`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/list-stacks.html)
 
 Returns summary information about any of your running or deleted stacks (upto 90 days from deletion), including the name, stack identifier, template, and status.
 
@@ -543,7 +652,7 @@ aws cloudformation list-stacks --stack-status-filter DELETE_COMPLETE
 
 ---
 
-## `describe-stacks`
+## [`describe-stacks`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/describe-stacks.html)
 
 Provides information on your running stacks. You can use an option to filter results on a stack name. This command returns information about the stack, including the name, stack identifier, and status.
 
@@ -582,7 +691,7 @@ aws cloudformation describe-stacks --stack-name myteststack
 
 ---
 
-## `delete-stack`
+## [`delete-stack`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/delete-stack.html)
 
 **Syntax:**
 
@@ -598,7 +707,7 @@ aws cloudformation delete-stack --stack-name basic-ec2-stack
 
 ---
 
-## `list-stack-resources`
+## [`list-stack-resources`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/list-stack-resources.html)
 
 **Syntax:**
 
@@ -609,7 +718,7 @@ aws cloudformation list-stack-resources --stack-name [name]
 **Example:**
 
 ```s
-aws cloudformation list-stack-resources --stack-name [basic-ec2-stack]
+aws cloudformation list-stack-resources --stack-name "basic-ec2-stack"
 ```
 
 **Response:**

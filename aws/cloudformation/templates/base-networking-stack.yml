@@ -1,0 +1,121 @@
+# Deploy the following Security Groups:
+# 1. Security Group: ALLOW Incoming Traffic from Port 22
+# 2. Security Group: ALLOW Incoming Traffic from Port 80
+# 3. Security Group: ALLOW Incoming Traffic from Port 443
+# 4. Security Group: ALLOW Outgoing Traffic through Port 80
+# 5. Security Group: ALLOW Outgoing Traffic through Port 443
+# Export all Mappings and Security Groups for use with CloudFormation Templates
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create the Default Stack for the Region
+Parameters:
+  VPC:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-0accd6ee829f856ff
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Default: subnet-09a2a6eec68d67bdb, subnet-0d4d144fef99b7917, subnet-0b0f3038e2c973ffd
+
+Resources:
+  # 1. Security Group: ALLOW Incoming Traffic from Port 22
+  IncomingSSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: Incoming-SSH
+      GroupDescription: Allow Incoming SSH Traffic from Port 22
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow SSH Traffic
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+  # 2. Security Group: ALLOW Incoming Traffic from Port 80
+  IncomingHTTPSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: Incoming-HTTP
+      GroupDescription: Allow Incoming HTTP Traffic from Port 80
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow HTTP Traffic
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+  # 3. Security Group: ALLOW Incoming Traffic from Port 443
+  IncomingHTTPSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: Incoming-HTTPS
+      GroupDescription: Allow Incoming HTTPS Traffic from Port 443
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS Traffic
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+  # 4. Security Group: ALLOW Outgoing Traffic through Port 80
+  OutgoingHTTPSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: Outgoing-HTTP
+      GroupDescription: Allow Outgoing Traffic through Port 80
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow HTTP Traffic
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+  # 5. Security Group: ALLOW Outgoing Traffic through Port 443
+  OutgoingHTTPSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: Outgoing-HTTPS
+      GroupDescription: Allow Outgoing Traffic through Port 443
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS Traffic
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+# Export all Security Groups for use with CloudFormation Templates
+Outputs:
+  StackDefaults:
+    Description: The Default VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPC'
+  StackSubnetsDefaultVPCAll:
+    Description: All Default Subnets
+    Value: !Join [',', !Ref Subnets]
+    Export:
+      Name: !Sub '${AWS::StackName}-Subnets'
+  StackIncomingSSHSecurityGroup:
+    Description: The Incoming SSH Security Group
+    Value: !Ref IncomingSSHSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SG-IncomingSSH'
+  StackIncomingHTTPSecurityGroup:
+    Description: The Outgoing HTTP Security Group
+    Value: !Ref IncomingHTTPSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SG-IncomingHTTP'
+  StackIncomingHTTPSSecurityGroup:
+    Description: The Incoming HTTPS Security Group
+    Value: !Ref IncomingHTTPSSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SG-IncomingHTTPS'
+  StackOutgoingHTTPSecurityGroup:
+    Description: The Outgoing HTTP Security Group
+    Value: !Ref OutgoingHTTPSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SG-OutgoingHTTP'
+  StackOutgoingHTTPSSecurityGroup:
+    Description: The Outgoing HTTPS Security Group
+    Value: !Ref OutgoingHTTPSSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SG-OutgoingHTTPS'

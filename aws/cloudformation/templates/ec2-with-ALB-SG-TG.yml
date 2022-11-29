@@ -106,10 +106,10 @@ Resources:
       ProtocolVersion: HTTP1
       Port: 80
       HealthCheckEnabled: true
-      HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /
-      HealthCheckPort: 80
       HealthCheckProtocol: HTTP
+      HealthCheckPort: 80
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 6
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 3
       UnhealthyThresholdCount: 2
