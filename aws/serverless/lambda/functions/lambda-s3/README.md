@@ -39,7 +39,7 @@ aws iam create-role \
 aws iam create-policy \
  --policy-name "AWSLambdaAllDestinations" \
  --description "Allows Publish access to all AWS Lambda Destinations" \
- --policy-document file:///home/jayantasamaddar/Work/quick-reference/aws/serverless/lambda/policies/all-destination-policy.json
+ --policy-document file:///home/jayantasamaddar/Work/quick-reference/aws/serverless/lambda/policies/all-destinations-policy.json
 ```
 
 **Response:**

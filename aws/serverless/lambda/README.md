@@ -10,13 +10,24 @@
   - [Roles and Permissions: Execution Role](#roles-and-permissions-execution-role)
   - [Roles and Permissions: Attaching Policies to the Execution Role](#roles-and-permissions-attaching-policies-to-the-execution-role)
     - [AWS Managed Policies for Lambda](#aws-managed-policies-for-lambda)
+    - [User / Service Role Policy for accessing ECR](#user--service-role-policy-for-accessing-ecr)
     - [Custom Policies](#custom-policies)
     - [Attaching Policies to the Exection Role](#attaching-policies-to-the-exection-role)
   - [Roles and Permissions: Resource-based Policy](#roles-and-permissions-resource-based-policy)
 - [AWS Lambda Functions: Code and Deployment](#aws-lambda-functions-code-and-deployment)
   - [Function: Overview](#function-overview)
   - [Function: Example Workflow in Node.js](#function-example-workflow-in-nodejs)
-  - [Function: Deployment](#function-deployment)
+  - [Function: Dependencies](#function-dependencies)
+  - [Function: Deployment Package](#function-deployment-package)
+    - [Create the `.zip` deployment package](#create-the-zip-deployment-package)
+    - [Create the Image and Push to Amazon ECR](#create-the-image-and-push-to-amazon-ecr)
+  - [Function Deployment: Using the CLI to deploy a `.zip` package](#function-deployment-using-the-cli-to-deploy-a-zip-package)
+  - [Function Deployment: Deploy ECR Container Image using CLI](#function-deployment-deploy-ecr-container-image-using-cli)
+  - [Function Deployment: Deploy using CloudFormation](#function-deployment-deploy-using-cloudformation)
+    - [Deploy using CloudFormation: Inline Function](#deploy-using-cloudformation-inline-function)
+    - [Deploy using CloudFormation: Upload through S3](#deploy-using-cloudformation-upload-through-s3)
+    - [Deploy using CloudFormation - Upload through S3 into Multiple Accounts](#deploy-using-cloudformation---upload-through-s3-into-multiple-accounts)
+    - [Deploy using CloudFormation - Container Image](#deploy-using-cloudformation---container-image)
 - [AWS Lambda: Synchronous Invocations](#aws-lambda-synchronous-invocations)
 - [AWS Lambda: Asynchronous Invocations](#aws-lambda-asynchronous-invocations)
 - [AWS Lambda: Event Source Mapping](#aws-lambda-event-source-mapping)
@@ -26,6 +37,18 @@
   - [Event Source Mapping: Batching behaviour](#event-source-mapping-batching-behaviour)
   - [Event Source Mapping: Event Mapper Scaling](#event-source-mapping-event-mapper-scaling)
 - [AWS Lambda: Destinations](#aws-lambda-destinations)
+- [AWS Lambda: Logging, Monitoring and Tracing](#aws-lambda-logging-monitoring-and-tracing)
+- [Lambda in VPC](#lambda-in-vpc)
+- [AWS Lambda: Function Performance](#aws-lambda-function-performance)
+  - [Function Performance: Limitations](#function-performance-limitations)
+  - [Function Performance: Lambda Execution Context](#function-performance-lambda-execution-context)
+  - [Function Performance: Ephemeral Storage (`/tmp`)](#function-performance-ephemeral-storage-tmp)
+  - [Function Performance: Concurrency and Throttling](#function-performance-concurrency-and-throttling)
+    - [Concurrency and Throttling: Overview](#concurrency-and-throttling-overview)
+  - [Function Performance: Cold Starts and Provisioned Concurrency](#function-performance-cold-starts-and-provisioned-concurrency)
+- [AWS Lambda: Lambda Layers](#aws-lambda-lambda-layers)
+- [AWS Lambda: Versioning and Aliases](#aws-lambda-versioning-and-aliases)
+- [AWS Lambda and CodeDeploy](#aws-lambda-and-codedeploy)
 - [Using the CLI](#using-the-cli)
   - [`create-function`](#create-function)
   - [`get-function`](#get-function)
@@ -39,6 +62,7 @@
   - [`update-function-code`](#update-function-code)
   - [`delete-event-source-mapping`](#delete-event-source-mapping)
   - [`delete-function`](#delete-function)
+- [Serverless Workflows:](#serverless-workflows)
 - [References](#references)
 
 ---
@@ -85,8 +109,6 @@ With Lambda, you can run code for virtually any type of application or backend s
 
 - **Language Support**:
 
-  c
-
 - **Lambda Integrations**:
 
   - **API Gateway**: Used to create a REST API and it will invoke our Lambda functions
@@ -111,14 +133,14 @@ AWS Lambda works around three primary concepts:
    - **A function URL HTTP(S) Endpoint**
    - **AWS Lambda API**
    - **AWS SDK**
-   - **AWS CLI**,
+   - **AWS CLI**
    - **AWS Toolkits**
 
    - **Triggers**: To use your function to process data automatically, add one or more Triggers. A trigger is a Lambda resource or a resource in another service that you configure to invoke your function in response to lifecycle events, external requests, or on a schedule. Your function can have multiple triggers. Each trigger acts as a client invoking your function independently. Each event that Lambda passes to your function has data from only one client or trigger.
 
    Triggers can be set by:
 
-   - **AWS Services that can automatically invoke Lambda Function**: Two step process:
+   - **AWS Services that use events to invoke Lambda functions**: Two step process:
 
      1. Adding permissions so that the AWS Services can automatically invoke the function. We can use the **[`AddPermission` API](#add-permission)** with the `action` set to `lambda:InvokeFunction` and the `principal` set to the service(s) (e.g. `s3.amazonaws.com`, `elasticloadbalancing.amazonaws.com`).
 
@@ -237,6 +259,29 @@ At a minimum, your function needs access to Amazon CloudWatch Logs for log strea
 
 ---
 
+### User / Service Role Policy for accessing ECR
+
+- `ecr:SetRepositoryPolicy`: We need to be able to modify the Repository Policy to allow the function.
+- `ecr:GetRepositoryPolicy`: When the function needs to pull the Image to run the container, it needs to get the repository policy.
+
+Make sure the current user / service that created the function has the following policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VisualEditor0",
+      "Effect": "Allow",
+      "Action": ["ecr:SetRepositoryPolicy", "ecr:GetRepositoryPolicy"],
+      "Resource": "arn:aws:ecr:ap-south-1:123456789012:repository/demorepo/"
+    }
+  ]
+}
+```
+
+---
+
 ### Custom Policies
 
 We may have to add additional permissions to a Lambda function which we may not find in an Amazon Managed Policy.
@@ -302,11 +347,47 @@ aws iam attach-role-policy \
 
 ## Roles and Permissions: Resource-based Policy
 
-When you use an AWS service to invoke your function, you grant permission in a statement on a resource-based policy. You can apply the statement to the entire function to be invoked or managed, or limit the statement to a single version or alias.
+When you use AWS Services that use events to invoke Lambda functions, you need to grant permission in a statement on a resource-based policy. You can apply the statement to the entire function to be invoked or managed, or limit the statement to a single version or alias.
 
-Add a statement with the **[`add-permission` command](#add-permission)**.
+Add a statement with the **[`AddPermission` API](#add-permission)**. This abstracts the process of manually writing the whole policy.
 
-The simplest resource-based policy statement allows a service to invoke a function.
+The simplest resource-based policy statement allows a service to invoke a function based off events.
+
+**Example:** The policy below allows the Principal `s3.amazonaws.com` to Invoke the `lambda-s3` function, when the source bucket has the ARN: `arn:aws:s3:::jayanta-s3-bucket`
+
+```json
+{
+  "Version": "2012-10-17",
+  "Id": "default",
+  "Statement": [
+    {
+      "Sid": "S3EventLogger",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "s3.amazonaws.com"
+      },
+      "Action": "lambda:InvokeFunction",
+      "Resource": "arn:aws:lambda:ap-south-1:336463900088:function:lambda-s3",
+      "Condition": {
+        "ArnLike": {
+          "AWS:SourceArn": "arn:aws:s3:::jayanta-s3-bucket"
+        }
+      }
+    }
+  ]
+}
+```
+
+This is abstracted by the **[`AddPermission` API](#add-permission)** as:
+
+```s
+aws lambda add-permission \
+ --function-name "lambda-s3" \
+ --statement-id "S3EventLogger" \
+ --principal "s3.amazonaws.com" \
+ --action "lambda:InvokeFunction" \
+ --source-arn "arn:aws:s3:::jayanta-s3-bucket"
+```
 
 ---
 
@@ -371,15 +452,307 @@ Where,
 
 ---
 
-## Function: Deployment
+## Function: Dependencies
 
-We need to create a deployment package (`.zip`) before we can create a Lambda function on AWS. We can use the `zip` CLI Utility tool on Ubuntu to zip a file. Use equivalent for other OS.
+- If your Lambda function depends on external libraries like Database Clients, AWS X-Ray SDK, etc. you will need to install these dependencies alongside your code and zip it together as a deployment package.
+- Upload the `.zip` to Lambda if less than `50 MB`, otherwise, upload to **`S3`** first and then reference it from Lambda.
+- Native Libraries work: They need to be compiled on Amazon Linux
+- AWS SDK comes by default with every Lambda function. You don't need to package it alongside your code.
 
-**Syntax:**
+---
+
+## Function: Deployment Package
+
+When you create a Lambda function, you package your function code into a deployment package.
+
+Lambda supports two types of deployment packages: `.zip` and Container Image
+
+### Create the `.zip` deployment package
+
+- We can use the `zip` CLI Utility tool on Ubuntu to zip a file. Use equivalent for other OS.
+- Zipped files can either be deployed from:
+
+  - Directly from Local disk to AWS Lambda (upto `50 MB`)
+  - Through S3 above `50 MB`
+
+  ```s
+  # On Ubuntu
+  zip [path/to/destination/file.zip] [path/to/function.js] -j
+  ```
+
+---
+
+### Create the Image and Push to Amazon ECR
+
+1. **The Amazon ECR repository must exist before you push the image**. For more information, see:
+
+   - [Creating a private repository using the Console](../../container-management/ecr/README.md#ecr-create-a-repository-from-the-console)
+   - [Creating a private repository using the CLI](../../container-management/ecr/README.md#create-repository)
+
+2. **[Authenticate Docker to Amazon ECR Registry](../../container-management/ecr/README.md#get-login-password)**
+
+3. **Create the container Image**
+
+   - **Write a Dockerfile**
+
+     ```s
+     FROM "public.ecr.aws/lambda/nodejs:18.2022.12.01.19"
+
+     # Copy function code
+     COPY index.js ${LAMBDA_TASK_ROOT}
+
+     CMD [ "index.handler" ]
+     ```
+
+   - **Build the Image**
+
+     ```s
+     docker build -t [ImageName:Tag] .
+     ```
+
+4. **Tag the Image so you can push it to the repo**
+
+   ```s
+   docker tag [Image]:[Tag] [aws_account_id].dkr.ecr.[region].amazonaws.com/[Image]:[Tag]
+   ```
+
+5. [Use the Docker push command to push the Image to the Registry](../../container-management/ecr/README.md#docker-push)
+
+   ```s
+   docker push [aws_account_id].dkr.ecr.[region].amazonaws.com/[Image]:[tag]
+   ```
+
+---
+
+## Function Deployment: Using the CLI to deploy a `.zip` package
+
+We can make an API call to **[CreateFunction API](#create-function)** to create the Lambda function.
+
+**Example 1: When `.zip` package is on local disk**
 
 ```s
-# On Ubuntu
-zip [path/to/destination/file.zip] [path/to/function.js] -j
+aws lambda create-function \
+ --function-name lambda-s3 \
+ --description "An Amazon S3 Events Logger" \
+ --runtime "nodejs18.x" \
+ --role "arn:aws:iam::336463900088:role/AWSLambdaBasicRole" \
+ --zip-file "fileb:///home/jayantasamaddar/Work/quick-reference/aws/serverless/lambda/assets/functions/lambda-s3/lambda-s3.zip" \
+ --handler index.handler
+```
+
+**Example 2: When `.zip` package is on S3**
+
+```s
+aws lambda create-function \
+ --function-name lambda-s3 \
+ --description "An Amazon S3 Events Logger" \
+ --runtime "nodejs18.x" \
+ --role "arn:aws:iam::336463900088:role/AWSLambdaBasicRole" \
+ --code ImageUri=S3Bucket="jayanta-s3-bucket",S3Key="function.zip",S3ObjectVersion="vdVersjEM3ydRTp85T7F659c8.XYNQT6"  \
+ --handler index.handler
+```
+
+---
+
+## Function Deployment: Deploy ECR Container Image using CLI
+
+1. [Create the Image and Push to Amazon ECR](#create-the-image-and-push-to-amazon-ecr)
+2. [Make sure the required permissions are there for Lambda to access ECR to pull the image](#user--service-role-policy-for-accessing-ecr)
+
+3. Add Amazon ECR permissions:
+
+   - **For a function in the same account as the container image in Amazon ECR**: You can add `ecr:BatchGetImage` and `ecr:GetDownloadUrlForLayer` permissions to your Amazon ECR repository. The following example shows the minimum policy which will be added by Lambda as long as the required permissions in Step 2 are present.
+
+     ```json
+     {
+       "Sid": "LambdaECRImageRetrievalPolicy",
+       "Effect": "Allow",
+       "Principal": {
+         "Service": "lambda.amazonaws.com"
+       },
+       "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
+     }
+     ```
+
+   - **Amazon ECR cross-account permissions**:
+
+   - **`CrossAccountPermission`**: Allows account `123456789012` to create and update Lambda functions that use images from this ECR repository.
+
+   - **`LambdaECRImageCrossAccountRetrievalPolicy`**: Lambda will eventually set a function's state to inactive if it is not invoked for an extended period. This statement is required so that Lambda can retrieve the container image for optimization and caching on behalf of the function owned by `123456789012`.
+
+     ```json
+     {
+       "Version": "2012-10-17",
+       "Statement": [
+         {
+           "Sid": "CrossAccountPermission",
+           "Effect": "Allow",
+           "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
+           "Principal": {
+             "AWS": "arn:aws:iam::123456789012:root"
+           }
+         },
+         {
+           "Sid": "LambdaECRImageCrossAccountRetrievalPolicy",
+           "Effect": "Allow",
+           "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
+           "Principal": {
+             "Service": "lambda.amazonaws.com"
+           },
+           "Condition": {
+             "StringLike": {
+               "aws:sourceARN": "arn:aws:lambda:us-east-1:123456789012:function:*"
+             }
+           }
+         }
+       ]
+     }
+     ```
+
+     To give access to multiple accounts, you add the account IDs to the Principal list in the `CrossAccountPermission` policy and to the Condition evaluation list in the `LambdaECRImageCrossAccountRetrievalPolicy`.
+
+     If you are working with multiple accounts in an AWS Organization, we recommend that you enumerate each account ID in the ECR permissions policy. This approach aligns with the AWS security best practice of setting narrow permissions in IAM policies.
+
+4. **Create the Lambda Function**
+
+   ```s
+   aws lambda create-function \
+   --function-name my-function \
+   --package-type "Image"  \
+   --code ImageUri="336463900088.dkr.ecr.ap-south-1.amazonaws.com/[ImageName]:[Tag]"   \
+   --role "arn:aws:iam::336463900088:role/AWSLambdaBasicExecutionRole"
+   ```
+
+---
+
+## [Function Deployment: Deploy using CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-function.html)
+
+There are two ways to deploy via CloudFormation
+
+### Deploy using CloudFormation: Inline Function
+
+- Inline functions need to be simple and have no function dependencies
+- Use the `Code.ZipFile` property
+
+```yml
+AWSTemplateFormatVersion: '2010-09-09'
+Desription: Lambda Function Inline
+Resources:
+  Primer:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs18.x
+      Role: arn:aws:iam::336463900088:role/AWSLambdaBasicRole
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          exports.handler = async event => {
+            console.log('Received event:', JSON.stringify(event, null, 2));
+            return `Successfully received S3 event.`;
+          };
+```
+
+---
+
+### Deploy using CloudFormation: Upload through S3
+
+- You must store the Lambda zip in S3
+- You must refer the S3 zip location in the CloudFormation code
+  - `S3Bucket`
+  - `S3Key`: full path to zip
+  - `S3ObjectVersion`: If using S3 versioning (Recommended)
+- If you update your code in S3, but don't update `S3Bucket`, `S3Key` or `S3ObjectVersion`, CloudFormation will not update your function.
+
+```yml
+# If the Role doesn't exist with the permissions, you must create the Role as well
+AWSTemplateFormatVersion: '2010-09-09'
+Desription: Lambda Function Inline
+Resources:
+  Primer:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs18.x
+      Role: arn:aws:iam::336463900088:role/AWSLambdaBasicRole
+      Handler: index.handler
+      Code:
+        S3Bucket: my-bucket
+        S3Key: function.zip
+        S3ObjectVersion: vdVersjEM3ydRTp85T7F659c8.XYNQT6
+```
+
+[Example: CloudFormation stack that includes Executive Role, Getting the Function with S3 and X-Ray Tracing](../../cloudformation/templates/lambda-xray.yml)
+
+---
+
+### Deploy using CloudFormation - Upload through S3 into Multiple Accounts
+
+**Problem:**
+
+In the given situation, we have two three AWS Accounts.
+
+- **Account 1:** This is where our S3 Bucket lies
+- **Accounts 2 and 3:** We need to run our Lambda function here
+
+How can we make it happen?
+
+**Solution:**
+
+- **In Account 1: Add a Bucket Policy to S3 in Account 1 allowing Account 2 and 3 to perform S3 Bucket actions**
+
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "CrossAccountReadWrite",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::AccountB:user/AccountBUserName",
+          "AWS": "arn:aws:iam::AccountB:user/AccountCUserName"
+        },
+        "Action": ["s3:GetObject", "s3:PutObject", "s3:PutObjectAcl"],
+        "Resource": ["arn:aws:s3:::AccountABucketName/*"]
+      }
+    ]
+  }
+  ```
+
+- **In Account 2 and 3: Add an Execution Role in these accounts to be able to read from the S3 bucket**
+
+  - Attach the following policy:
+
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": ["s3:GetObject", "s3:PutObject", "s3:PutObjectAcl"],
+        "Resource": "arn:aws:s3:::AccountABucketName/*"
+      }
+    ]
+  }
+  ```
+
+- **In Accounts 2 and 3: Run the CloudFormation Template**
+
+---
+
+### Deploy using CloudFormation - Container Image
+
+We need to ensure that the
+
+```yml
+AWSTemplateFormatVersion: '2010-09-09'
+Desription: Lambda Function Inline
+Resources:
+  Primer:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Role: arn:aws:iam::336463900088:role/AWSLambdaBasicRole
+      Code:
+        ImageUri: '336463900088.dkr.ecr.ap-south-1.amazonaws.com/[ImageName]:[Tag]'
 ```
 
 ---
@@ -585,6 +958,218 @@ Event source mappings read items from a target event source. By default, an even
 
 ---
 
+# AWS Lambda: Logging, Monitoring and Tracing
+
+- **CloudWatch Logs** (Logging):
+
+  - AWS Lambda execution logs are stored in AWS CloudWatch logs
+  - [Make sure your Lambda function has an execution role with an IAM policy that authorizes writes to CloudWatch logs](#roles-and-permissions-attaching-policies-to-the-execution-role)
+
+- **CloudWatch Metrics** (Monitoring):
+
+  - AWS Lambda metrics are displayed in AWS CloudWatch Metrics
+  - Invocations, Durations, Concurrent Executions
+  - Error count, Success Rates, Throttles
+  - Async Delivery Failures
+  - Iterator Age (Kinesis & DynamoDB Streams)
+
+- **X-Ray** (Tracing):
+
+  - Enable in Lambda configuration (Active Tracing)
+  - We need to allow permissions for the Lambda function to write to XRay (Execution role permissions). The AWS managed policy available is called `AWSXRayDaemonWriteAccess`. When enabling this option from the Lambda console, the console attempts to attach this policy to the current role automatically automatically but with the CLI and SDK, we have to attach the policy ourselves.
+
+    The relevant permissions are:
+
+    - `xray:PutTraceSegments`
+    - `xray:PutTelemetryRecords`
+
+    See [Attaching a policy to the execution role](#attaching-policies-to-the-exection-role).
+
+  - Runs the X-Ray daemon for you
+  - Use AWS X-Ray SDK in Code
+  - Environment variables to communicate with X-Ray
+
+    - `_X_AMZN_TRACE_ID`: Contains the tracing header
+    - `AWS_XRAY_CONTEXT_MISSING`: By default, LOG_ERROR
+    - `AWS_XRAY_DAEMON_ADDRESS`: The X-Ray Daemon IP_ADDRESS:PORT
+
+---
+
+# Lambda in VPC
+
+- By default, Lambda functions are launched outside your own VPC (in an AWS-owned VPC)
+- Thus it cannot access resources that belong in your VPC (RDS, ElastiCache, internal ALB)
+- To deploy Lambda within your VPC:
+
+  - You must define the VPC ID, the Subnets and the Security Groups
+  - Behind the scenes, the Lambda function will create an ENI (Elastic Network Interface) in your subnets
+  - To create an ENI, Lambda needs access to the `ec2:CreateNetworkInterface` permission. This is also available through AWS Managed policies: **`AWSLambdaVPCAccessExecutionRole`** or **`AWSLambdaENIManagementAccess`**.
+
+  - Ensure the resource (e.g. RDS) Security Group, allows network access from the Security Group of the ENI
+
+  - Internet Access:
+
+    - A Lambda function connected to your VPC does not have internet access unless your VPC provides access
+    - Deploying a Lambda function in a public subnet does not give it internet access or a public IP
+    - Deploying a Lambda function in a private subnet only gives it internet access if you route outbound traffic to a NAT Gateway / Instance in a public subnet
+
+  - You can use VPC endpoints to privately access AWS Services without a NAT
+
+---
+
+# AWS Lambda: Function Performance
+
+## Function Performance: Limitations
+
+- **Memory**:
+
+  - From `128 MB` to `10240 MB` in `1 MB` Increments
+  - The more RAM you add, the more vCPU credits you get
+  - At `1,792 MB`, a function has the equivalent of one vCPU
+  - After `1,792 MB`, you get more than one CPU and you need to use multi-threading in your code to benefit from it.
+  - If your application is CPU-intensive (computation heavy), increase RAM.
+  - CPU allocation is proportional to increasing Memory. There is no way to independently configure CPU.
+
+- **Timeout**:
+
+  - Default: `3` seconds
+  - Maximum: `900` seconds (15 minutes)
+  - Function runtime over timeout will log out an `errorMessage`.
+
+  Anything that needs to run longer than that is a better use case for **Fargate**, **ECS** or **EC2**.
+
+---
+
+## Function Performance: Lambda Execution Context
+
+- The Execution Context is a temporary runtime environment that initializes any external dependencies of your Lambda code
+- The Execution Context is maintained for some time in anticipation of another Lambda function invocation.
+- The next function invocation can "re-use" the context to speed up execution time during initialization of the function.
+- The Execution Context includes [the **`/tmp`** directory](#function-performance-ephemeral-storage-tmp), which is an ephemeral storage space where you can write files that can be available across the function's executions.
+- Great for database connections, HTTP clients, SDK clients because otherwise every single function invocation will cause a new connection to the database. Instead we want to re-use the connection, so that after initial connection, we have a context to that connection and the next time our function runs it runs faster because of not having to connect to the database again.
+
+**Example of Bad Code:**
+
+```js
+/** Example Pseudo-code for Node.js */
+exports.handler = async event => {
+  /** Bad Code: Connection is made for every invocation */
+
+  const DB_URL = process.env.DB_URL;
+  const connection = db.connect(DB_URL);
+  const user = await connection.User.get({ id: '123456' });
+  return user;
+};
+```
+
+**Example of Good Code:**
+
+```js
+/** Example Pseudo-code for Node.js */
+const DB_URL = process.env.DB_URL;
+const connection = db.connect(DB_URL);
+
+exports.handler = async event => {
+  /** Good Code: Connection is only established once */
+
+  const user = await connection.User.get({ id: '123456' });
+  return user;
+};
+```
+
+---
+
+## Function Performance: Ephemeral Storage (`/tmp`)
+
+- If your Lambda function needs to download a big file to work.
+- If your Lambda function needs disk space to perform operations.
+- You can store files in a `/tmp` directory that has `10GB` of disk space.
+- Persistent is ephemeral.
+- Free upto `512MB`.
+- The directory content remains when the execution context is frozen, providing transient cache that can be used for multiple invocations of the same function (helpful to checkpoint your work)
+- For permanent storage of object (non-ephemeral), use a durable storage like S3.
+- When using the CLI or API, use the **[UpdateFunctionConfiguration API](#update-function-configuration)** to set these configurations
+
+---
+
+## Function Performance: Concurrency and Throttling
+
+### Concurrency and Throttling: Overview
+
+In Lambda, concurrency is the number of requests your function can handle at the same time. There are two types of concurrency controls available:
+
+1. **Reserved concurrency**: Reserved concurrency guarantees the maximum number of concurrent instances for the function. When a function has reserved concurrency, no other function can use that concurrency. There is no charge for configuring reserved concurrency for a function.
+
+2. **Provisioned concurrency**: Provisioned concurrency initializes a requested number of execution environments so that they are prepared to respond immediately to your function's invocations. Note that configuring provisioned concurrency incurs charges to your AWS account.
+
+- **Concurrency Limit**: `1000`
+- Can set a **"Reserved Concurrency"** at the function level. It reduces the unreserved concurrency pool available for the other functions.
+
+- Each invocation over the concurrency limit triggers a **"Throttle"**
+
+- **Throttle behaviour:**
+
+  - For Synchronous Invocation: return ThrottleError - `429`
+
+  - For Asynchronous Invocation:
+
+    - If the function doesn't have enough concurrency available to process all events, additional requests are throttled.
+    - For throttling errors (`429`) and system errors (`50x`-series), Lambda returns the event to the internal event queue and attempts to run the function again for upto `6 hours`.
+    - The retry interval increases exponentially from `1 second` after the first attempt to a maximum of `300 seconds`.
+    - If all fails, then go to DLQ.
+
+- Concurrency limits apply to **ALL** functions in your accounts: If a single or a few functions get over the concurrency limit, it is possible that all your other functions get throttled.
+
+> **Note:** If you need a higher than 1000 concurrent connections, open a Support Ticket to request a higher limit.
+
+---
+
+## Function Performance: Cold Starts and Provisioned Concurrency
+
+- **Cold Start**:
+
+  - New Lambda Function where the code outside the Lambda handler has to be run (init).
+  - If the init is large (code, dependencies, SDK), this process can take some time.
+  - First request served by new instances has higher latency than the rest.
+
+- **Provisioned Concurrency**:
+
+  - Concurrency is allocated before the function is invoked (in advance).
+  - So the cold start never happens and all invocations have low latency.
+  - Application Auto Scaling can manage concurrency (schedule or target utilization).
+  - This incurs charges in your AWS account.
+
+> **Note:** AWS continues to improve their services. Here is an [AWS Update: Improved VPC networking for AWS Lambda functions](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/)
+
+---
+
+# AWS Lambda: Lambda Layers
+
+Lambda Layers are a newer feature that allows us to do two things:
+
+1. **Custom Runtimes**: Languages not meant for Lambda initially but that the community has decided to support. E.g.
+
+   - **[C++](https://www.github.com/awslabs/aws-lambda-cpp)**
+   - **[Rust](https://www.github.com/awslabs/aws-lambda-rust-runtime)**
+
+2. **Externalize Dependencies to re-use them**:
+
+   - Since dependencies may never update or update slowly, the goal is to decouple dependencies into its own layer.
+   - We have one main Application package and one or more layers for the heavier libraries.
+   - These layers can be referenced by the function.
+   - Thus, we have a faster deployment.
+   - Allows another function to referene these same layers.
+
+---
+
+# AWS Lambda: Versioning and Aliases
+
+---
+
+# AWS Lambda and CodeDeploy
+
+---
+
 # Using the CLI
 
 ## [`create-function`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/create-function.html)
@@ -605,17 +1190,58 @@ aws lambda create-function \
  --description "An Amazon SQS trigger that logs messages in a queue." \
  --runtime [Runtime] \
  --role [IAMRole] \
+ --package-type ["Zip" | "Image"] \
+ --code [S3Bucket=string,S3Key=ObjectKey,S3ObjectVersion=ObjectVersionId,ImageUri=ECRImageURI] \
  --zip-file [DeploymentPackageZipFilePathURL] \
+ --image-config EntryPoint=[ContainerEntryPoint],string,Command=[ContainerCommand1, ContainerCommand2, ...],string,WorkingDirectory=[WorkingDirPath] \
+ --environment Variables={KeyName1=string,KeyName2=string} \
+ --kms-key-arn [KMSEncryptionKey] \
  --handler [FunctionHandler] \
- --dead-letter-config TargetArn=[SQSQueueARN | SNSTopicARN]
+ --file-system-configs [Arn=AmazonEFSArn,LocalMountPath="/mnt/optionalpath" ...] \
+ --dead-letter-config TargetArn=[SQSQueueARN | SNSTopicARN] \
+ --tracing-config Mode=["Active" | "Passthrough"] \
+ --tags [KeyName1=string,KeyName2=string]
 ```
 
-**Examples:**
+**Example 1: Create Zipped Function Deployment**
 
-1. [Invoke Lambda Function from a HTTP(S) endpoint (using ALB)](assets/functions/helloworld)
-2. [Create a Lambda Function that Logs the Messages sent to a cross-account Amazon SQS Queue](assets/functions/sqsprocessor)
-3. [Run a Lambda Function that runs every hour (Integrating EventBridge)](assets/functions/cronevent)
-4. Invoke a Lambda Function on CodePipeline Pipeline state changes
+```s
+aws lambda create-function \
+ --function-name lambda-s3 \
+ --description "An Amazon S3 Events Logger" \
+ --runtime "nodejs18.x" \
+ --role "arn:aws:iam::336463900088:role/AWSLambdaBasicRole" \
+ --zip-file "fileb:///home/jayantasamaddar/Work/quick-reference/aws/serverless/lambda/assets/functions/lambda-s3/lambda-s3.zip" \
+ --handler index.handler
+```
+
+**Example 2: Create Function Deployment from a Zipped Function stored in S3**
+
+```s
+aws lambda create-function \
+ --function-name lambda-s3 \
+ --description "An Amazon S3 Events Logger" \
+ --runtime "nodejs18.x" \
+ --role "arn:aws:iam::336463900088:role/AWSLambdaBasicRole" \
+ --code ImageUri=S3Bucket="jayanta-s3-bucket",S3Key="function.zip",S3ObjectVersion="vdVersjEM3ydRTp85T7F659c8.XYNQT6"  \
+ --handler index.handler
+```
+
+**Example 3: Create a Container Deployment**
+
+To create a function defined as container image, we need to:
+
+- [Create a Lambda Container Image](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
+- The Image must be uploaded to Amazon ECR. We will need to pass the ECR Image URI
+- Set the **`package-type`** to `Image` and specify your ECR Image URI using the `code` parameter.
+
+```s
+aws lambda create-function \
+  --function-name "lambda-container" \
+  --package-type "Image"  \
+  --code ImageUri=[ECR_Image_URI]   \
+  --role "arn:aws:iam::336463900088:role/lambda-ex"
+```
 
 **Response:**
 
@@ -944,7 +1570,7 @@ aws lambda put-function-event-invoke-config \
  --function-name [FunctionName | FunctionName:Alias] \
  --maximum-retry-attempts [Number | 2] \
  --maximum-event-age-in-seconds [Seconds] \
- --destination-config [OnSuccess=[Destination],OnFailure=[Destination]]
+ --destination-config OnSuccess={Destination=[DestinationARN],OnFailure=Destination=[DestinationARN]}
 ```
 
 Where,
@@ -981,8 +1607,6 @@ aws lambda put-function-event-invoke-config \
 }
 ```
 
-**[Example: Run Lambda function when you make write operations on a S3 bucket and send an email on success](./functions/lambda-s3)**
-
 ---
 
 ## [`update-function-invoke-config`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/update-function-invoke-config.html)
@@ -1000,7 +1624,7 @@ aws lambda update-function-event-invoke-config \
  --function-name [FunctionName | FunctionName:Alias] \
  --maximum-retry-attempts [Number | 2] \
  --maximum-event-age-in-seconds [Seconds] \
- --destination-config [OnSuccess=[Destination],OnFailure=[Destination]]
+ --destination-config OnSuccess={Destination=[DestinationARN],OnFailure=Destination=[DestinationARN]}
 ```
 
 Where,
@@ -1039,8 +1663,6 @@ aws lambda update-function-event-invoke-config \
 }
 ```
 
-**[Example: Run Lambda function when you make write operations on a S3 bucket and send an email on success](./functions/lambda-s3)**
-
 ---
 
 ## [`update-function-code`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/update-function-code.html)
@@ -1054,6 +1676,8 @@ If the function’s package type is `Zip`, you must specify the deployment packa
 The code in the deployment package must be compatible with the target instruction set architecture of the function (`x86-64` or `arm64 ).
 
 The function’s code is locked when you publish a version. You can’t modify the code of a published version, only the unpublished version.
+
+> **Note:** You cannot change the `package-type` of a function.
 
 **Syntax:**
 
@@ -1107,6 +1731,41 @@ aws lambda update-function-code \
 
 ---
 
+- **[`update-function-configuration`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/update-function-configuration.html)**
+
+Modify the version-specific settings of a Lambda function.
+
+When you update a function, Lambda provisions an instance of the function and its supporting resources. If your function connects to a VPC, this process can take a minute. During this time, you can’t modify the function, but you can still invoke it. The `LastUpdateStatus` , `LastUpdateStatusReason`, and `LastUpdateStatusReasonCode` fields in the response from **`GetFunctionConfiguration`** indicate when the update is complete and the function is processing events with the new configuration.
+
+These settings can vary between versions of a function and are locked when you publish a version. You can’t modify the configuration of a published version, only the unpublished version.
+
+To configure function concurrency, use **`PutFunctionConcurrency`** . To grant invoke permissions to an Amazon Web Services account or Amazon Web Service, use **[`AddPermission`](#add-permission)**.
+
+**Syntax:**
+
+```s
+aws lambda update-configuration \
+ --function-name [FunctionName] \
+ --description [Description] \
+ --role [RoleARN] \
+ --handler [FunctionHandler] \
+ --timeout [0 - 900 | 3] \
+ --vpc-config [SubnetIds="subnet-id1","subnet-id2",SecurityGroupIds="sg-1","sg-2"] \
+ --environment Variables={KeyName1=string,KeyName2=string} \
+ --kms-key-arn [KMSEncryptionKey] \
+ --runtime ["nodejs"|"nodejs4.3"|"nodejs4.3-edge"|"nodejs6.10"|"nodejs8.10"|"nodejs10.x"|"nodejs12.x"|"nodejs14.x"|"nodejs16.x"|"nodejs18.x"|"java8"|"java8.al2"|"java11"|"python2.7"|"python3.6"|"python3.7"|"python3.8"|"python3.9"|"dotnetcore1.0"|"dotnetcore2.0"|"dotnetcore2.1"|"dotnetcore3.1"|"dotnet6"|"go1.x"|"ruby2.5"|"ruby2.7"|"provided"|"provided.al2"] \
+ --dead-letter-config TargetArn=[SQSQueueARN | SNSTopic] \
+ --tracing-config [Mode=["Active" | "PassThrough"]] \
+ --memory-size [128 - 10240] \
+ --ephemeral-storage Size=[512 - 10240] \
+ --file-system-configs [Arn=AmazonEFSArn,LocalMountPath="/mnt/optionalpath" ...] \
+ --revision-id [RevisionID] \
+ --layers [Layer1ARN Layer2ARN ...]
+
+```
+
+---
+
 ## [`delete-event-source-mapping`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/delete-event-source-mapping.html)
 
 Deletes an event source mapping. You can get the identifier of a mapping from the output of **`ListEventSourceMappings`**.
@@ -1153,8 +1812,22 @@ None
 
 ---
 
+# Serverless Workflows:
+
+1. [Serverless HTTP(S) endpoint using AWS Lambda and ALB](./functions/helloworld)
+2. [Create a Lambda Function that Logs the Messages sent to a cross-account Amazon SQS Queue](./functions/sqsprocessor)
+3. [Run a Lambda Function that runs every hour (Integrating EventBridge)](./functions/cronevent)
+4. [Run Lambda function when you make write operations on a S3 bucket and send an email on success](./functions/lambda-s3)
+5. Invoke a Lambda Function on CodePipeline Pipeline state changes
+6. Use an Amazon S3 trigger to create Thumbnails
+
+---
+
 # References
 
 - [AWS Lambda: Event Source Mapping](https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventsourcemapping.html)
 - [AWS Blog: AWS Lambda Scaling controls for Kinesis and DynamoDB event sources](https://aws.amazon.com/blogs/compute/new-aws-lambda-scaling-controls-for-kinesis-and-dynamodb-event-sources/)
 - [Using Resource-based policies for AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html)
+- [AWS Update: Improved VPC networking for AWS Lambda functions](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/)
+- [Container images in Lambda](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-images.html)
+- [Use an Amazon S3 trigger to create Thumbnails](https://docs.aws.amazon.com/lambda/latest/dg/with-s3-tutorial.html#with-s3-tutorial-create-function-createfunction)
