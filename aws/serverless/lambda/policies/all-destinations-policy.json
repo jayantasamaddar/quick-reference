@@ -14,12 +14,12 @@
     {
       "Effect": "Allow",
       "Action": "lambda:InvokeFunction",
-      "Resource": "arn:aws:lambda:*"
+      "Resource": "arn:aws:lambda:*:function:*"
     },
     {
       "Effect": "Allow",
       "Action": "events:PutEvents",
-      "Resource": "arn:aws:events:*"
+      "Resource": "arn:aws:events:*:event-bus/default"
     }
   ]
 }

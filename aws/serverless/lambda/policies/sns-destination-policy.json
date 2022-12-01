@@ -3,7 +3,7 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["sns:Publish"],
+      "Action": "sns:Publish",
       "Resource": "arn:aws:sns:*"
     }
   ]

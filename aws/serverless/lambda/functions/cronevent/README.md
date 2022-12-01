@@ -1,4 +1,4 @@
-# Logs out a scheduled event
+# Logs a scheduled event to CloudWatch Logs
 
 - Integrates Amazon EventBridge with AWS Lambda (Asynchronous Invocation) and CloudWatch Logs
 

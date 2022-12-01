@@ -5,7 +5,7 @@
 ## The Workflow
 
 1. Create the execution role that gives your function permission to access AWS resources
-2. Add the `AWSLambdaSQSQueueExecutionRole` policy to the role
+2. Attach the `AWSLambdaSQSQueueExecutionRole` policy to the role
 3. Create the Function to process the SQS Queue and save it into a file
 4. Create a deployment package from the file
 5. Create Lambda Function
@@ -17,8 +17,7 @@ You can skip Steps 1 & 2, if already done and use the `AWSLambdaSQSQueueExecutio
 
 ## Task 1: Create the Execution Role that gives Lambda permission to access AWS resources
 
-- We need to create an execution role with a trust policy that allows our Lambda function permission to call AWS Secure Token Service (AWS STS) to issue temporary credentials. Lambda uses the **[`AssumeRole`](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)** API.
-- This will temporarily allow Lambda to access almost all AWS Resources for a default of 3600 seconds (1 hour) for each invocation, which is enough time for the function to complete all operations. Lambda handles this automatically.
+- [Read more about the Execution Role](../../README.md#roles-and-permissions-execution-role)
 
 ```s
 aws iam create-role \
@@ -28,31 +27,9 @@ aws iam create-role \
 
 ---
 
-## Task 2: Add the `AWSLambdaSQSQueueExecutionRole` policy to the role
+## Task 2: Attach the `AWSLambdaSQSQueueExecutionRole` policy to the Exection Role
 
-The `AWSLambdaSQSQueueExecutionRole` is a Amazon maanged policy that has the permissions that the function needs to read items from Amazon SQS and to write logs to Amazon CloudWatch Logs. At the same time, it allows Cross-Account access by specifying `*` for Resource.
-
-The `AWSLambdaSQSQueueExecutionRole` policy,
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "sqs:ReceiveMessage",
-        "sqs:DeleteMessage",
-        "sqs:GetQueueAttributes",
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+- Read more about [AWS Managed Policies for Lambda](../../README.md#aws-managed-policies-for-lambda) and [attaching policies to the execution role](../../README.md#attaching-policies-to-the-exection-role)
 
 **Run:**
 

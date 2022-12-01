@@ -1,0 +1,17 @@
+{
+  "LambdaFunctionConfigurations": [
+    {
+      "LambdaFunctionArn": "arn:aws:lambda:ap-south-1:336463900088:function:lambda-s3",
+      "Events": [
+        "s3:ObjectCreated:Put",
+        "s3:ObjectCreated:Post",
+        "s3:ObjectCreated:Copy",
+        "s3:ObjectCreated:CompleteMultipartUpload",
+        "s3:ObjectRemoved:Delete",
+        "s3:ObjectRemoved:DeleteMarkerCreated",
+        "s3:ObjectRestore:Post",
+        "s3:ObjectRestore:Completed"
+      ]
+    }
+  ]
+}

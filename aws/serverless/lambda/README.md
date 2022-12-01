@@ -3,11 +3,21 @@
 - [Table of Contents](#table-of-contents)
 - [Serverless: A Primer](#serverless-a-primer)
 - [AWS Lambda: Overview](#aws-lambda-overview)
-- [AWS Lambda: Pre-requisite Workflow before a Function can be created](#aws-lambda-pre-requisite-workflow-before-a-function-can-be-created)
+- [AWS Lambda: Primary Concepts](#aws-lambda-primary-concepts)
 - [AWS Lambda: Workflow](#aws-lambda-workflow)
+- [AWS Lambda: Role and Permissions](#aws-lambda-role-and-permissions)
+  - [Roles and Permissions: Overview](#roles-and-permissions-overview)
+  - [Roles and Permissions: Execution Role](#roles-and-permissions-execution-role)
+  - [Roles and Permissions: Attaching Policies to the Execution Role](#roles-and-permissions-attaching-policies-to-the-execution-role)
+    - [AWS Managed Policies for Lambda](#aws-managed-policies-for-lambda)
+    - [Custom Policies](#custom-policies)
+    - [Attaching Policies to the Exection Role](#attaching-policies-to-the-exection-role)
+  - [Roles and Permissions: Resource-based Policy](#roles-and-permissions-resource-based-policy)
+- [AWS Lambda Functions: Code and Deployment](#aws-lambda-functions-code-and-deployment)
+  - [Function: Overview](#function-overview)
+  - [Function: Example Workflow in Node.js](#function-example-workflow-in-nodejs)
+  - [Function: Deployment](#function-deployment)
 - [AWS Lambda: Synchronous Invocations](#aws-lambda-synchronous-invocations)
-  - [Synchronous Invocation: Services](#synchronous-invocation-services)
-  - [AWS Lambda: Function Handler in Node.js](#aws-lambda-function-handler-in-nodejs)
 - [AWS Lambda: Asynchronous Invocations](#aws-lambda-asynchronous-invocations)
 - [AWS Lambda: Event Source Mapping](#aws-lambda-event-source-mapping)
   - [Event Source Mapping: Overview](#event-source-mapping-overview)
@@ -25,6 +35,7 @@
   - [`get-event-source-mapping`](#get-event-source-mapping)
   - [`invoke`](#invoke)
   - [`put-function-event-invoke-config`](#put-function-event-invoke-config)
+  - [`update-function-invoke-config`](#update-function-invoke-config)
   - [`update-function-code`](#update-function-code)
   - [`delete-event-source-mapping`](#delete-event-source-mapping)
   - [`delete-function`](#delete-function)
@@ -74,19 +85,7 @@ With Lambda, you can run code for virtually any type of application or backend s
 
 - **Language Support**:
 
-  - Node.js (JavaScript)
-  - Python
-  - Java (Java 8 Compatible)
-  - C# (.NET core)
-  - Golang
-  - C# / Powershell
-  - Ruby
-  - Custom Runtime API (community supported, example: Rust)
-
-- **Lambda Container Image**
-
-  - The container image must implement the Lambda Runtime API
-  - ECS / Fargate is preferred for running arbitrary Docker images
+  c
 
 - **Lambda Integrations**:
 
@@ -102,85 +101,235 @@ With Lambda, you can run code for virtually any type of application or backend s
 
 ---
 
-# AWS Lambda: Pre-requisite Workflow before a Function can be created
+# AWS Lambda: Primary Concepts
 
-When creating a Lambda Function from the Lambda Console, we may not know what happens under the hood because everything happens on a single screen.
+AWS Lambda works around three primary concepts:
 
-Behind the scenes, even before a Lambda Function is created it has the following workflow:
+1. **Invocation**: A synchronous or asynchronous event that invokes the function. You can invoke a function directly using:
 
-1.  **Create the execution role with a trust policy that allows your Lambda permission to call AWS Secure Token Service (AWS STS) to issue temporary credentials (`sts:AssumeRole`)**
+   - **AWS Lambda Console**
+   - **A function URL HTTP(S) Endpoint**
+   - **AWS Lambda API**
+   - **AWS SDK**
+   - **AWS CLI**,
+   - **AWS Toolkits**
 
-    ```s
-    aws iam create-role \
-    --role-name AWSLambdaBasicRole \
-    --assume-role-policy-document '{"Version": "2012-10-17","Statement": [{ "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
-    ```
+   - **Triggers**: To use your function to process data automatically, add one or more Triggers. A trigger is a Lambda resource or a resource in another service that you configure to invoke your function in response to lifecycle events, external requests, or on a schedule. Your function can have multiple triggers. Each trigger acts as a client invoking your function independently. Each event that Lambda passes to your function has data from only one client or trigger.
 
-2.  **Add the relevant permissions policy (E.g. `AWSLambdaBasicExecutionRole`) to the role.**
+   Triggers can be set by:
 
-    ```s
-    aws iam attach-role-policy \
-    --role-name AWSLambdaBasicRole \
-    --policy-arn "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-    ```
+   - **AWS Services that can automatically invoke Lambda Function**: Two step process:
 
-3.  **Create the Function and save it into a file.**
+     1. Adding permissions so that the AWS Services can automatically invoke the function. We can use the **[`AddPermission` API](#add-permission)** with the `action` set to `lambda:InvokeFunction` and the `principal` set to the service(s) (e.g. `s3.amazonaws.com`, `elasticloadbalancing.amazonaws.com`).
 
-    Function can either be a synchronous or an asynchronous invocation.
+     This creates a **[Resource-based policy](#roles-and-permissions-resource-based-policy)**.
 
-    Refer to the sections:
+     2. Configuring the AWS Service to invoke the Lambda function. Examples:
 
-    - [Synchronous Invocation](#aws-lambda-synchronous-invocations)
-    - Asynchronous Invocation
+        - **S3**: S3 Notification Configuration using the **[PutBucketNotificationConfiguration API](../../s3/README.md#put-bucket-notification-configuration)**
+        - **ELB Listener Target Group**: Register Lambda Function as a Target using the **[RegisterTargets API](../../elb/README.md#register-targets)**
+        - **EventBridge** / **CloudWatch Events**: Add Lambda Function as Rule Target using the **[PutTargets API](../../monitoring/README.md#put-targets)**
 
-4.  **Create a deployment package (`.zip`) from the file**
+   - **AWS Services that require Lambda to poll**: Configure Lambda to poll from a stream or queue. Only when a batch is successfully polled, it invokes the function using **[Event Source Mapping](#aws-lambda-event-source-mapping)**. Example:
 
-    ```s
-    # On Ubuntu
-    zip [path/to/save/file.zip] [path/to/function.js] -j
-    ```
+     - Amazon SQS Queue
+     - Kinesis Data Streams
+     - DynamoDB Streams
+     - Amazon Managed Streaming for Apache Kafka (Amazon MSK)
+     - Self-managed Apache Kafka
+     - Amazon MQ (ActiveMQ and RabbitMQ)
+     - Amazon Simple Queue Service (Amazon SQS)
 
-So when we are using the CLI or the SDK to create a Lambda function, this must be kept in mind. Unless the Roles are already created, we may have to create them.
+2. **The Function**: The Function code that executes. Must be written in one of the supported languages. AWS Lambda is a Function-as-a-Service. Amazon manages to hosting and the runtime.
+
+3. **The Destination** (Optional): The destination for success or failure logs for asynchronous invocations. Destinations need executive role permissions to be written to. Check [AWS Lambda: Roles and Permissions](#aws-lambda-role-and-permissions).
+
+We will look into each of these in greater detail in later sections.
 
 ---
 
 # AWS Lambda: Workflow
 
-1. Create the execution role that gives your function permission to access AWS resources
-2. Add the Service Role policy / Custom policy to the role
-3. Create the Function and save it into a file
-4. Create a deployment package (`.zip`) from the file
-5. Create Lambda Function with the Role using the syntax below.
-6. For asynchronous and synchronous invocations: Add Permissions to the trigger to invoke the function (if any)
-7. For events that need to be polled from the source: Map event sources using **[Event Source Mapping](#aws-lambda-event-source-mapping)**
+1. [Create the execution role that gives your function permission to access AWS resources](#roles-and-permissions-execution-role)
+2. [Attach the relevant Service Role policy/policies to the role](#attaching-policies-to-the-exection-role)
+3. [Create the Function and save it into a file](#aws-lambda-functions-code-and-deployment)
+4. [Create a deployment package (`.zip`) from the file](#function-deployment)
+5. [Create Lambda Function](#create-function)
+6. [For asynchronous and synchronous invocations: Add Resource-based Policy](#roles-and-permissions-resource-based-policy)
+7. [For events that need to be polled from the source: Configure Event Source Mapping](#aws-lambda-event-source-mapping)
+8. [Optional: Add any Destinations to log success and failure logs for Asynchronous invocations](#aws-lambda-destinations)
 
 ---
 
-# AWS Lambda: Synchronous Invocations
+# [AWS Lambda: Role and Permissions](https://docs.aws.amazon.com/lambda/latest/dg/lambda-permissions.html)
 
-## Synchronous Invocation: Services
+## Roles and Permissions: Overview
 
-1. **User Invoked**
-
-- Elastic Load Balancing (Application Load Balancer)
-- Amazon API Gateway
-- Amazon Cloudfront
-- Amazon S3 Batch
-
-2. **Service Invoked**
-
-- Amazon Cognito
-- AWS Step Functions
-
-3. **Other Services**
-
-- Amazon Lex
-- Amazon Alexa
-- Amazon Kinesis Data Firehose
+- Every Lambda function has an IAM role called an [execution role](#roles-and-permissions-execution-role).
+- In this role, you can attach a policy/policies that defines the permissions that your function needs to access other AWS services and resources.
+- At a minimum, your function needs access to Amazon CloudWatch Logs for log streaming.
+- If your function calls other service APIs with the AWS SDK, you must include the necessary permissions in the execution role's policy.
+- To give other accounts and AWS services permission to use your Lambda resources, use a resource-based policy.
+- Lambda also uses the execution role to get permission to read from event sources when you use an [event source mapping](#aws-lambda-event-source-mapping) to invoke your function.
 
 ---
 
-## AWS Lambda: Function Handler in Node.js
+## Roles and Permissions: Execution Role
+
+A Lambda function's execution role is an AWS Identity and Access Management (IAM) role that grants the function permission to access AWS services and resources.
+
+- To create an execution role with the AWS Command Line Interface (AWS CLI), use the `create-role` command with the `sts.AssumeRole` action (**[Read more about the `AssumeRole`](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html) API**).
+- When using the `create-role` command, you can specify the trust policy inline as seen below.
+- A role's trust policy gives the specified principals permission to assume the role.
+- This will temporarily allow Lambda to access almost all AWS Resources for a default of 3600 seconds (1 hour) for each invocation, which is enough time for the function to complete all operations. Lambda handles this automatically.
+
+**Run:**
+
+```s
+aws iam create-role \
+ --role-name "AWSLambdaBasicRoleWithSNSPublish-FunctionName" \
+ --assume-role-policy-document '{"Version": "2012-10-17","Statement": [{ "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+```
+
+**Response:**
+
+```json
+{
+  "Role": {
+    "Path": "/",
+    "RoleName": "AWSLambdaBasicRoleWithSNSPublish-FunctionName",
+    "RoleId": "AROAQFOXMPL6TZ6ITKWND",
+    "Arn": "arn:aws:iam::123456789012:role/AWSLambdaBasicRoleWithSNSPublish-FunctionName",
+    "CreateDate": "2022-12-01T23:19:12Z",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          },
+          "Action": "sts:AssumeRole"
+        }
+      ]
+    }
+  }
+}
+```
+
+---
+
+## Roles and Permissions: Attaching Policies to the Execution Role
+
+At a minimum, your function needs access to Amazon CloudWatch Logs for log streaming. Thus we need to attach policies. Amazon has managed policies for Lambda features but we can also write our own policies and attach them.
+
+### AWS Managed Policies for Lambda
+
+- **`AWSLambdaBasicExecutionRole`**: Grants permissions to upload logs to CloudWatch.
+- **`AWSLambdaMSKExecutionRole`**: Grants permissions to read and access records from an Amazon Managed Streaming for Apache Kafka (Amazon MSK) cluster, manage elastic network interfaces (ENIs), and write to CloudWatch Logs.
+- **`AWSLambdaDynamoDBExecutionRole`**: Grants permissions to read records from an Amazon DynamoDB stream and write to CloudWatch Logs.
+- **`AWSLambdaKinesisExecutionRole`**: Grants permissions to read events from an Amazon Kinesis data stream and write to CloudWatch Logs.
+- **`AWSLambdaSQSQueueExecutionRole`**: Grants permissions to read a message from an Amazon Simple Queue Service (Amazon SQS) queue and write to CloudWatch Logs.
+- **`AWSLambdaVPCAccessExecutionRole`**: Grants permissions to manage ENIs within an Amazon VPC and write to CloudWatch Logs.
+- **`AWSXRayDaemonWriteAccess`**: Grants permissions to upload trace data to X-Ray.
+- **`CloudWatchLambdaInsightsExecutionRolePolicy`**: Grants permissions to write runtime metrics to CloudWatch Lambda Insights.
+- **`AmazonS3ObjectLambdaExecutionRolePolicy`**: Grants permissions to interact with Amazon Simple Storage Service (Amazon S3) object Lambda and to write to CloudWatch Logs.
+
+---
+
+### Custom Policies
+
+We may have to add additional permissions to a Lambda function which we may not find in an Amazon Managed Policy.
+
+**For example:**
+
+- Publish to a SNS Topic
+- Write to ElastiCache
+
+Thus we need to create our own policy and attach it to the execution Role for the function.
+
+**Create a custom Policy**
+
+In `policy.json`,
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "sns:Publish",
+      "Resource": "arn:aws:sns:*"
+    }
+  ]
+}
+```
+
+**Run:**
+
+```s
+aws iam create-policy \
+ --policy-name "AmazonSNSPublishAccess" \
+ --description "Allows Publish access to all Amazon SNS" \
+ --policy-document file:///absolute/path/to/policy.json
+```
+
+---
+
+### Attaching Policies to the Exection Role
+
+Once we have the desired Policies we can attach them to the Execution Role using the `aws iam attach-policy` CLI command:
+
+**Attach the Amazon Managed `AWSLambdaBasicExecutionRole` policy**
+
+This gives our function access to write to CloudWatch logs. At the minimum we need this.
+
+```s
+aws iam attach-role-policy \
+  --role-name "AWSLambdaBasicRoleWithSNSPublish-FunctionName" \
+  --policy-arn "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+```
+
+**Attach the Custom Policy** (if any)
+
+```s
+aws iam attach-role-policy \
+  --role-name "AWSLambdaBasicRoleWithSNSPublish-FunctionName" \
+  --policy-arn "arn:aws:iam::aws:policy/service-role/AmazonSNSPublishAccess"
+```
+
+---
+
+## Roles and Permissions: Resource-based Policy
+
+When you use an AWS service to invoke your function, you grant permission in a statement on a resource-based policy. You can apply the statement to the entire function to be invoked or managed, or limit the statement to a single version or alias.
+
+Add a statement with the **[`add-permission` command](#add-permission)**.
+
+The simplest resource-based policy statement allows a service to invoke a function.
+
+---
+
+# AWS Lambda Functions: Code and Deployment
+
+## Function: Overview
+
+In AWS Lambda the functions can be written in the various languages with supported runtimes:
+
+**Language Support**:
+
+- Node.js (JavaScript)
+- Python
+- Java (Java 8 Compatible)
+- C# (.NET core)
+- Golang
+- C# / Powershell
+- Ruby
+- Custom Runtime API (community supported, example: Rust)
+
+---
+
+## Function: Example Workflow in Node.js
 
 - The `index.js` or `index.mjs` file exports a function named `handler` that takes an `event` object and a `context` object.
 
@@ -189,6 +338,8 @@ So when we are using the CLI or the SDK to create a Lambda function, this must b
 - This is the handler function that Lambda calls when the function is invoked. The Node.js function runtime gets invocation events from Lambda and passes them to the handler.
 - In the function configuration, the handler value is `index.handler`.
 - A Callback function: `callback(error, result)` can be passed and run within the handler. Useful when you want the function to remain synchronous but be able to handle requests from a client.
+
+**Example function:**
 
 In `index.js`,
 
@@ -214,9 +365,46 @@ Where,
 
 - `event`: The request sent by the event for e.g. a HTTP Request
 - `context`: When Lambda runs your function, it passes a context object to the handler. This object provides methods and properties that provide information about the invocation, function, and execution environment. For more details Read the Documentation - **[AWS Lambda context object in Node.js](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-context.html)**
-- `callback`: Callback function that runs after the code above is executed.
+- `callback`: Callback function for synchronous functions that runs after the code above is executed.
   - `error`: If there's an error, pass the error to be returned
   - `result`: The result that must be returned from the handler function.
+
+---
+
+## Function: Deployment
+
+We need to create a deployment package (`.zip`) before we can create a Lambda function on AWS. We can use the `zip` CLI Utility tool on Ubuntu to zip a file. Use equivalent for other OS.
+
+**Syntax:**
+
+```s
+# On Ubuntu
+zip [path/to/destination/file.zip] [path/to/function.js] -j
+```
+
+---
+
+# AWS Lambda: Synchronous Invocations
+
+Services that use synchronous invocation:
+
+1. **User Invoked**
+
+- Elastic Load Balancing (Application Load Balancer)
+- Amazon API Gateway
+- Amazon Cloudfront
+- Amazon S3 Batch
+
+2. **Service Invoked**
+
+- Amazon Cognito
+- AWS Step Functions
+
+3. **Other Services**
+
+- Amazon Lex
+- Amazon Alexa
+- Amazon Kinesis Data Firehose
 
 ---
 
@@ -371,9 +559,13 @@ Event source mappings read items from a target event source. By default, an even
 
 # AWS Lambda: Destinations
 
-- Send the result of an asynchronous invocation or the failure of an event mapper into somewhere.
+- Send the result of an asynchronous invocation into a destination from a list of available destinations based on Conditions: **`OnSuccess`** or **`OnFailure`**.
 
-- For Asynchronous invocations: Can define destinations for both successful and failed events.
+- Can have one destination for each condition, one for **`OnSuccess`** and one for **`OnFailure`**. Setting it again on the same condition will overwrite the existing destination.
+
+- Destinations can be set using the **[`PutFunctionInvokeConfig`](#put-function-event-invoke-config))** and the **[`UpdateFunctionInvokeConfig`](#update-function-invoke-config)** APIs.
+
+- For Asynchronous Invocations: Can define destinations for both successful and failed events.
 
   - Amazon SQS
   - Amazon SNS
@@ -382,8 +574,6 @@ Event source mappings read items from a target event source. By default, an even
 
   ![Asynchronous Invocation: Destinations](assets/lambda-asynchronous-destinations.png)
 
-  > **Recommendation:** AWS recommends that you use Destinations instead of DLQ now. (But both can be used at the same time)
-
 - For Event Source Mapping: Can define destinations for discarded event batches
 
   - Amazon SQS
@@ -391,18 +581,20 @@ Event source mappings read items from a target event source. By default, an even
 
   ![Lambda: Event Source Mapping](assets/lambda-eventsourcemapping.png)
 
+> **Recommendation:** AWS recommends that you use Destinations instead of DLQ now. (But both DLQ and Destination can be used at the same time)
+
 ---
 
 # Using the CLI
 
 ## [`create-function`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/create-function.html)
 
-The Basic Workflow of creating a Lambda function is like this:
+**Pre-requisites:**
 
-1. Create the execution role that gives your function permission to access AWS resources (Lambda)
-2. Add the Service Role / Custom policy to the role
-3. Create the Function and save it into a file
-4. Create a deployment package (`.zip`) from the file
+1. [Create the execution role that gives your function permission to access AWS resources](#roles-and-permissions-execution-role)
+2. [Attach the Service Role policy/policies to the execution role](#attaching-policies-to-the-exection-role)
+3. [Create the Function and save it into a file](#aws-lambda-functions-code-and-deployment)
+4. [Create a deployment package (`.zip`) from the file](#function-deployment)
 5. Create Lambda Function with the Role using the syntax below.
 
 **Syntax:**
@@ -424,6 +616,37 @@ aws lambda create-function \
 2. [Create a Lambda Function that Logs the Messages sent to a cross-account Amazon SQS Queue](assets/functions/sqsprocessor)
 3. [Run a Lambda Function that runs every hour (Integrating EventBridge)](assets/functions/cronevent)
 4. Invoke a Lambda Function on CodePipeline Pipeline state changes
+
+**Response:**
+
+```json
+{
+  "FunctionName": "SQSProcessor",
+  "FunctionArn": "arn:aws:lambda:ap-south-1:336463900088:function:SQSProcessor",
+  "Runtime": "nodejs18.x",
+  "Role": "arn:aws:iam::336463900088:role/AWSLambdaSQSRole",
+  "Handler": "index.handler",
+  "CodeSize": 378,
+  "Description": "An Amazon SQS trigger that logs messages in a queue.",
+  "Timeout": 3,
+  "MemorySize": 128,
+  "LastModified": "2022-11-28T21:37:22.412+0000",
+  "CodeSha256": "RwITFYScZouV715vITc9N0quNgOoHORWG/8Zw7z9bxQ=",
+  "Version": "$LATEST",
+  "TracingConfig": {
+    "Mode": "PassThrough"
+  },
+  "RevisionId": "bb092563-13df-4b78-a9ff-8ee9e1805b9d",
+  "State": "Pending",
+  "StateReason": "The function is being created.",
+  "StateReasonCode": "Creating",
+  "PackageType": "Zip",
+  "Architectures": ["x86_64"],
+  "EphemeralStorage": {
+    "Size": 512
+  }
+}
+```
 
 ---
 
@@ -708,9 +931,9 @@ aws lambda invoke \
 
 ## [`put-function-event-invoke-config`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/put-function-event-invoke-config.html)
 
-Configures options for asynchronous invocation on a function, version, or alias. If a configuration already exists for a function, version, or alias, this operation overwrites it. If you exclude any settings, they are removed. To set one option without affecting existing settings for other options, use UpdateFunctionEventInvokeConfig .
+Configures options for **asynchronous invocation** on a `function`, `version`, or `alias`. If a configuration already exists for a function, version, or alias, this operation overwrites it. If you exclude any settings, they are removed. To set one option without affecting existing settings for other options, use **`UpdateFunctionEventInvokeConfig`**.
 
-By default, Lambda retries an asynchronous invocation twice if the function returns an error. It retains events in a queue for up to six hours. When an event fails all processing attempts or stays in the asynchronous invocation queue for too long, Lambda discards it. To retain discarded events, configure a dead-letter queue with UpdateFunctionConfiguration .
+By default, Lambda retries an asynchronous invocation twice if the function returns an error. It retains events in a queue for up to six hours. When an event fails all processing attempts or stays in the asynchronous invocation queue for too long, Lambda discards it. To retain discarded events, configure a dead-letter queue with **[`UpdateFunctionConfiguration`]**.
 
 To send an invocation record to a queue, topic, function, or event bus, specify a destination . You can configure separate destinations for successful invocations (on-success) and events that fail all processing attempts (on-failure). You can configure destinations in addition to or instead of a dead-letter queue.
 
@@ -719,7 +942,7 @@ To send an invocation record to a queue, topic, function, or event bus, specify 
 ```s
 aws lambda put-function-event-invoke-config \
  --function-name [FunctionName | FunctionName:Alias] \
- --maximum-retry-attempts [Number] \
+ --maximum-retry-attempts [Number | 2] \
  --maximum-event-age-in-seconds [Seconds] \
  --destination-config [OnSuccess=[Destination],OnFailure=[Destination]]
 ```
@@ -735,109 +958,88 @@ Where,
     - **Topic**: The ARN of an SNS topic.
     - **Event Bus**: The ARN of an Amazon EventBridge event bus.
 
-**Example 1: Publish to a SNS Topic Destination**
+**Example:**
 
-**Workflow:**
+```s
+aws lambda put-function-event-invoke-config \
+ --function-name "lambda-s3" \
+ --destination-config OnSuccess={"Destination"="arn:aws:sns:ap-south-1:336463900088:S3EventsTopic"}
+```
 
-- Create a SNS Topic
-- Provide the Lambda function write permissions to the SNS Topic
-  - Create a IAM Policy
-  - Attach policy to IAM Role
-- Update the Destination using `PutFunctionEventInvokeConfig` and using the SNS Topic ARN
+**Response:**
 
-1. **Create a SNS Topic**
+```json
+{
+  "LastModified": "2022-12-01T00:52:00.560000+05:30",
+  "FunctionArn": "arn:aws:lambda:ap-south-1:336463900088:function:lambda-s3:$LATEST",
+  "DestinationConfig": {
+    "OnSuccess": {
+      "Destination": "arn:aws:sns:ap-south-1:336463900088:S3EventsTopic"
+    },
+    "OnFailure": {}
+  }
+}
+```
 
-   **Run:**
+**[Example: Run Lambda function when you make write operations on a S3 bucket and send an email on success](./functions/lambda-s3)**
 
-   ```s
-   aws sns create-topic \
-    --name S3EventsTopic \
-    --attributes DisplayName="S3Events"
-   ```
+---
 
-   **Response:**
+## [`update-function-invoke-config`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/update-function-invoke-config.html)
 
-   ```json
-   {
-     "TopicArn": "arn:aws:sns:ap-south-1:336463900088:S3EventsTopic"
-   }
-   ```
+Updates the configuration for asynchronous invocation for a function, version, or alias. If a configuration already exists for a function, version, or alias, this operation overwrites it. If you exclude any settings, they are NOT removed. To remove excluded settings for other options, use **[`PutFunctionEventInvokeConfig`](#put-function-event-invoke-config)** instead.
 
-2. Provide the Lambda function write permissions to the SNS Topic
+**Use Case:**
 
-   In this case to avoid constantly issuing permissions among core members who shouldn't have any problem, for e.g. the Admin group you can add,
+- Adding a `OnFailure` destination to an already existing `OnSuccess` destination.
 
-   - Principal: The Admin Group ARN (can just keep appending it with more groups, users for permission sharing)
-   - Resource: `arn:aws:sns:*` to include all resources, across all regions (all SNS topics) possible for the action `sns:Publish`. To make this region specific, you can pass `arn:aws:sns:ap-south-1:*`.
+**Syntax:**
 
-   In `sns-destination-policy.json`,
+```s
+aws lambda update-function-event-invoke-config \
+ --function-name [FunctionName | FunctionName:Alias] \
+ --maximum-retry-attempts [Number | 2] \
+ --maximum-event-age-in-seconds [Seconds] \
+ --destination-config [OnSuccess=[Destination],OnFailure=[Destination]]
+```
 
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Action": ["sns:Publish"],
-         "Resource": "arn:aws:sns:*"
-       }
-     ]
-   }
-   ```
+Where,
 
-   **Create an IAM Policy**
+- **`--destination-config`**: A destination for events after they have been sent to a function for processing.
 
-   ```s
-   aws iam create-policy \
-    --policy-name AWSLambdaSNSPublishExecutionRole \
-    --description "Allows Lambda functions to publish to SNS Topics for select IAM users" \
-    --policy-document file:///home/jayantasamaddar/Work/quick-reference/aws/serverless/lambda/assets/functions/sqsprocessor/sns-destination-policy.json
+  - **Possible Destinations**:
 
-   ```
+    - **Function**: The Amazon Resource Name (ARN) of a Lambda function.
+    - **Queue**: The ARN of an SQS queue.
+    - **Topic**: The ARN of an SNS topic.
+    - **Event Bus**: The ARN of an Amazon EventBridge event bus.
 
-   **Response:**
+**Example:**
 
-   ```json
-   {
-     "Policy": {
-       "PolicyName": "AmazonSNSPublishAccess",
-       "PolicyId": "ANPAU4VWPVW4KADDFB2GM",
-       "Arn": "arn:aws:iam::336463900088:policy/AmazonSNSPublishAccess",
-       "Path": "/",
-       "DefaultVersionId": "v1",
-       "AttachmentCount": 0,
-       "PermissionsBoundaryUsageCount": 0,
-       "IsAttachable": true,
-       "CreateDate": "2022-11-30T12:31:44+00:00",
-       "UpdateDate": "2022-11-30T12:31:44+00:00"
-     }
-   }
-   ```
+```s
+aws lambda update-function-event-invoke-config \
+ --function-name "lambda-s3" \
+ --destination-config OnFailure={"Destination"="arn:aws:sns:ap-south-1:336463900088:S3EventsQueue"}
+```
 
-3. Update the Destination using `PutFunctionEventInvokeConfig` and using the SNS Topic ARN
+**Response:**
 
-   **Run:**
+```json
+{
+  "LastModified": "2022-12-01T10:26:38.651000+05:30",
+  "FunctionArn": "arn:aws:lambda:ap-south-1:336463900088:function:lambda-s3:$LATEST",
+  "DestinationConfig": {
+    "OnSuccess": {
+      "Destination": "arn:aws:sns:ap-south-1:336463900088:S3EventsTopic"
+    },
+    "OnFailure": {
+      "Destination": "arn:aws:sqs:ap-south-1:336463900088:S3EventsQueue"
+    }
+  }
+}
+```
 
-   ```s
-    aws lambda put-function-event-invoke-config \
-    --function-name "SQSProcessor" \
-    --destination-config OnSuccess={"Destination"="arn:aws:sns:ap-south-1:336463900088:S3EventsTopic.fifo"}
-   ```
-
-   **Response:**
-
-   ```json
-   {
-     "LastModified": "2022-11-30T18:33:40.574000+05:30",
-     "FunctionArn": "arn:aws:lambda:ap-south-1:336463900088:function:SQSProcessor:$LATEST",
-     "DestinationConfig": {
-       "OnSuccess": {
-         "Destination": "arn:aws:sns:ap-south-1:336463900088:S3EventsTopic"
-       },
-       "OnFailure": {}
-     }
-   }
-   ```
+**[Example: Run Lambda function when you make write operations on a S3 bucket and send an email on success](./functions/lambda-s3)**
 
 ---
 
