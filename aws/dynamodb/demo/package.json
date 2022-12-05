@@ -1,0 +1,13 @@
+{
+  "name": "dynamodb-demo",
+  "version": "0.0.1",
+  "description": "DynamoDB Demo Project",
+  "type": "module",
+  "main": "index.js",
+  "author": "Jayanta Samaddar <jayanta@zenius.one>",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.223.0",
+    "dotenv": "^16.0.3"
+  }
+}
