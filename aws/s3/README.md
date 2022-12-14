@@ -11,12 +11,15 @@
 - [S3: Security](#s3-security)
   - [S3 Security: Overview](#s3-security-overview)
   - [S3 Security: Bucket Policy](#s3-security-bucket-policy)
-  - [Example: Public Access using S3 Bucket Policy](#example-public-access-using-s3-bucket-policy)
-  - [Example: IAM User Access to S3 using IAM Policies](#example-iam-user-access-to-s3-using-iam-policies)
-  - [Example: EC2 Instance Access using IAM Roles](#example-ec2-instance-access-using-iam-roles)
-  - [Example: Cross-Account Access using Bucket Policy](#example-cross-account-access-using-bucket-policy)
+    - [Public Access using S3 Bucket Policy](#public-access-using-s3-bucket-policy)
+    - [IAM User Access to S3 using IAM Policies](#iam-user-access-to-s3-using-iam-policies)
+    - [Example: EC2 Instance Access using IAM Roles](#example-ec2-instance-access-using-iam-roles)
+    - [Cross-Account Bucket Access](#cross-account-bucket-access)
+    - [Cross-Account Bucket Access while granting full access to Bucket Owner](#cross-account-bucket-access-while-granting-full-access-to-bucket-owner)
+    - [Example: Controlling access from VPC endpoints with bucket policies](#example-controlling-access-from-vpc-endpoints-with-bucket-policies)
+  - [S3 Security: Access Control Lists (ACL)](#s3-security-access-control-lists-acl)
   - [S3 Security: Encryption](#s3-security-encryption)
-    - [Encryption: Overview](#encryption-overview)
+    - [Encryption: Object Encryption](#encryption-object-encryption)
     - [Encryption: Encryption in Transit](#encryption-encryption-in-transit)
     - [Encryption: Implement Server-Side Encryption](#encryption-implement-server-side-encryption)
     - [Encryption: Default Encryption vs Bucket Policies](#encryption-default-encryption-vs-bucket-policies)
@@ -28,10 +31,12 @@
     - [Block Public Access](#block-public-access)
   - [S3 Security: Audit Logs](#s3-security-audit-logs)
     - [Audit Logs: Overview](#audit-logs-overview)
-    - [Audit Logs: Setup Access Logs](#audit-logs-setup-access-logs)
+    - [Audit Logs: Setup Access Logs using Console](#audit-logs-setup-access-logs-using-console)
   - [S3 Security: Pre-Signed URLs](#s3-security-pre-signed-urls)
   - [S3 Security: Access Points](#s3-security-access-points)
   - [S3 Security: Object Lambda](#s3-security-object-lambda)
+  - [S3 Security: Object Lock](#s3-security-object-lock)
+    - [Object Lock: Overview](#object-lock-overview)
 - [S3: Static Website Hosting](#s3-static-website-hosting)
 - [S3: Versioning](#s3-versioning)
 - [S3: Replication](#s3-replication)
@@ -53,7 +58,7 @@
 - [S3: S3 Select \& Glacier Select](#s3-s3-select--glacier-select)
 - [S3: Using the CLI](#s3-using-the-cli)
   - [S3 API](#s3-api)
-    - [\`mb](#mb)
+    - [`mb`](#mb)
     - [`cp`](#cp)
     - [`mv`](#mv)
     - [`sync`](#sync)
@@ -66,8 +71,10 @@
     - [`create-bucket`](#create-bucket)
     - [`put-public-access-block`](#put-public-access-block)
     - [`put-bucket-policy`](#put-bucket-policy)
+    - [`put-bucket-notification-configuration`](#put-bucket-notification-configuration)
     - [`put-bucket-versioning`](#put-bucket-versioning)
     - [`get-bucket-versioning`](#get-bucket-versioning)
+    - [`get-object-attributes`](#get-object-attributes)
     - [`list-object-versions`](#list-object-versions)
     - [`delete-object`](#delete-object)
     - [`delete-objects`](#delete-objects)
@@ -126,7 +133,7 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
   - There's no concept of "directories" within buckets per se (Although the UI will trick you to think otherwise). Anything and everything in S3 is actually a key
 - Objects values are the contents of the body
   - Max object size: **`5TB`**
-  - If uploading more than 5GB, MUST use **`multi-part upload`**. Multi-Part Upload is RECOMMENDED as soon as the file is over 100 MB.
+  - If uploading more than `5GB`, MUST use **`multi-part upload`**. Multi-Part Upload is RECOMMENDED as soon as the file is over `100 MB`.
 - Objects can also have Metadata
   - List of text key / value pairs - system or user metadata
 - Objects can have Tags
@@ -176,29 +183,51 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
 
 # S3: Folders
 
+In Amazon S3, buckets and objects are the primary resources, and objects are stored in buckets. Amazon S3 has a flat structure instead of a hierarchy like you would see in a file system. However, for the sake of organizational simplicity, the Amazon S3 console supports the folder concept as a means of grouping objects. It does this by using a shared name prefix for objects (that is, objects have names that begin with a common string). Object names are also referred to as key names.
+
+**Examples:**
+
+- You can create a folder on the console named `photos` and store an object named `myphoto.jpg` in it. The object is then stored with the key name `photos/myphoto.jpg`, where `photos/` is the prefix.
+
+- If you have three objects in your bucket - `logs/date1.txt`, `logs/date2.txt`, and `logs/date3.txt` - the console will show a folder named `logs`. If you open the folder in the console, you will see three objects: `date1.txt`, `date2.txt`, and `date3.txt`.
+
+- If you have an object named `photos/2017/example.jpg`, the console will show you a folder named photos containing the folder `2017`. The folder `2017` will contain the object `example.jpg`.
+
 ---
 
 # S3: Security
 
 ## S3 Security: Overview
 
-- **User-Based**
+Security is a shared responsibility between AWS and you. For Amazon S3, your responsibility includes the following areas:
 
-  - **IAM Policies**: Which API calls should be allowed for a specific user from IAM
+1. **Data Protection**: The following measures can be taken to protect data in Amazon S3
 
-- **Resource-Based**
+   - [Encryption: In-flight encryption and Object encryption](#s3-security-encryption)
+   - [Storage Classes](#s3-storage-classes)
+   - [Lifecycle Configuration](#lifecycle-rules-overview)
+   - [S3 Versioning](#s3-versioning)
+   - [S3 Object Lock](#s3-security-object-lock)
+   - [S3 Replication](#s3-replication)
 
-  - **Bucket Policies**: Bucket wide rules that can be assigned directly from the S3 Console. Allows cross account access. Most common way to handle Security in S3.
-  - **Object Access Control List (ACL)**: Finer grain security (can be disabled)
-  - **Bucket Access Control List (ACL)**: Less common use (can be disabled)
+2. **Identity and Access Management**
 
-- **Encryption**
-  - Encrypt objects in Amazon S3 using encryption keys
+   - **User-Based**
+
+     - **IAM Policies**: Which API calls should be allowed for a specific user from IAM
+
+   - **Resource-Based**
+
+     - **[Bucket Policies](#s3-security-bucket-policy)**: Bucket wide rules that can be assigned directly from the S3 Console. Allows cross account access. Most common way to handle Security in S3.
+     - **[Access Control Lists (ACL)](#s3-security-access-control-lists-acl)** You can use ACLs to grant basic read/write permissions to other AWS accounts.
+       - **Object Access Control List (ACL)**: Finer grain security (can be disabled)
+       - **Bucket Access Control List (ACL)**: Less common use (can be disabled)
+
+   - [CORS: Cross-Origin Resource sharing](#s3-security-cors): Control whether S3 static website can load assets from another S3 bucket.
 
 > **Note**: An IAM Principal can access an S3 object if:
 >
-> - The user IAM permissions `ALLOW` it **OR** the resource policy `ALLOWS` it
-> - **AND** there's no explicity `DENY`
+> - The user IAM permissions `ALLOW` it **OR** the resource policy `ALLOWS` it **AND** there's no explicit `DENY`
 
 ---
 
@@ -227,6 +256,7 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
   - **`Effect`**: `Allow` / `Deny`
   - **`Action`**: Set of API to Allow or Deny
   - **`Principal`**: The account or user to apply the policy to
+  - **[Conditions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/amazon-s3-condition-keys.html)**: Amazon S3‐specific condition keys and AWS-wide condition keys
 
 - **Use Cases**:
   - Grant public access to the bucket
@@ -235,7 +265,7 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
 
 ---
 
-## Example: Public Access using S3 Bucket Policy
+### Public Access using S3 Bucket Policy
 
 **Use Case**: The user is an user on the Worldwide Web and he wants to view files within our S3 buckets. We need to attach an S3 bucket policy to the S3 bucket that allows Public Access with only viewing permissions for objects within the S3 Bucket.
 
@@ -267,13 +297,13 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
 
 ---
 
-## Example: IAM User Access to S3 using IAM Policies
+### IAM User Access to S3 using IAM Policies
 
 **Use Case**: The user is an IAM user and he wants to access files within our S3 buckets. We need to assign IAM permissions to that specific IAM User, through a policy to allow access to our S3 buckets.
 
 ---
 
-## Example: EC2 Instance Access using IAM Roles
+### Example: EC2 Instance Access using IAM Roles
 
 **Use Case**: An EC2 Instance wants to access the S3 buckets and we know IAM roles have to be used to make this possible. We need to create an EC2 Instance Role with the correct IAM permissions and then attach the IAM Role to an existing EC2 Instance.
 
@@ -292,56 +322,146 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
 
 ---
 
-## Example: Cross-Account Access using Bucket Policy
+### Cross-Account Bucket Access
 
-**Use Case**: We have an IAM User in another AWS Account who we need to give permissions to access our S3 Bucket. We need to create a S3 Bucket Policy that allows Cross-Account Access for that specific IAM user and therefore the IAM user will be able to make API calls into our S3 Buckets
+**Use Case**: We have an IAM User in another AWS `AccountB` who we need to give permissions to access our S3 Bucket. We need to create a S3 Bucket Policy that allows Cross-Account Access for that specific IAM user(s) and therefore the IAM user will be able to make API calls into our S3 Buckets
+
+**Pre-requisite**: Ensure `AccountB` can access S3, including this particular S3 bucket by setting IAM Role and/or user permissions for `AccountB`
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "StmntID-GetObjects",
+      "Principal": [
+        {
+          "AWS": "arn:aws:iam::AccountB:user/AccountBUserName"
+        }
+      ],
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:PutObjectAcl"],
+      "Resource": ["arn:aws:s3:::AccountABucketName/*"]
+    }
+  ]
+}
+```
+
+---
+
+### Cross-Account Bucket Access while granting full access to Bucket Owner
+
+**Use Case:** We have an IAM User in another AWS Account B who we need to give permissions to access our S3 Bucket. We need to create a S3 Bucket Policy that allows Cross-Account Uploads for that specific IAM user(s) and therefore the IAM user will be able to make API calls into our S3 Buckets. At the same time, the Bucket Owner must be granted full control of all uploads.
+
+1. **When ACL is Disabled**: If ACL is Disabled, Bucket Owner is automatically the owner of all objects.
+
+2. **If ACL is Enabled**:
+
+   The following bucket policy grants the `s3:PutObject` permission to `AccountB` with a condition using either of the following conditions:
+
+   - **For giving permission to any specific Account(s) (including bucket owner)**: `s3:x-amz-grant-full-control` condition key, which requires the request to include the `x-amz-full-control` header. `"s3:x-amz-grant-full-control": "id=AccountA-CanonicalUserIDOfBucketOwner"`
+
+   - **Use Canned ACL**: `x-amz-acl` with condition key, which requires the `bucket-owner-full-control` header to give permission to Bucket Owner. `"s3:x-amz-acl": "bucket-owner-full-control"`
+
+   - **Using an Explicit Deny policy**: Loopholes may exist while granting policies to users. For example: If AccountB who is trying to access the bucket is in also in group that is allowed permissions without any condition, AccountB could create Objects that do not require the `bucket-owner-full-control` header. An Explicit Deny always supercedes any other condition granted, therefore an Explicit Deny that triggers when the header is not present, will ensure loopholes involving permissions.
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "statement1",
+         "Effect": "Allow",
+         "Principal": {
+           "AWS": "arn:aws:iam::AccountB-ID:user/AccountB"
+         },
+         "Action": "s3:PutObject",
+         "Resource": "arn:aws:s3:::awsexamplebucket1/*",
+         "Condition": {
+           "StringEquals": {
+             "s3:x-amz-grant-full-control": "id=AccountA-CanonicalUserIDOfBucketOwner"
+             // "s3:x-amz-acl": "bucket-owner-full-control"
+           }
+         }
+       },
+       {
+         "Sid": "statement2",
+         "Effect": "Deny",
+         "Principal": {
+           "AWS": "arn:aws:iam::AccountB-ID:user/AccountB"
+         },
+         "Action": "s3:PutObject",
+         "Resource": "arn:aws:s3:::awsexamplebucket1/*",
+         "Condition": {
+           "StringNotEquals": {
+             "s3:x-amz-grant-full-control": "id=AccountA-CanonicalUserIDOfBucketOwner"
+             // "s3:x-amz-acl": "bucket-owner-full-control"
+           }
+         }
+       }
+     ]
+   }
+   ```
+
+---
+
+### [Example: Controlling access from VPC endpoints with bucket policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies-vpc-endpoint.html)
+
+---
+
+## [S3 Security: Access Control Lists (ACL)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html)
+
+Amazon S3 access control lists (ACLs) enable you to manage access to buckets and objects. Each bucket and object has an ACL attached to it as a subresource. It defines which AWS accounts or groups are granted access and the type of access. When a request is received against a resource, Amazon S3 checks the corresponding ACL to verify that the requester has the necessary access permissions.
 
 ---
 
 ## S3 Security: Encryption
 
-### Encryption: Overview
+### Encryption: Object Encryption
 
-- You can encrypt objects in Amazon S3 using one of 4 Methods
+You can encrypt objects in Amazon S3 using one of 4 Methods
 
-  - **Server-Side Encryption (SSE)**
+- **Server-Side Encryption (SSE)**
 
-    1. **Server-Side Encryption with Amazon S3-Managed Keys (SSE-S3)**:
+  1. **Server-Side Encryption with Amazon S3-Managed Keys (SSE-S3)**:
 
-       - Encrypts S3 objects using keys, handled, managed and owned by AWS
-       - Object is encrypted server-side
-       - Encryption type is AES-256
-       - Must set header to `"x-amz-server-side-encryption":"AES-256"`
+     - Encrypts each S3 objects using keys, handled, managed and owned by AWS
+     - Object is encrypted server-side
+     - Encryption type is AES-256
+     - As an additional safeguard, it encrypts the key itself with a root key that it regularly rotates
+     - Must set header to `"x-amz-server-side-encryption":"AES-256"`
 
-    2. **Server-Side Encryption with KMS Keys stored in AWS KMS (SSE-KMS)**:
+  2. **Server-Side Encryption with KMS Keys stored in AWS KMS (SSE-KMS)**:
 
-       - Leverage AWS Key Management Service (AWS KMS) to manage encryption keys
-       - KMS Advantages:
-         - user control, for e.g. control over the rotation policy of the encryption key
-         - audit key using CloudTrail
-       - Object is encrypted server-side
-       - Must set header to `"x-amz-server-side-encryption":"aws:kms"`
-       - Limitations:
-         - If you use SSE-KMS, you maybe impacted by the KMS Limits
-         - When you upload, it calls the `GenerateDataKey` KMS API
-         - When you download, it calls the `Decrypt` KMS API
-         - Each of these API calls are going to count towards KMS quota per second (5500, 10000, 30000 req/s based on region)
-         - You can request a quota increase using the Service Quotas API or the Service Quotas Console
+     - Leverage AWS Key Management Service (AWS KMS) to manage encryption keys
+     - Object is encrypted server-side
+     - Must set header to `"x-amz-server-side-encryption":"aws:kms"`
+     - **KMS Advantages:**
 
-    3. **Server-Side Encryption with Customer-Provided Keys (SSE-C)**: When you want to manage your own encryption keys
+       - User control, for e.g. control over the rotation policy of the encryption key
+       - Audit trail of key usage (by who and whom) using CloudTrail
 
-       - Server-side encryption using keys fully managed by the customer, outside of AWS
-       - Amazon S3 does **NOT** store the encryption key you provide
-       - **`HTTPS`** must be used
-       - Encryption key must be provided in HTTP headers, for every HTTP request made
-       - Cannot be used from the Console, must use AWS CLI, AWS SDK or Amazon S3 REST API
+     - **KMS Limitations**:
+       - If you use SSE-KMS, you maybe impacted by the KMS Limits
+       - When you upload, it calls the `GenerateDataKey` KMS API
+       - When you download, it calls the `Decrypt` KMS API
+       - Each of these API calls are going to count towards KMS quota per second (5500, 10000, 30000 req/s based on region)
+       - You can request a quota increase using the Service Quotas API or the Service Quotas Console
 
-  - **Client-Side Encryption (CSE)**: Encrypt client-side and then upload to Amazon S3
+  3. **Server-Side Encryption with Customer-Provided Keys (SSE-C)**: When you want to manage your own encryption keys
 
-    - Use client libraries such as Amazon S3 Client-Side Encryption Library
-    - Clients must encrypt data themselves before sending to Amazon S3
-    - Clients must decrypt data themselves when retrieving from Amazon S3
-    - Clients fully manage the keys and the encryption cycle
+     - Server-side encryption using keys fully managed by the customer, outside of AWS
+     - Amazon S3 does **NOT** store the encryption key you provide
+     - **`HTTPS`** must be used
+     - Encryption key must be provided in HTTP headers, for every HTTP request made
+     - Cannot be used from the Console, must use AWS CLI, AWS SDK or Amazon S3 REST API
+
+- **Client-Side Encryption (CSE)**: Encrypt client-side and then upload to Amazon S3
+
+  - Use client libraries such as Amazon S3 Client-Side Encryption Library
+  - Clients must encrypt data themselves before sending to Amazon S3
+  - Clients must decrypt data themselves when retrieving from Amazon S3
+  - Clients fully manage the keys and the encryption cycle
 
 ---
 
@@ -355,12 +475,56 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
 - HTTPS is mandatory for SSE-C
 - Most clients would use the HTTPS endpoint by default
 
+- Forcing SSL
+
+  - To force SSL, create a S3 bucket policy with a DENY on the condition `"aws:SecureTransport":"false"`
+  - **Note**: Using an Allow on `"aws:SecureTransport": "true"` would allow anonymous `GetObject` if using SSL.
+  - [Read more on the Documentation page](https://aws.amazon.com/premiumsupport/knowledge-center/s3-bucket-policy-for-config-rule)
+
+    ```json
+    {
+      "Id": "ForceSSLPolicy",
+      "Version": "2010-10-17",
+      "Statement": [
+        {
+          "Sid": "AllowS3RequestsOnlyOverSSL",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::awsexamplebucket",
+            "arn:aws:s3:::awsexamplebucket/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        }
+      ]
+    }
+    ```
+
 ---
 
 ### Encryption: Implement Server-Side Encryption
 
-- Go to the S3 Bucket and click the **`Properties`** Tab.
-- Scroll down to the **`Encryption`** section.
+1. **Using the Console:**
+
+   - Go to the S3 Bucket and click the **`Properties`** Tab.
+   - Scroll down to the **`Encryption`** section.
+
+2. **Using the CLI:**
+
+   ```s
+   aws s3api put-object \
+   --bucket [BucketName] \
+   --key [object-key-name] \
+   --server-side-encryption ["AES256" | "aws:kms"] \
+   --ssekms-key-id [KMSKeyID] \ # Required if `--server-side-encryption "aws:kms"` is provided
+   --bucket-key-enabled \ # When KMS encryption is used to encrypt new objects in this bucket, the bucket key reduces encryption costs by lowering calls to AWS KMS.
+   --body [ObjectBlob]
+   ```
 
 ---
 
@@ -371,6 +535,7 @@ Amazon Simple Storage Service (Amazon S3) is an object storage service offering 
   ```json
   {
     "Version": "2012-10-17",
+    "Id": "PutObjectPolicy",
     "Statement": [
       {
         "Sid": "DenyIncorrectDecryptionHeader",
@@ -451,13 +616,13 @@ MFA won't be required to:
 - MFA delete is an extra protection to prevent against the accidental permanent deletion of specific object versions.
 - Only the bucket owner (root account) can enable/disable MFA Delete. The root account should have MFA enabled.
 - The Amazon CLI must be used to perform a MFA Delete operation as it cannot be done via the Console
-- To enable MFA Delete, use the AWS CLI
+- **To enable MFA Delete, using the AWS CLI**
 
   ```s
   aws s3api put-bucket-versioning --bucket [ bucket-name ] --versioning-configuration Status=Enabled,MFADelete=Enabled --mfa "[ arn-of-mfa-device ] [ mfa-code ]" --profile [ root-profile ]
   ```
 
-- To disable MFA Delete, use the AWS CLI
+- **To disable MFA Delete, using the AWS CLI**
 
   ```s
   aws s3api put-bucket-versioning --bucket [ bucket-name ] --versioning-configuration Status=Enabled,MFADelete=Disabled --mfa "[ arn-of-mfa-device ] [ mfa-code ]" --profile [ root-profile ]
@@ -486,12 +651,11 @@ MFA won't be required to:
 - The target logging bucket must also be in the same AWS region
 - The log format is at https://docs.aws.amazon.com/AmazonS3/latest/dev/LogFormat.html
 
-- Warning:
-  - NEVER EVER set your logging bucket to be the same as the bucket you are monitoring or we will end up triggering an infinite loop.
+> **Warning:** NEVER EVER set your logging bucket to be the same as the bucket you are monitoring or we will end up triggering an infinite loop.
 
 ---
 
-### Audit Logs: Setup Access Logs
+### Audit Logs: Setup Access Logs using Console
 
 - Select the S3 Bucket and click on the **`Properties`** Tab
 - Scroll down to the **`Server access logging`** section. Click **`Edit`**
@@ -520,9 +684,15 @@ MFA won't be required to:
 
 ## S3 Security: Access Points
 
-- Each Access Point has its own DNS and own Policy to limit who can access it
+**Amazon S3 Access Points** simplify managing data access at scale for shared datasets in S3. With S3 Access Points, customers can create unique access control policies for each access point to easily control access to shared datasets. Customers with shared data sets including data lakes, media archives, and user-generated content can easily scale access for hundreds of applications by creating individualized access points with names and permissions customized for each application. Any access point can be restricted to a Virtual Private Cloud (VPC) to firewall S3 data access within customers’ private networks, and **AWS Service Control Policies** can be used to ensure all access points are VPC restricted. S3 Access Points are available in all regions at no additional cost.
+
+- Each Access Point has its own DNS and own Policy to limit who can access it.
   - A specific IAM User / Group
+  - Each access point is associated with exactly one bucket.
+  - Access point policies are limited to 20 KB in size.
   - One Policy per Access Point => Easier to manage than complex bucket policies
+  - After you create an access point, you can't change its virtual private cloud (VPC) configuration.
+  - **Default**: `10,000` access points per Region for each of your AWS accounts. If you need more than 10,000 access points for a single account in a single Region, you can request a AWS Service Quota increase.
 
 ---
 
@@ -531,11 +701,53 @@ MFA won't be required to:
 The idea: You have an S3 Bucket, but you want to modify the object just before it is being retrieved by a caller application. Instead of duplicating buckets to have different versions for each object, we can use S3 Object Lambda instead.
 
 - Use AWS Lambda Functions to change the object before its being retrieved by the caller application
-- Only one S3 bucket is needed, on top of which we create S3 Access Point and **S3 Object Lambda Access Points**.
+- Only one S3 bucket is needed, on top of which we create S3 Access Point and a Lambda Function accessing the S3 Access Point that redact the object as it is retrieved. On top of the Lambda function, we can then create a **S3 Object Lambda Access Point** and send it to the client.
 - Use Cases:
   - Redacting personally identifyable information for analytics or non-production environments.
   - Converting data formats, such as converting XML to JSON.
-  - Resizing and watermarking images on the fly using caller-specific details, such as the user who requeste the object.
+  - Resizing and watermarking images on the fly using caller-specific details, such as the user who requested the object.
+
+---
+
+## [S3 Security: Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-overview.html)
+
+### Object Lock: Overview
+
+S3 Object Lock allows to store objects using a **write-once-read-many (WORM) model** to help you prevent objects from being deleted or overwritten for a fixed amount of time or indefinitely. You can use S3 Object Lock to meet regulatory requirements that require WORM storage, or add an extra layer of protection against object changes and deletion.
+
+> **Note:**
+>
+> - You can only enable Object Lock for new buckets. If you want to turn on Object Lock for an existing bucket, contact AWS Support.
+> - When you create a bucket with Object Lock enabled, Amazon S3 automatically enables versioning for the bucket.
+> - When you create a bucket with Object Lock enabled, Amazon S3 automatically enables versioning for the bucket.
+
+**Important Concepts to make Object Lock work:**
+
+1. **Retention Modes**: These retention modes apply different levels of protection to your objects. You can apply either retention mode to any object version that is protected by Object Lock. S3 Object Lock provides two retention modes:
+
+   - **`Governance mode`**: Users can't overwrite or delete an object version or alter its lock settings unless they have special permissions. With governance mode, you protect objects against being deleted by most users, but you can still grant some users permission to alter the retention settings or delete the object if necessary. You can also use governance mode to test retention-period settings before creating a compliance-mode retention period.
+
+   To override or remove governance-mode retention settings, a user must have the `s3:BypassGovernanceRetention` permission and must explicitly include `x-amz-bypass-governance-retention:true` as a request header with any request that requires overriding governance mode.
+
+   - **`Compliance mode`**: In compliance mode, a protected object version can't be overwritten or deleted by any user, including the root user in your AWS account. When an object is locked in compliance mode, its retention mode can't be changed, and its retention period can't be shortened. Compliance mode helps ensure that an object version can't be overwritten or deleted for the duration of the retention period.
+
+2. **Retention Periods**: A retention period protects an object version for a fixed amount of time.
+
+3. **Legal Holds**: With Object Lock you can also place a legal hold on an object version. Like a retention period, a legal hold prevents an object version from being overwritten or deleted. However, a legal hold doesn't have an associated retention period and remains in effect until removed. Legal holds can be freely placed and removed by any user who has the s3:PutObjectLegalHold permission.
+
+For example, suppose that you place a legal hold on an object version while the object version is also protected by a retention period. If the retention period expires, the object doesn't lose its WORM protection. Rather, the legal hold continues to protect the object until an authorized user explicitly removes it. Similarly, if you remove a legal hold while an object version has a retention period in effect, the object version remains protected until the retention period expires.
+
+4. **Bucket configuration**: To use Object Lock, you must enable it for a bucket. You can also optionally configure a default retention mode and period that applies to new objects that are placed in the bucket.
+
+5. **Required permissions**: Object Lock operations require specific permissions. Depending on the exact operation you are attempting, you might need any of the following permissions:
+
+   - `s3:BypassGovernanceRetention`
+   - `s3:GetBucketObjectLockConfiguration`
+   - `s3:GetObjectLegalHold`
+   - `s3:GetObjectRetention`
+   - `s3:PutBucketObjectLockConfiguration`
+   - `s3:PutObjectLegalHold`
+   - `s3:PutObjectRetention`
 
 ---
 
@@ -770,6 +982,8 @@ We have two buckets `jayanta-s3-origin-bucket` and `jayanta-s3-destination-bucke
 
 ### Lifecycle Rules: Overview
 
+A lifecycle configuration is a set of rules that define actions that Amazon S3 applies to a group of objects. With lifecycle configuration rules, you can tell Amazon S3 to transition objects to less expensive storage classes, archive them, or delete them.
+
 - Move objects between storage classes automatically based on Lifecycle Rules
 - Lifecycle Rules:
 
@@ -965,21 +1179,27 @@ You can use the Amazon S3 Event Notifications feature to receive notifications w
 
 # S3: Performance
 
-- Amazon S3 automatically scales to high request rates, latency 100-200 ms
-- Your application can achieve at least **3,500** `PUT` / `COPY` / `POST` / `DELETE` requests and **5,500** `GET` / `HEAD` requests per seconds per prefix in a bucket.
+- Amazon S3 automatically scales to high request rates, latency `100-200 ms`
+- Your application can achieve at least **`3,500`** `PUT` / `COPY` / `POST` / `DELETE` requests and **`5,500`** `GET` / `HEAD` requests per seconds per prefix in a bucket.
 - There is no limits to the number of prefixes per bucket.
 - Example: (object path => prefix)
   - `bucket/folder1/sub1/file` => `/folder/sub1/`
   - `bucket/folder1/sub2/file` => `/folder/sub2/`
   - `bucket/1/file` => `/1/`
   - `bucket/2/file` => `/2/`
-- If you spread your READs across all four prefixes evenly, you can achieve **22,000** requests per second for GET and HEAD requests.
+- If you spread your READs across all four prefixes evenly, you can achieve **`22,000`** requests per second for GET and HEAD requests.
 
 - **Multi-Part upload**:
 
   - Recommended for files > 100MB
   - Must use for files > 5GB
   - Parallelizes uploads (speed up transfers). A big file is broken down into chunks and uploaded to Amazon S3. Amazon S3 then stitches up these chunks into a single file after uploads are completed.
+
+- **Retry Requests for Latency-Sensitive Applications**:
+
+  - Aggressive timeouts and retries help drive consistent latency.
+  - Given the large scale of Amazon S3, if the first request is slow, a retried request is likely to take a different path and quickly succeed.
+  - The AWS SDKs have configurable timeout and retry values that you can tune to the tolerances of your specific application
 
 - **S3 Transfer Acceleration**:
 
@@ -1014,7 +1234,7 @@ You can use the Amazon S3 Event Notifications feature to receive notifications w
 
 ## S3 API
 
-### [`mb](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/mb.html)
+### [`mb`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/mb.html)
 
 Creates a S3 bucket.
 
@@ -1181,7 +1401,7 @@ Where,
 
 - **The S3 location must be a S3 URI**
 
-**EXAMPLES:**aws s3 mv s3://jayanta-s3-bucket/quickbrownfox.txt s3://jayanta-s3-bucket/thefoxandthelazydog.txt
+**EXAMPLES:**
 
 1. **Moving a local file to S3**
 
@@ -1543,6 +1763,62 @@ aws s3api put-bucket-policy \
 
 ---
 
+### [`put-bucket-notification-configuration`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-bucket-notification-configuration.html)
+
+Enables adding and modifying notifications of specified events for a bucket.
+
+> **Note**: The PUT notification is an atomic operation. For example, suppose your notification configuration includes SNS topic, SQS queue, and Lambda function configurations. When you send a PUT request with this configuration, Amazon S3 sends test messages to your SNS topic. If the message fails, the entire PUT action will fail, and Amazon S3 will not add the configuration to your bucket.
+
+**EXAMPLES:**
+
+1. **Add a SQS Notification**
+
+   In `assets/s3-sqs-notification-config.json`,
+
+   ```json
+   {
+     "QueueConfigurations": [
+       {
+         "QueueArn": "arn:aws:sqs:ap-south-1:336463900088:S3EventsQueue",
+         "Events": [
+           "s3:ObjectCreated:Put",
+           "s3:ObjectCreated:Post",
+           "s3:ObjectCreated:Copy",
+           "s3:ObjectCreated:CompleteMultipartUpload",
+           "s3:ObjectRemoved:Delete",
+           "s3:ObjectRemoved:DeleteMarkerCreated",
+           "s3:ObjectRestore:Post",
+           "s3:ObjectRestore:Completed"
+         ]
+       }
+     ]
+   }
+   ```
+
+   ```s
+   aws s3api put-bucket-notification-configuration \
+    --bucket jayanta-s3-bucket \
+    --notification-configuration file:///home/jayantasamaddar/Work/quick-reference/aws/messaging/assets/s3-sqs-notification-config.json
+   ```
+
+2. **Remove All Queue and SNS notifications** (but leave LambdaFunction Notifications)
+
+   ```s
+   aws s3api put-bucket-notification-configuration \
+   --bucket=jayanta-s3-bucket \
+   --notification-configuration='{"QueueConfigurations": [], "TopicConfigurations": []}'
+   ```
+
+3. **Remove All notifications**
+
+   ```s
+   aws s3api put-bucket-notification-configuration \
+   --bucket=jayanta-s3-bucket \
+   --notification-configuration='{}'
+   ```
+
+---
+
 ### [`put-bucket-versioning`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-bucket-versioning.html)
 
 Sets the versioning state of an existing bucket.
@@ -1606,6 +1882,56 @@ aws s3api get-bucket-versioning --bucket jayanta-s3-bucket
 ```json
 {
   "Status": "Enabled"
+}
+```
+
+---
+
+### [`get-object-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/get-object-attributes.html)
+
+Retrieves all the metadata from an object without returning the object itself. This action is useful if you’re interested only in an object’s metadata. To use **`GetObjectAttributes`**, you must have READ access to the object.
+
+If you encrypt an object by using server-side encryption with customer-provided encryption keys (SSE-C) when you store the object in Amazon S3, then when you retrieve the metadata from the object, you must use the following headers:
+
+- `x-amz-server-side-encryption-customer-algorithm`
+
+- `x-amz-server-side-encryption-customer-key`
+
+- `x-amz-server-side-encryption-customer-key-MD5`
+
+**Syntax:**
+
+```s
+aws s3api get-object-attributes \
+ --bucket [BucketName] \
+ --key [ObjectPath] \
+ --version-id [ObjectVersionID] \
+ --max-parts [Number] \
+ --part-number-marker [Number] \
+ --sse-customer-algorithm [EncryptionAlgorithm] \
+ --sse-customer-key [EncryptionKey] \
+ --sse-customer-key-md5 [MD5KeyDigest] \
+ --object-attributes ["ETag" | "Checksum" | "ObjectParts" | "StorageClass" | "ObjectSize" ]
+```
+
+**Example:**
+
+```s
+aws s3api get-object-attributes \
+ --bucket jayanta-s3-bucket \
+ --key policy.txt \
+ --object-attributes "ETag" "Checksum" "ObjectParts" "StorageClass" "ObjectSize"
+```
+
+**Response:**
+
+```json
+{
+  "LastModified": "2022-11-27T15:34:14+00:00",
+  "VersionId": "vdVersjEM3ydRTp85T7F659c8.XYNQT6",
+  "ETag": "13f6882179b5feca4156474fcf0db2aa",
+  "StorageClass": "STANDARD",
+  "ObjectSize": 274
 }
 ```
 
@@ -1773,3 +2099,5 @@ aws s3api delete-bucket
 - [S3 Storage Classes](https://aws.amazon.com/s3/storage-classes/)
 - [Amazon S3 Pricing](https://aws.amazon.com/s3/pricing)
 - [Empty S3 Bucket](https://towardsthecloud.com/aws-cli-empty-s3-bucket)
+- [Cross-Account S3 Access](https://aws.amazon.com/premiumsupport/knowledge-center/cross-account-access-s3/)
+- [S3 Bucket Owner full Control for Cross Access](https://aws.amazon.com/premiumsupport/knowledge-center/s3-bucket-owner-full-control-acl/)
