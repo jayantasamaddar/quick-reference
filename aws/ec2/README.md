@@ -65,6 +65,7 @@
     - [EFS: Mounting the File System to an EC2 Instance](#efs-mounting-the-file-system-to-an-ec2-instance)
   - [EBS vs EFS](#ebs-vs-efs)
 - [EC2 Instance Metadata](#ec2-instance-metadata)
+- [EC2 CLI Commands](#ec2-cli-commands)
 - [FAQs](#faqs)
 - [References](#references)
 
@@ -725,51 +726,120 @@ To create the Volume,
 
 #### General Purpose SSD
 
+General Purpose SSD volume that balances price performance for a wide variety of transactional workloads.
+
 - Cost-effective storage, low-latency
-- Use Cases:
+- **Use Cases:**
   - System boot volumes
   - Virtual desktops
+  - Medium sized single instance databases such as Microsoft SQL Server and Oracle
+  - Latency sensitive interactive applications
   - Development and test environments
-- 1 GiB - 16 GiB
-- `gp3`
-  - Newer generation of General Purpose SSDs
-  - Baseline of 3,000 IOPS and throughput of 125 MiB/s
-  - Can increase IOPS up to 16,000 and throughput upto 1000 MiB/s independently
-- `gp2`
-  - Small gp2 volumes can burst IOPS to 3,000
-  - Size of the volume and IOPS are linked, max IOPS is 16,000
-  - 3 IOPS per GiB, means at 5,334 GiB we are at the max IOPS
+
+1. `gp2`
+
+   - **Durability**: `99.8% - 99.9%`
+   - **Volume Size**: `1 GB - 16 TB`
+   - **Min IOPS/Volume**: `100` burstable upto `3000`
+   - **Max IOPS/Volume**: `16000`
+   - **Throughput/Volume**: `125 MB/s - 250 MB/s`
+   - **Max IOPS/Instance**: `260,000`
+   - **Max Throughput/Instance**: `7,500 MB/s`
+   - **Max IOPS:GiB Ratio**: `3:1`
+   - Small gp2 volumes (below 1000 GiB) can burst IOPS to 3,000
+   - Size of the volume and IOPS are linked, max IOPS is 16,000
+   - 3 IOPS per GiB, means at 5,334 GiB (5.3 TB) we are at the max IOPS
+
+2. `gp3`
+
+   - **Durability**: `99.8% - 99.9%`
+   - **Volume Size**: `1 GB - 16 TB`
+   - **IOPS/Volume**: `3,000 - 16,000`
+   - **Throughput/Volume**: `125 MB/s - 1,000 MB/s`
+   - **Max IOPS/Instance**: `260,000`
+   - **Max Throughput/Instance**: `10,000 MB/s`
+   - **Max IOPS:GiB Ratio**: `3000:1 at 1 GB`, `500:1 at 32GB`
+   - **Price:**
+     - `$0.08/GB-month`
+     - `3,000 IOPS free` and `$0.005/provisioned IOPS-month over 3,000`;
+     - `125 MB/s free` and `$0.04/provisioned MB/s-month over 125`
+   - Newer generation of General Purpose SSDs
+   - Can increase IOPS up to 16,000 and throughput upto 1000 MiB/s independently
+   - Can access max IOPS of 16,000 at 32 GiB of Volume (at `500:1` IOPS:GiB Ratio)
 
 ---
 
 #### Provisioned IOPS (PIOPS) SSDs
 
-- Use Cases:
+- **Use Cases:**
   - Critical business applications with sustained IOPS performance
   - Applications that need more than 16,000 IOPS
   - Great for database workloads (sensitive to storage performance and consistency)
-  - `io1` / `io2` (4 GiB - 16 TiB)
-    - Max PIOPS: 64,000 for Nitro EC2 instances & 32,000 for others
-    - Can increase PIOPS independently from storage size (just like `gp3`)
-    - `io2` has more durability and more IOPS per GiB (at the same price as `io1`)
-  - io2 Block Express (4 GiB - 16 TiB)
-    - Sub-millisecond latency
-    - Max PIOPS: 256,000 with an IOPS:GiB ratio of 1000:1
   - Supports EBS Multi-attach
+
+1. **`io1`**
+
+   - High performance SSD volume designed for latency-sensitive transactional workloads
+   - **Durability**: `99.8% - 99.9%`
+   - **Use Cases**: I/O-intensive NoSQL and relational databases
+   - **Volume Size**: `4 GB - 16 TB`
+   - **Max IOPS/Volume**: `64,000` for Nitro System EC2 Instances, `32,000` for others
+   - **Max Throughput/Volume**: `1,000 MB/s`
+   - **Max IOPS/Instance**: `350,000`
+   - **Max Throughput/Instance**: `10,000 MB/s`
+   - **Max IOPS:GiB Ratio**: `50:1`
+
+2. **`io2`**
+
+   - High performance and high durability SSD volume designed for latency-sensitive transactional workloads
+   - **Durability**: `99.999%`
+   - **Use Cases**: I/O-intensive NoSQL and relational databases
+   - **Volume Size**: `4 GB - 16 TB`
+   - **Max IOPS/Volume**: `64,000` for Nitro System EC2 Instances, `32,000` for others
+   - **Max Throughput/Volume**: `1,000 MB/s`
+   - **Max IOPS/Instance**: `160,000`
+   - **Max Throughput/Instance**: `4,750 MB/s`
+   - **Max IOPS:GiB Ratio**: `500:1`
+
+3. **`io2 Block Express`**
+
+   - Highest performance, high durability SSD volume designed for business-critical latency-sensitive transactional workloads
+   - **Durability**: `99.999%`
+   - **Use Cases**: Ideal for your largest, most I/O intensive, mission critical deployments of NoSQL and relational databases such as `Oracle`, `SAP HANA`, `Microsoft SQL Server`, and `SAS Analytics`
+   - **Volume Size**: `4 GB - 64 TB`
+   - **Max IOPS/Volume**: `256,000`
+   - **Max Throughput/Volume**: `4,000 MB/s`
+   - **Max IOPS/Instance**: `350,000`
+   - **Max Throughput/Instance**: `10,000 MB/s`
+   - **IOPS:GiB Ratio**: `1000:1`
+
+> **Note**: To achieve the maximum IOPS and throughput limits, the volume must be attached to a Nitro System EC2 instance. Io2 Block Express is available with `C6in`, `C7g`, `M6in`, `M6idn`, `R5b`, `R6in`, `R6idn`, `Trn1`, `X2idn`, and `X2iedn` instances, with support for other instances coming soon.
 
 ---
 
 #### Hard Disk Drives (HDD)
 
 - Cannot be Boot volumes
-- 125 MiB to 16 TiB
-- Throughput Optimized HDD (`st1`)
-  - Big Data, Data warehouses, Log processing
-  - Max throughput 500 MiB/s - max IOPS 500
-- Cold HDD (`sc1`)
-  - For data that is infrequently accessed, i.e. archive data
-  - Scenarios where lowest cost is important
-  - Max throughput 250 MiB/s - max IOPS 250
+- `125 GB to 16 TB`
+- Does not support EBS Multi-attach
+
+1. Throughput Optimized HDD (`st1`)
+
+   - **Durability**: `99.8% - 99.9%` (0.1% - 0.2% annual failure rate)
+   - **Use Cases**: Big data, Data warehouses, Log processing
+   - **Volume Size**: `125 GB - 16 TB`
+   - **Max IOPS/Volume**: `500`
+   - **Max Throughput/Volume**: `500 MB/s`
+   - **Max Throughput/Instance**: `10,000 MB/s`
+
+2. Cold HDD (`sc1`)
+
+   - **Durability**: `99.8% - 99.9%` (0.1% - 0.2% annual failure rate)
+   - **Use Cases**: Throughput-oriented storage for data that is infrequently accessed, archive data, scenarios where lowest cost is important
+   - **Volume Size**: `125 GB - 16 TB`
+   - **Max IOPS/Volume**: `250`
+   - **Max Throughput/Volume**: `250 MB/s`
+   - **Max Throughput/Instance**: `7,500 MB/s`
 
 ---
 
@@ -1048,6 +1118,15 @@ Amazon Elastic File System (Amazon EFS) is a Network File System that can be mou
 - The URL is http://169.254.169.254/latest/meta-data. `169.254.169.254` is an Internal IP to AWS, it will not work from your local computer. It will only work when logged into the EC2 Instance.
 - You can retrieve the IAM Role name from the metadata, but you CANNOT retrieve the IAM Policy.
 - The only way to test the policy is to use the **[AWS Policy Simulator](https://policysim.aws.amazon.com/)** or the `--dry-run` flag with a command.
+
+---
+
+# EC2 CLI Commands
+
+| Command                      | Function                                                    |
+| ---------------------------- | ----------------------------------------------------------- |
+| `aws ec2 describe-instances` | Lists running instances for the default EC2 Region          |
+| `aws ec2 describe-subnets`   | Find a list of available subnets for the default EC2 Region |
 
 ---
 
