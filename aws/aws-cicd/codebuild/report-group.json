@@ -1,0 +1,12 @@
+{
+  "name": "Test-ReportGroup",
+  "type": "TEST",
+  "exportConfig": {
+    "exportConfigType": "S3",
+    "s3Destination": {
+      "bucket": "codebuild-rg-Test-ReportGroup",
+      "path": "",
+      "packaging": "ZIP"
+    }
+  }
+}

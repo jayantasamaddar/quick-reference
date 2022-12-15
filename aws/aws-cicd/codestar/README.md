@@ -4,6 +4,7 @@
 - [Overview](#overview)
 - [Create a Project](#create-a-project)
 - [Codestar Project Actions](#codestar-project-actions)
+- [References](#references)
 
 ---
 
@@ -82,3 +83,7 @@
 4. **`Add people to your project`**: Add team members to the project with IAM users.
 
 ---
+
+# References
+
+- [Create a Connection to GitHub](https://docs.aws.amazon.com/dtconsole/latest/userguide/connections-create-github.html#connections-create-github-cli)

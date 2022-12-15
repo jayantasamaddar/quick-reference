@@ -138,6 +138,49 @@ Where,
   - Can only be specified once, and applies to all files and directories listed under **`files:`**.
   - Takes precedence over the **`--file-exists-behavior`** AWS CLI option and the **`fileExistsBehavior`** API option (both of which are also optional).
 
+- **`resources`**: The content in the `resources` section of the AppSpec file varies, depending on the compute platform of your deployment. The `resources` section for an Amazon ECS deployment contains your Amazon ECS task definition, container and port for routing traffic to your updated Amazon ECS task set, and other optional information. The `resources` section for an AWS Lambda deployment contains the name, alias, current version, and target version of a Lambda function.
+
+  **For Lambda function:**
+
+  ```yml
+  resources:
+    - name-of-function-to-deploy:
+        type: 'AWS::Lambda::Function'
+        properties:
+          name: name-of-lambda-function-to-deploy
+          alias: alias-of-lambda-function-to-deploy
+          currentversion: version-of-the-lambda-function-traffic-currently-points-to
+          targetversion: version-of-the-lambda-function-to-shift-traffic-to
+  ```
+
+  **For ECS Deployments:**
+
+  ```yml
+  Resources:
+    - TargetService:
+        Type: AWS::ECS::Service
+        Properties:
+          TaskDefinition: 'task-definition-ARN'
+          LoadBalancerInfo:
+            ContainerName: 'ECS-container-name-for-your-ECS-application'
+            ContainerPort: port-used-by-your-ECS-application
+
+          # Optional properties
+          PlatformVersion: 'ecs-service-platform-version'
+          NetworkConfiguration:
+            AwsvpcConfiguration:
+              Subnets: ['ecs-subnet-1', 'ecs-subnet-n']
+              SecurityGroups: ['ecs-security-group-1', 'ecs-security-group-n']
+              AssignPublicIp: 'ENABLED-or-DISABLED'
+          CapacityProviderStrategy:
+            - Base: Integer
+              CapacityProvider: 'capacityProviderA'
+              Weight: Integer
+            - Base: Integer
+              CapacityProvider: 'capacityProviderB'
+              Weight: Integer
+  ```
+
 - **`hooks`**: Set of instructions to do to deploy the new version (hooks can have timeouts). The content in the `'hooks'` section of the AppSpec file varies, depending on the compute platform for your deployment. The `'hooks'` section for an EC2/On-Premises deployment contains mappings that link deployment lifecycle event hooks to one or more scripts. The `'hooks'` section for a Lambda or an Amazon ECS deployment specifies Lambda validation functions to run during a deployment lifecycle event. If an event hook is not present, no operation is executed for that event. This section is required only if you are running scripts or Lambda validation functions as part of the deployment.
 
   Can specify multiple hooks for a single lifecycle event as a list of dictionaries containing `location`, `timeout`, `runas` keys that look like:
@@ -223,7 +266,7 @@ Where,
 
 # Deployment Configurations for EC2 Instances
 
-- **Configrations**:
+- **Configurations**:
 
   - **One at a Time**: One EC2 Instance at a time, if one instance fails then deployment stops
   - **Half at a Time**: Take 50% of the instances and upgrade them from old to new version and then follow with the other half

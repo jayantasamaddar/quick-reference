@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ''
+
+Parameters:
+  S3BucketParam:
+    Type: String
+  S3KeyParam:
+    Type: String
+  S3ObjectVersionParam:
+    Type: String
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM:Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+        Path: '/'
+        Policies:
+          - PolicyName: root
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource: arn:aws:logs:*
+                - Effect: Allow
+                  Action:
+                    - xray:PutTraceSegments
+                    - xray:PutTelemetryRecords
+                    - xray:GetSamplingRules
+                    - xray:GetSamplingTargets
+                    - xray:GetSamplingStatisticsSummaries
+                  Resource: '*'
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:ListBuckets
+
+  LambdaWithXRay:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs18.x
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: index.handler
+      Code:
+        S3Bucket: !Ref S3BucketParam
+        S3Key: !Ref S3KeyParam
+        S3ObjectVersion: !Ref S3ObjectVersionParam
+      Timeout: 10
+      # Enable X-Ray
+      TracingConfig:
+        Mode: Active

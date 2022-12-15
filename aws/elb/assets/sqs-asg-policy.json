@@ -1,0 +1,11 @@
+{
+  "Version": "2010-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudFormed-ASGLifecyclePolicy",
+      "Effect": "Allow",
+      "Action": ["SQS:SendMessage"],
+      "Resource": "*"
+    }
+  ]
+}

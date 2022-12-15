@@ -7,6 +7,10 @@
 - [Message Filtering](#message-filtering)
 - [Patterns](#patterns)
   - [Fan-Out Pattern](#fan-out-pattern)
+- [Using the CLI](#using-the-cli)
+  - [`create-topic`](#create-topic)
+  - [`add-permission`](#add-permission)
+  - [`subscribe`](#subscribe)
 - [References](#references)
 
 --
@@ -122,5 +126,83 @@ By default, an Amazon SNS topic subscriber receives every message that's publish
 - **Message Filering**: Works with Fan-Out
 
 ---
+
+# Using the CLI
+
+## [`create-topic`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sns/create-topic.html)
+
+**Example 1: Create a Standard Topic**
+
+```s
+aws sns create-topic --name S3EventsTopic
+```
+
+**Example 2: Create a FIFO Topic with Content based Deduplication enabled**
+
+```s
+aws sns create-topic \
+ --name S3EventsTopic.fifo \
+ --attributes DisplayName="S3Events",FifoTopic=true,ContentBasedDeduplication=true
+```
+
+**Response:**
+
+```json
+{
+  "TopicArn": "arn:aws:sns:ap-south-1:336463900088:S3EventsTopic.fifo"
+}
+```
+
+---
+
+## [`add-permission`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sns/add-permission.html)
+
+**Example:**
+
+```s
+aws sns add-permission \
+ --topic-arn "arn:aws:sns:ap-south-1:336463900088:S3EventsTopic.fifo" \
+ --label "Publish-Permission" \
+ --aws-account-id 336463900088 \
+ --action-name "Publish"
+```
+
+**Response:**
+
+None
+
+---
+
+## [`subscribe`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sns/subscribe.html)
+
+Subscribe to a topic.
+
+**Syntax:**
+
+```s
+aws sns subscribe \
+  --topic-arn arn:aws:sns:ap-south-1:336463900088:S3EventsTopic \
+  --protocol ["http"|"https"|"email"|"email-json"|"sms"|"sqs"|"application"|"lambda"|"firehose"] \
+  --notification-endpoint [Endpoint] \
+  --return-subscription-arn \
+  --attributes [MapOfAttributes] \
+```
+
+**Example:**
+
+```s
+aws sns subscribe \
+  --topic-arn arn:aws:sns:ap-south-1:336463900088:S3EventsTopic \
+  --protocol email \
+  --notification-endpoint "jayanta@zenius.one" \
+```
+
+**Response:**
+
+```json
+{
+  "SubscriptionArn": "pending confirmation"
+}
+```
 
 # References

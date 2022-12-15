@@ -1,0 +1,89 @@
+version: 0.2
+
+run-as: ubuntu
+
+env:
+  shell: bash
+  variables:
+    ENVIRONMENT: 'dev'
+    PROJECT: codebuild-demo-project
+  parameter-store:
+    TEST_PARAM: '/test_application/dev/TEST_PARAM'
+  exported-variables:
+    - ENVIRONMENT
+    - PROJECT
+  git-credential-helper: no
+
+batch:
+  fast-fail: false | true
+  # build-list:
+  # build-matrix:
+  # build-graph:
+
+phases:
+  install:
+    run-as: ubuntu
+    on-failure: ABORT
+    runtime-versions:
+      nodejs: 16
+    commands:
+      - echo Installing Dependencies
+      - yarn install
+    finally:
+      - echo Installed Dependencies
+  pre_build:
+    run-as: ubuntu
+    on-failure: ABORT
+    commands:
+      - echo Running Tests
+      - yarn test
+    finally:
+      - echo Tests successful
+  build:
+    run-as: ubuntu
+    on-failure: ABORT
+    commands:
+      - echo Entering the Build phase
+      - yarn build
+  post_build:
+    run-as: ubuntu
+    on-failure: CONTINUE
+    commands:
+      - echo Build complete
+
+reports:
+  arn:aws:codebuild:ap-south-1:336463900088:report-group/Test-ReportGroup:
+    files:
+      - '**/*'
+    discard-paths: no
+    file-format: CUCUMBERJSON
+
+artifacts:
+  files:
+    - build
+    - location
+  name: builds/$PROJECT/$ENVIRONMENT/-$(date +%Y-%m-%d)
+  discard-paths: no
+  base-directory: location
+  exclude-paths: ''
+  enable-symlinks: no
+  s3-prefix: prefix
+  secondary-artifacts:
+    artifact1:
+      files:
+        - location
+        - location
+      name: secondary-artifact-name
+      discard-paths: no
+      base-directory: location
+    artifact2:
+      files:
+        - location
+        - location
+      discard-paths: no
+      base-directory: location
+
+cache:
+  paths:
+    - node_modules/*
+    - package.json

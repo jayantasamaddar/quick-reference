@@ -19,6 +19,7 @@
   - [`get-queue-url`](#get-queue-url)
   - [`list-queues`](#list-queues)
   - [`set-queue-attributes`](#set-queue-attributes)
+  - [`get-queue-attributes`](#get-queue-attributes)
   - [`send-message`](#send-message)
   - [`send-message-batch`](#send-message-batch)
   - [`receive-message`](#receive-message)
@@ -26,6 +27,7 @@
   - [`change-message-visibility-batch`](#change-message-visibility-batch)
   - [`delete-message`](#delete-message)
   - [`delete-message-batch`](#delete-message-batch)
+  - [`delete-queue`](#delete-queue)
 - [References](#references)
 
 ---
@@ -503,6 +505,53 @@ None
 
 ---
 
+## [`get-queue-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/get-queue-attributes.html)
+
+Gets attributes for the specified queue.
+
+> NOTE: To determine whether a queue is FIFO, you can check whether **`QueueName`** ends with the .fifo suffix.
+
+**Syntax:**
+
+```s
+aws sqs set-queue-attributes \
+ --queue-url [QueueURL] \
+ --attribute-names ["All"|"Policy"|"VisibilityTimeout"|"MaximumMessageSize"|"MessageRetentionPeriod"|"ApproximateNumberOfMessages"|"ApproximateNumberOfMessagesNotVisible"|"CreatedTimestamp"|"LastModifiedTimestamp"|"QueueArn"|"ApproximateNumberOfMessagesDelayed"|"DelaySeconds"|"ReceiveMessageWaitTimeSeconds"|"RedrivePolicy"|"FifoQueue"|"ContentBasedDeduplication"|"KmsMasterKeyId"|"KmsDataKeyReusePeriodSeconds"|"DeduplicationScope"|"FifoThroughputLimit"|"RedriveAllowPolicy"|"SqsManagedSseEnabled"] \
+```
+
+**Example:**
+
+```s
+aws sqs get-queue-attributes \
+ --queue-url "https://sqs.ap-south-1.amazonaws.com/336463900088/S3EventsQueue" \
+ --attribute-names All
+```
+
+**Response:**
+
+```json
+{
+  "Attributes": {
+    "QueueArn": "arn:aws:sqs:ap-south-1:336463900088:S3EventsQueue",
+    "ApproximateNumberOfMessages": "0",
+    "ApproximateNumberOfMessagesNotVisible": "0",
+    "ApproximateNumberOfMessagesDelayed": "0",
+    "CreatedTimestamp": "1669552009",
+    "LastModifiedTimestamp": "1669564794",
+    "VisibilityTimeout": "30",
+    "MaximumMessageSize": "262144",
+    "MessageRetentionPeriod": "345600",
+    "DelaySeconds": "0",
+    "Policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"SQSPolicyForS3Bucket-jayanta-s3-bucket\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":\"SQS:SendMessage\",\"Resource\":\"arn:aws:sqs:ap-south-1:336463900088:S3EventsQueue\",\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"336463900088\"},\"ArnLike\":{\"aws:SourceArn\":\"arn:aws:s3:*:*:jayanta-s3-bucket\"}}}]}",
+    "RedrivePolicy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:ap-south-1:336463900088:S3EventsQueueDLQ\",\"maxReceiveCount\":10}",
+    "ReceiveMessageWaitTimeSeconds": "0",
+    "SqsManagedSseEnabled": "true"
+  }
+}
+```
+
+---
+
 ## [`send-message`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/send-message.html)
 
 Delivers a message to the specified queue.
@@ -601,7 +650,7 @@ aws sqs receive-message \
 ```s
 aws sqs receive-message \
  --queue-url "https://sqs.ap-south-1.amazonaws.com/336463900088/S3EventsQueue" \
- --attribute-names All \
+ --attribute-names All
 ```
 
 **Response:**
@@ -756,6 +805,34 @@ aws sqs delete-message-batch \
  --queue-url "https://sqs.ap-south-1.amazonaws.com/336463900088/ExampleQueue" \
  --entries file:///home/jayantasamaddar/Work/quick-reference/aws/messaging/sqs/assets/delete-message-batch.json
 ```
+
+---
+
+## [`delete-queue`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sqs/delete-queue.html)
+
+Deletes the queue specified by the **`QueueUrl`**, regardless of the queue's contents.
+
+> Warning: Be careful with the **`DeleteQueue`** action: When you delete a queue, any messages in the queue are no longer available.
+
+When you delete a queue, the deletion process takes up to 60 seconds. Requests you send involving that queue during the 60 seconds might succeed. For example, a **`SendMessage`** request might succeed, but after 60 seconds the queue and the message you sent no longer exist. You must also wait at least 60 seconds before creating a queue with the same name.
+
+> **Note:** Cross-account permissions don't apply to this action.
+
+**Syntax:**
+
+```s
+aws sqs delete-queue --queue-url [QueueURL]
+```
+
+**Example:**
+
+```s
+aws sqs delete-queue --queue-url "https://sqs.ap-south-1.amazonaws.com/336463900088/ExampleQueue"
+```
+
+**Response:**
+
+None
 
 ---
 

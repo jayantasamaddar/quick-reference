@@ -1,0 +1,17 @@
+{
+  "name": "codebuild-demo-project",
+  "source": {
+    "type": "S3",
+    "location": "codebuild-demo-project-input-bucket/DemoCodeBuildProject.zip"
+  },
+  "artifacts": {
+    "type": "S3",
+    "location": "codebuild-demo-project-output-bucket"
+  },
+  "environment": {
+    "type": "LINUX_CONTAINER",
+    "image": "aws/codebuild/ubuntu-standard:6.0",
+    "computeType": "BUILD_GENERAL1_SMALL"
+  },
+  "serviceRole": "arn:aws:iam::123456789012:role/service-role/CodeBuildServiceRole"
+}

@@ -1,0 +1,194 @@
+# Deploy the following resources:
+## EC2 Launch template of `t2.micro` instances running Ubuntu 22.04 with Nginx Installed
+## Auto-Scaling Group that deploys with the following configuration:
+### - Maximum 5 x EC2 Instances,
+### - Minimum and Desired: 1 x Instance using the EC2 Launch Template
+### - Health Checks enabled for ELB
+## ASG accessible via Application Load Balancer (Protected by Security Group rules)
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an AutoScaling Group of t2.micro EC2 Instances
+
+Parameters:
+  AMI:
+    Type: AWS::EC2::Image::Id
+    Description: Region specific image
+    Default: ami-062df10d14676e201
+
+  InstanceType:
+    Description: Amazon EC2 instance type for the instances
+    Type: String
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+    Default: t2.micro
+
+  MinSize:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 5
+
+  DesiredCapacity:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 5
+
+  MaxSize:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 5
+
+  NotificationTargetARN:
+    Type: String
+    Default: ''
+    # AllowedPattern: ^arn:aws:s(?:q|n)s:(([a-z]{2})-(?:north|east|west|south|southeast)-([1-3]{1})):([0-9]{12}):+([a-zA-Z0-9])([a-zA-Z0-9_\-]{0,255})$
+
+  RoleARN:
+    Type: String
+    Default: ''
+    # AllowedPattern: ^arn:aws:iam::([0-9]{12}):role\/+([a-zA-Z0-9])([a-zA-Z0-9@+=,._\-]{0,63})$
+
+Conditions:
+  HasNotificationTargets: !Not [!Equals [!Ref NotificationTargetARN, '']]
+  HasRoleARN: !Not [!Equals [!Ref RoleARN, '']]
+  IsNotificationReady:
+    !And [!Condition HasRoleARN, !Condition HasNotificationTargets]
+
+Resources:
+  # Security Group for the Application Load Balancer
+  SecurityGroupForALB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue ApSouth1Defaults-VPC
+      GroupName: CloudFormed-SecurityGroup-ASG-ALB
+      GroupDescription: Security Group for CloudFormed ALB for AutoScaling Group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic out from ALB
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic to ALB
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+
+  # Security Group for EC2 Instances created by the ASG
+  SecurityGroupForASGInstances:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue ApSouth1Defaults-VPC
+      GroupName: CloudFormed-SecurityGroup-ASG-Instances
+      GroupDescription: Security Group for CloudFormed Instances for AutoScaling Group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic out of Instance into ALB
+          IpProtocol: -1
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref SecurityGroupForALB
+          Description: Allow incoming traffic from ELB only
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+
+  # Application Load Balancer
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Name: cloudformed-elb-for-asg
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref SecurityGroupForALB
+      Subnets: !Split [',', !ImportValue ApSouth1Defaults-Subnets]
+
+  # HTTP Listener for Application Load Balancer
+  ELBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ELBTargetGroup
+      LoadBalancerArn: !Ref ElasticLoadBalancer
+      Protocol: HTTP
+      Port: 80
+
+  # Target Group for Application Load Balancer
+  ELBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: cloudformed-ec2-instances-tg
+      Protocol: HTTP
+      ProtocolVersion: HTTP1
+      Port: 80
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: 80
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 6
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+      TargetType: instance
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      VpcId: !ImportValue ApSouth1Defaults-VPC
+
+  # EC2 Launch Template
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: cloudformed-ec2-template
+      LaunchTemplateData:
+        ImageId: !Ref AMI
+        InstanceType: !Ref InstanceType
+        KeyName: ec2-playground
+        SecurityGroupIds:
+          - !Ref SecurityGroupForASGInstances
+        UserData: !Base64 |
+          #! bin/bash
+          sudo apt update -y
+          sudo apt upgrade -y
+          sudo apt install -y nginx
+          sudo sed -i "/<\/h1>/a <p>Hostname: $(hostname -f)</p>" /var/www/html/index.nginx-debian.html
+          sudo reboot
+
+  # Auto-Scaling Group
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: CloudFormed-ASG
+      VPCZoneIdentifier: !Split [',', !ImportValue ApSouth1Defaults-Subnets]
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      TargetGroupARNs:
+        - !Ref ELBTargetGroup
+      MinSize: !Ref MinSize
+      DesiredCapacity: !Ref DesiredCapacity
+      MaxSize: !Ref MaxSize
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      LifecycleHookSpecificationList: !If
+        - IsNotificationReady
+        - - DefaultResult: CONTINUE
+            HeartbeatTimeout: 30
+            LifecycleHookName: ASGLifecycleHookNotification-Launching
+            LifecycleTransition: autoscaling:EC2_INSTANCE_LAUNCHING
+            NotificationTargetARN: !Ref NotificationTargetARN
+            RoleARN: !Ref RoleARN
+
+          - DefaultResult: ABANDON
+            HeartbeatTimeout: 30
+            LifecycleHookName: ASGLifecycleHookNotification-Terminating
+            LifecycleTransition: autoscaling:EC2_INSTANCE_TERMINATING
+            NotificationTargetARN: !Ref NotificationTargetARN
+            RoleARN: !Ref RoleARN
+        - !Ref 'AWS::NoValue'

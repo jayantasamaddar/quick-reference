@@ -47,13 +47,22 @@
   - [Server Name Indication](#server-name-indication)
   - [Support on ELB](#support-on-elb)
 - [ELB: Connection Draining / Deregistration Delay](#elb-connection-draining--deregistration-delay)
-- [ELB: Auto-Scaling Groups](#elb-auto-scaling-groups)
-  - [Auto-Scaling Group: Overview](#auto-scaling-group-overview)
-  - [Auto-Scaling Group: Create an Auto-Scaling Group](#auto-scaling-group-create-an-auto-scaling-group)
-  - [Auto-Scaling Group: Scaling Policies](#auto-scaling-group-scaling-policies)
+- [Auto-Scaling Groups (ASGs)](#auto-scaling-groups-asgs)
+  - [ASG: Overview](#asg-overview)
+  - [ASG: Using Elastic Load Balancing across Instances in the ASG](#asg-using-elastic-load-balancing-across-instances-in-the-asg)
+    - [Using ELB across Instances in the ASG: Overview](#using-elb-across-instances-in-the-asg-overview)
+    - [Using ELB across Instances in the ASG: Workflow](#using-elb-across-instances-in-the-asg-workflow)
+    - [Using ELB across Instances in the ASG: Deploy with CloudFormation](#using-elb-across-instances-in-the-asg-deploy-with-cloudformation)
+  - [ASG: Automatic Scaling Policies](#asg-automatic-scaling-policies)
     - [Dynamic Scaling](#dynamic-scaling)
     - [Predictive Scaling](#predictive-scaling)
+  - [ASG: Lifecycle Hooks](#asg-lifecycle-hooks)
+  - [ASG: Notifications](#asg-notifications)
+    - [ASG Notifications: Overview](#asg-notifications-overview)
+    - [ASG Notifications: Send Notification to SQS Queue](#asg-notifications-send-notification-to-sqs-queue)
+  - [ASG: Monitoring](#asg-monitoring)
     - [Notable Scaling Metrics](#notable-scaling-metrics)
+    - [Custom Metrics using CloudWatch](#custom-metrics-using-cloudwatch)
   - [Auto-Scaling Group - Scaling Cooldowns](#auto-scaling-group---scaling-cooldowns)
 - [Using the CLI](#using-the-cli)
   - [`create-load-balancer`](#create-load-balancer)
@@ -65,7 +74,7 @@
   - [`modify-load-balancer-attributes`](#modify-load-balancer-attributes)
     - [`modify-load-balancer-attributes`: Overview and Syntax](#modify-load-balancer-attributes-overview-and-syntax)
     - [Example 1: Deletion Protection Enabled](#example-1-deletion-protection-enabled)
-    - [Example 2: Enable Access Logs](#example-2-enable-access-logs)
+    - [Example 2: Enable Access Logs and provide permission to access them](#example-2-enable-access-logs-and-provide-permission-to-access-them)
   - [`modify-target-group-attributes`](#modify-target-group-attributes)
     - [`modify-target-group-attributes`: Overview and Syntax](#modify-target-group-attributes-overview-and-syntax)
     - [Example 1: Modify the deregistration delay timeout](#example-1-modify-the-deregistration-delay-timeout)
@@ -74,6 +83,7 @@
   - [`delete-listener`](#delete-listener)
   - [`delete-load-balancer`](#delete-load-balancer)
   - [`delete-target-group`](#delete-target-group)
+- [References](#references)
 
 ---
 
@@ -460,24 +470,24 @@ Health checks are done at the Target Group level.
 
 ### NLB: Overview
 
-**Working mechanism:**
-
-1. Your client makes a request to your application.
-2. The load balancer receives the request either directly or through an endpoint for private connectivity (via AWS PrivateLink).
-3. The listeners in your load balancer receive requests of matching protocol and port, and route these requests based on the default action that you specify. You can use a TLS listener to offload the work of encryption and decryption to your load balancer.
-4. Healthy targets in one or more target groups receive traffic according to the flow hash algorithm.
-
 **Characteristics:**
 
 - Network Load Balancer (Layer 4 - Transport Layer) allows to:
 
   - Forward UDP or TCP traffic to your instances
   - Handle millions of requests per second
-  - Less latency ~100 ms (vs 400 ms for ALB)
+  - Less latency: `~100 ms` (vs ~400 ms for ALB)
 
-- Unlike ALB, which provides only static DNS name, NLB provides both static DNS name and static IP. NLB has **one static IP per AZ** and supports assigning Elastic IP (helpful for whitelisting specific IP). The reason being that AWS wants your Elastic Load Balancer to be accessible using a static endpoint, even if the underlying infrastructure that AWS manages changes.
+- Unlike ALB, which provides only static DNS name, **NLB provides both static DNS name and static IP**. NLB has **one static IP per AZ** and supports assigning Elastic IP (helpful for whitelisting specific IP). The reason being that AWS wants your Elastic Load Balancer to be accessible using a static endpoint, even if the underlying infrastructure that AWS manages changes.
 - NLBs are used for extreme performance, TCP or UDP traffic.
 - Not included in the AWS Free Tier
+
+**Working mechanism:**
+
+1. Your client makes a request to your application.
+2. The load balancer receives the request either directly or through an endpoint for private connectivity (via AWS PrivateLink).
+3. The listeners in your load balancer receive requests of matching protocol and port, and route these requests based on the default action that you specify. You can use a TLS listener to offload the work of encryption and decryption to your load balancer.
+4. Healthy targets in one or more target groups receive traffic according to the flow hash algorithm.
 
 ---
 
@@ -488,10 +498,10 @@ Health checks are done at the Target Group level.
 Target Groups can be the following:
 
 - **EC2 Instances** (can be managed by Auto Scaling Group) - HTTP
-- **IP Addresses** - must be private IPs
+- **IP Addresses** - must be private IPs. E.g. private IP of a on-premises server
 - **Application Load Balancer** - Thanks to the Network Load Balancer, you would get Fixed IP Addresses and thanks to the Application Load Balancer, you can get all the rules around handling HTTP type of traffic. So it's a valid combination.
 
-Health checks are done at the Target Group level and support three different kinds of protocol: **`TCP`**, **`HTTP`** and **`HTTPS`**.
+- Health checks are done at the Target Group level and support three different kinds of protocol: **`TCP`**, **`HTTP`** and **`HTTPS`**.
 
 ---
 
@@ -610,7 +620,7 @@ There are two types of cookies you can have:
 
 ---
 
-# ELB: Cross Zone Load Balancing
+# [ELB: Cross Zone Load Balancing](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/disable-cross-zone.html)
 
 ## Cross Zone Load Balancing: Overview
 
@@ -701,14 +711,17 @@ USERS                               LOAD BALANCER                            EC2
 ## Support on ELB
 
 - **Classic Load Balancer (v1)**
+
   - Supports only one SSL certificate
   - Must use multiple CLB for multiple hostname with multiple SSL certificates
+
 - **Application Load Balancer (v2)**
 
   - Supports multiple listeners with multiple SSL certificates
   - Users Server Name Indication (SNI) to make it work
 
 - **Network Load Balancer (v2)**
+
   - Supports multiple listeners with multiple SSL certificates
   - Users Server Name Indication (SNI) to make it work
 
@@ -716,7 +729,7 @@ USERS                               LOAD BALANCER                            EC2
 
 # ELB: Connection Draining / Deregistration Delay
 
-This feature is has two names:
+This feature has two names:
 
 - **Connection Draining**: For Classic Load Balancer
 - **Deregistration Delay**: For Application Load Balancer & Network Load Balancer
@@ -731,9 +744,9 @@ Can be disabled altogether by setting the value to 0.
 
 ---
 
-# ELB: Auto-Scaling Groups
+# Auto-Scaling Groups (ASGs)
 
-## Auto-Scaling Group: Overview
+## ASG: Overview
 
 So when we deploy an application, the load can change over time because we may have more users visiting our website or application. So far we have used the EC2 Instance creation API to quickly create EC2 Instances and learned how to terminate EC2 Instances.
 
@@ -747,11 +760,67 @@ So when we deploy an application, the load can change over time because we may h
 
 ---
 
-## Auto-Scaling Group: Create an Auto-Scaling Group
+## ASG: Using Elastic Load Balancing across Instances in the ASG
+
+### Using ELB across Instances in the ASG: Overview
+
+Elastic Load Balancing automatically distributes your incoming application traffic across all the EC2 instances that you are running. Elastic Load Balancing helps to manage incoming requests by optimally routing traffic so that no one instance is overwhelmed.
+
+- **Usage**:
+
+  - To use Elastic Load Balancing with your Auto Scaling group, attach the load balancer to your Auto Scaling group. This registers the group with the load balancer, which acts as a single point of contact for all incoming web traffic to your Auto Scaling group.
+
+- When you use Elastic Load Balancing with your Auto Scaling group, it's not necessary to register individual EC2 instances with the load balancer.
+- Instances that are launched by your Auto Scaling group are automatically registered with the load balancer.
+- Likewise, instances that are terminated by your Auto Scaling group are automatically deregistered from the load balancer.
+- After attaching a load balancer to your Auto Scaling group, you can configure your Auto Scaling group to use Elastic Load Balancing metrics (such as the Application Load Balancer request count per target) to scale the number of instances in the group as demand fluctuates.
+
+- **Health Checks**:
+
+  - Optionally, you can add Elastic Load Balancing health checks to your Auto Scaling group so that Amazon EC2 Auto Scaling can identify and replace unhealthy instances based on these additional health checks.
+  - Otherwise, you can create a CloudWatch alarm that notifies you if the healthy host count of the target group is lower than allowed.
 
 ---
 
-## Auto-Scaling Group: Scaling Policies
+### Using ELB across Instances in the ASG: Workflow
+
+1. Create Security Groups: One for the ALB, one for the Instances created by the ASG
+
+   - Create a Security Group, `SecurityGroupForALB` for the Application Load Balancer to accept Incoming Traffic via Port 80/443 and send Outgoing Traffic via Port 80/443.
+   - Create a Security Group for EC2 Instances, `SecurityGroupForASGInstances` accepting Incoming Traffic at Port 80 and allowing Outgoing Traffic to the ALB.
+
+2. Create an Application Load Balancer, `ElasticLoadBalancer` and attach the `SecurityGroupForALB` to it.
+
+3. Create a Target Group, `ELBTargetGroup`, listening on Port 80 (with or without Health Checks). We will attach this to the Listener we will create for the ALB. Unlike normal EC2 instances, which we have to register (deregistration still happens on termination automatically) manually, when EC2 Instances are created or terminated via an Auto-Scaling Group, this Target Group will automatically register/deregister targets once we connect the target group to the Auto Scaling Group based on whether the ASG scales in (deregister) or scales out (register).
+
+4. Create a Listener for the `ElasticLoadBalancer`, `ELBListener` that forwards HTTP requests via Port 80 to this target group.
+
+5. Next, we need to create Launch Template to have a basis for our Auto-Scaling Group. Configure the Security Group: `SecurityGroupForASGInstances` to the Launch Template, this will ensure all instances created by the ASG will adhere to the security rules of this security group.
+
+6. Create the Auto-Scaling Group. Add the `ELBTargetGroup` as the target group from the Load balancing settings. A Desired capacity of >= `1` and having a Minimum capacity of <= `1`, while a Maximum capacity of >= `1` will ensure that an EC2 instance immediately starts getting initialized based on the Launch Template. It will run any User Data scripts (so boot may need some time) and if it's a server that returns a webpage, we will soon be able to access it on the Load Balancer DNS Name (A Record) which may look like `http://cloudformed-elb-for-asg-239482635.ap-south-1.elb.amazonaws.com`.
+
+---
+
+### Using ELB across Instances in the ASG: Deploy with CloudFormation
+
+The workflow described in the above section, is detailed in the CloudFormation Template - **[ASG with ELB](../cloudformation/templates/ASG-with-ELB.yml)**.
+
+To create a stack from the above template, run:
+
+```s
+aws cloudformation create-stack \
+ --stack-name ASGWithELBStack \
+ --template-body file:///path/to/quick-reference/aws/cloudformation/templates/ASG-with-ELB.yml \
+ --parameters ParameterKey=AMI,ParameterValue="ami-062df10d14676e201" ParameterKey=InstanceType,ParameterValue="t2.micro" ParameterKey=MinSize,ParameterValue=1 ParameterKey=DesiredCapacity,ParameterValue=1 ParameterKey=MaxSize,ParameterValue=5 ParameterKey=NotificationTargetARN,ParameterValue=[NotificationTargetARN] ParameterKey=RoleARN,ParameterValue=[RoleARN]
+```
+
+- `Parameters` (optional): Defaults to the above
+- `NotificationTargetARN` (optional): Enter either a SQS queue ARN or a SNS topic ARN to receive notifications based on lifecycle hooks
+- `RoleARN` (optional): Specify a RoleARN to allow access to SQS or SNS for Notifications based on Lifecycle hooks
+
+---
+
+## ASG: Automatic Scaling Policies
 
 ### Dynamic Scaling
 
@@ -779,12 +848,154 @@ So when we deploy an application, the load can change over time because we may h
 
 ---
 
+## [ASG: Lifecycle Hooks](https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks-overview.html)
+
+An Amazon EC2 instance transitions through different states from the time it launches until it is terminated. We can configure Lifecycle Hooks for the Auto-Scaling Group to act when an instance transitions into a wait state.
+
+These hooks let you create solutions that are aware of events in the Auto Scaling instance lifecycle, and then perform a custom action on instances when the corresponding lifecycle event occurs before the Instances start accepting traffic or before they get terminated.
+
+![ASG: Lifecycle Hooks](assets/asg-lifecycle-hooks.png)
+
+We can modify the following configuration.
+
+- **Lifecycle Hook Name**: Must be unique to this group. Max 255 chars. No spaces or special characters except `-`, `_`, and `/`
+
+- **Lifecycle Transition**: You can perform custom actions as EC2 Auto Scaling launches instances or terminates instances. There are two major lifecycle transitions:
+
+  - `autoscaling:EC2_INSTANCE_LAUNCHING`
+  - `autoscaling:EC2_INSTANCE_TERMINATING`
+
+- **Heartbeat Timeout**: The specified amount of time (in seconds) for the EC2 Instance to remain in the wait state for the action to complete before the instance transitions to the next state.
+
+  - **Default**: `3600 secs`
+  - **Minimum**: `30 secs`
+  - **Maximum**: `7200 secs`
+
+- **Default result**: The action the Auto Scaling group takes when the lifecycle hook timeout elapses or if an unexpected failure occurs. Valid values are:
+
+  - `CONTINUE`:
+
+    - **When Launching**: Assumes that the actions are successful and proceeds to put the Instance to InService state.
+    - **When Terminating**: Proceeds with other lifecycle hooks before terminatsion.
+
+  - `ABANDON`: Terminates the instance immediately
+
+- **Notification metadata**: Additional information that you want to include any time Amazon EC2 Auto Scaling sends a message to the notification target.
+
+- **NotificationTargetARN**: The Amazon Resource Name (ARN) of the notification target that Amazon EC2 Auto Scaling sends notifications to when an instance is in a wait state for the lifecycle hook. You can specify an Amazon SNS topic or an Amazon SQS queue.
+
+- **RoleARN**: The ARN of the IAM role that allows the Auto Scaling group to publish to the specified notification target. Valid only if the notification target is an Amazon SNS topic or an Amazon SQS queue.
+
+---
+
+## [ASG: Notifications](https://docs.aws.amazon.com/autoscaling/ec2/userguide/prepare-for-lifecycle-notifications.html?icmpid=docs_ec2as_console#lifecycle-hook-notification-target)
+
+### ASG Notifications: Overview
+
+You can configure a notification target for lifecycle notifications. We have the following approaches available:
+
+1. **Amazon SQS**: The first approach involves using Amazon Simple Queue Service (Amazon SQS), a messaging system used by distributed applications to exchange messages through a polling model.
+2. **Amazon SNS**: The second approach involves creating an Amazon Simple Notification Service (Amazon SNS) topic to which notifications are published. Clients can subscribe to the SNS topic and receive published messages using a supported protocol.
+3. **Amazon EventBridge to AWS Lambda Function (recommended)**: The last approach, EventBridge gives you more options for which services you can target and makes it easier to handle events using serverless architecture.
+
+---
+
+### ASG Notifications: Send Notification to SQS Queue
+
+> **Note:** FIFO queues are not compatible with lifecycle hooks.
+
+1. **Create a SQS Queue**
+
+- Note the Queue ARN to use in Step 4.
+
+```s
+aws sqs create-queue --queue-name "ASGLifecycleEventsQueue"
+```
+
+2. **Create an IAM Execution Role**
+
+   **Run:**
+
+   ```s
+   aws iam create-role \
+   --role-name "AWSAutoScalingGroupNotificationRole" \
+   --assume-role-policy-document '{"Version": "2012-10-17","Statement": [{ "Effect": "Allow", "Principal": {"Service": "autoscaling.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+   ```
+
+3. **Attach a Policy to allow write access to SQS**
+
+   ```s
+   aws iam attach-role-policy \
+     --role-name "AWSAutoScalingGroupNotificationRole" \
+     --policy-arn "arn:aws:iam::aws:policy/service-role/AutoScalingNotificationAccessRole"
+   ```
+
+4. **Use the CloudFormation Template to launch the ASG with SQS Queue**
+
+   ```s
+   aws cloudformation create-stack \
+    --stack-name ASGWithELBStack \
+    --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/ASG-with-ELB.yml \
+    --parameters ParameterKey=NotificationTargetARN,ParameterValue="arn:aws:sqs:ap-south-1:336463900088:ASGLifecycleEventsQueue" ParameterKey=RoleARN,ParameterValue="arn:aws:iam::336463900088:role/AWSAutoScalingGroupNotificationRole"
+   ```
+
+5. **If we poll for messages on the Queue, we will find an `EC2_INSTANCE_LAUNCHING` lifecycle event**
+
+   ```json
+   {
+     "Origin": "EC2",
+     "LifecycleHookName": "ASGLifecycleHookNotification-Launching",
+     "Destination": "AutoScalingGroup",
+     "AccountId": "336463900088",
+     "RequestId": "f6e613f0-5d34-4aef-040d-19b78b000e23",
+     "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING",
+     "AutoScalingGroupName": "CloudFormed-ASG",
+     "Service": "AWS Auto Scaling",
+     "Time": "2022-12-10T12:52:08.814Z",
+     "EC2InstanceId": "i-0faa113d8c63b3f60",
+     "LifecycleActionToken": "c1069c83-a3d9-4a6a-9a08-89a361c171e2"
+   }
+   ```
+
+---
+
+## ASG: Monitoring
+
 ### Notable Scaling Metrics
 
 - **CPU Utilization**: Average CPU utilization across instances
 - **Request Count Per Target**: To make sure requests per EC2 Instance is stable and doesn't exceed IOPS
 - **Average Network In / Out**: If your application is network bound we need to make sure it stays within a certain threshold.
-- **Custom Metrics using CloudWatch**
+
+---
+
+### Custom Metrics using CloudWatch
+
+You can enable the monitoring of group metrics of an Auto Scaling group. By default, these metrics are disabled. Enabling it sends metrics to CloudWatch every `60 seconds`.
+
+- Using the Console, you can Enable or Disable CloudWatch Metrics
+- Using the API in the SDK or CLI, you can enable or disable CloudWatch metrics. Additionally you can specify one or more of the following metrics:
+
+  - `GroupMinSize`
+  - `GroupMaxSize`
+  - `GroupDesiredCapacity`
+  - `GroupInServiceInstances`
+  - `GroupPendingInstances`
+  - `GroupStandbyInstances`
+  - `GroupTerminatingInstances`
+  - `GroupTotalInstances`
+  - `GroupInServiceCapacity`
+  - `GroupPendingCapacity`
+  - `GroupStandbyCapacity`
+  - `GroupTerminatingCapacity`
+  - `GroupTotalCapacity`
+  - `WarmPoolDesiredCapacity`
+  - `WarmPoolWarmedCapacity`
+  - `WarmPoolPendingCapacity`
+  - `WarmPoolTerminatingCapacity`
+  - `WarmPoolTotalCapacity`
+  - `GroupAndWarmPoolDesiredCapacity`
+  - `GroupAndWarmPoolTotalCapacity`
 
 ---
 
@@ -792,9 +1003,9 @@ So when we deploy an application, the load can change over time because we may h
 
 After a scaling activity happens, you enter a cooldown period.
 
-Default: 300 seconds
+**Default:** `300 seconds`
 
-During the cooldown period the ASG will not launch of terminate additional instances (to allow for metrics to stabilize)
+During the cooldown period the ASG will not launch additional instances or terminate instances (to allow for metrics to stabilize)
 
 > **Tip**: Use a ready-to-use AMI to reduce configuration time in order to be serving requests faster and reduce the cooldown period.
 
@@ -1168,12 +1379,12 @@ aws elbv2 modify-load-balancer-attributes \
 
 ---
 
-### Example 2: Enable Access Logs
+### Example 2: Enable Access Logs and provide permission to access them
 
 ```s
 aws elbv2 modify-load-balancer-attributes \
  --load-balancer-arn "arn:aws:elasticloadbalancing:ap-south-1:336463900088:loadbalancer/app/my-load-balancer/50dc6c495c0c9188" \
- --attributes Key=access_logs.s3.bucket,Value=my-loadbalancer-logs Key=access_logs.s3.prefix,Value=myapp
+ --attributes Key=access_logs.s3.enabled,Value=true Key=access_logs.s3.bucket,Value=my-loadbalancer-logs Key=access_logs.s3.prefix,Value=myapp
 ```
 
 ---
@@ -1438,3 +1649,7 @@ aws elbv2 delete-target-group \
 None
 
 ---
+
+# References
+
+- Listeners | **[For Application Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-listeners.html)** | **[For Network Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-listeners.html)** | **[For Gateway Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/gateway-listeners.html)**

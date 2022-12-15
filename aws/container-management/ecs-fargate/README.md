@@ -1,66 +1,48 @@
 # Table of Contents
 
 - [Table of Contents](#table-of-contents)
-- [Docker Containers Management on AWS](#docker-containers-management-on-aws)
-- [Amazon ECS](#amazon-ecs)
-  - [ECS: EC2 Launch Type](#ecs-ec2-launch-type)
-  - [ECS: Fargate Launch Type](#ecs-fargate-launch-type)
-  - [ECS: IAM Roles for ECS Tasks](#ecs-iam-roles-for-ecs-tasks)
-  - [ECS: Load Balancer Integrations](#ecs-load-balancer-integrations)
-  - [ECS: Data Persistence](#ecs-data-persistence)
-    - [ECS: Data Volumes (EFS)](#ecs-data-volumes-efs)
-  - [ECS: Create an ECS Cluster](#ecs-create-an-ecs-cluster)
-  - [ECS: Create an ECS Service](#ecs-create-an-ecs-service)
-    - [ECS: Steps to Create an ECS Service](#ecs-steps-to-create-an-ecs-service)
-    - [ECS: Task Definition](#ecs-task-definition)
-      - [ECS Task Definition: Overview](#ecs-task-definition-overview)
-      - [ECS Task Definition: Task Roles](#ecs-task-definition-task-roles)
-      - [ECS Task Definition: Environment Variables](#ecs-task-definition-environment-variables)
-      - [ECS Task Definition: Data Volumes (Bind Mounts)](#ecs-task-definition-data-volumes-bind-mounts)
-      - [ECS Task Definition: Create a Task Definition](#ecs-task-definition-create-a-task-definition)
-    - [Deploy a Service](#deploy-a-service)
-  - [ECS: Service Auto Scaling](#ecs-service-auto-scaling)
-    - [ECS Service Auto Scaling: Overview](#ecs-service-auto-scaling-overview)
-    - [ECS Service Auto Scaling: EC2 Launch Type](#ecs-service-auto-scaling-ec2-launch-type)
-  - [ECS: Rolling Updates](#ecs-rolling-updates)
-  - [ECS: Solutions Architecture](#ecs-solutions-architecture)
-    - [ECS Tasks Invoked by EventBridge](#ecs-tasks-invoked-by-eventbridge)
-  - [ECS: Task Placements](#ecs-task-placements)
-    - [ECS Task Placements: Overview](#ecs-task-placements-overview)
-    - [ECS Task Placements: Task Placement Strategies](#ecs-task-placements-task-placement-strategies)
-    - [ECS Task Placements: Task Placement Constraints](#ecs-task-placements-task-placement-constraints)
-- [Amazon ECR](#amazon-ecr)
-  - [ECR: Overview](#ecr-overview)
-  - [ECR: Using AWS CLI](#ecr-using-aws-cli)
-  - [ECR: Create a Repository from the Console](#ecr-create-a-repository-from-the-console)
-  - [Amazon EKS](#amazon-eks)
+- [ECS: EC2 Launch Type](#ecs-ec2-launch-type)
+- [ECS: Fargate Launch Type](#ecs-fargate-launch-type)
+- [ECS: IAM Roles for ECS Tasks](#ecs-iam-roles-for-ecs-tasks)
+- [ECS: Load Balancer Integrations](#ecs-load-balancer-integrations)
+- [ECS: Data Persistence](#ecs-data-persistence)
+  - [ECS: Data Volumes (EFS)](#ecs-data-volumes-efs)
+- [ECS: Workflow](#ecs-workflow)
+  - [ECS: Workflow for EC2 Launch Type](#ecs-workflow-for-ec2-launch-type)
+- [ECS: Create an ECS Cluster](#ecs-create-an-ecs-cluster)
+- [ECS: Create an ECS Service](#ecs-create-an-ecs-service)
+  - [ECS: Steps to Create an ECS Service](#ecs-steps-to-create-an-ecs-service)
+  - [ECS: Task Definition](#ecs-task-definition)
+  - [ECS Task Definition: Overview](#ecs-task-definition-overview)
+  - [ECS Task Definition: Task Roles](#ecs-task-definition-task-roles)
+  - [ECS Task Definition: Environment Variables](#ecs-task-definition-environment-variables)
+  - [ECS Task Definition: Data Volumes (Bind Mounts)](#ecs-task-definition-data-volumes-bind-mounts)
+  - [ECS Task Definition: Create a Task Definition](#ecs-task-definition-create-a-task-definition)
+  - [Deploy a Service](#deploy-a-service)
+- [ECS: Service Auto Scaling](#ecs-service-auto-scaling)
+  - [ECS Service Auto Scaling: Overview](#ecs-service-auto-scaling-overview)
+  - [ECS Service Auto Scaling: EC2 Launch Type](#ecs-service-auto-scaling-ec2-launch-type)
+- [ECS: Rolling Updates](#ecs-rolling-updates)
+- [ECS: Troubleshooting](#ecs-troubleshooting)
+  - [ASG is in an infinite loop shutting unhealthy instances and starting new instances](#asg-is-in-an-infinite-loop-shutting-unhealthy-instances-and-starting-new-instances)
+  - [Check if ECS Agent is running on the Instance](#check-if-ecs-agent-is-running-on-the-instance)
+- [ECS: Solutions Architecture](#ecs-solutions-architecture)
+  - [ECS Tasks Invoked by EventBridge](#ecs-tasks-invoked-by-eventbridge)
+- [ECS: Task Placements](#ecs-task-placements)
+  - [ECS Task Placements: Overview](#ecs-task-placements-overview)
+  - [ECS Task Placements: Task Placement Strategies](#ecs-task-placements-task-placement-strategies)
+  - [ECS Task Placements: Task Placement Constraints](#ecs-task-placements-task-placement-constraints)
+- [Deploy Using CloudFormation](#deploy-using-cloudformation)
+  - [Deploy ECS Cluster running NGINX](#deploy-ecs-cluster-running-nginx)
+- [Using the CLI](#using-the-cli)
+  - [`create-cluster`](#create-cluster)
+  - [`create-service`](#create-service)
+  - [`stop-task`](#stop-task)
 - [References](#references)
 
 ---
 
-# Docker Containers Management on AWS
-
-- **Amazon Elastic Container Service (Amazon ECS)**
-
-  - Amazon's own container platform
-
-- **Amazon Elastic Kubernetes Service (Amazon EKS)**
-
-  - Amazon's managed Kubernetes (open source)
-
-- **AWS Fargate**
-
-  - Amazon's own Serverless container platform
-  - Works with ECS and EKS
-
-- **Amazon Elastic Container Registry (Amazon ECR)**
-  - Amazon's own container image registry used to store container images
-
----
-
-# Amazon ECS
-
-## ECS: EC2 Launch Type
+# ECS: EC2 Launch Type
 
 Amazon ECS refers to Elastic Container Service which is Amazon's own container platform.
 
@@ -75,7 +57,7 @@ Amazon ECS refers to Elastic Container Service which is Amazon's own container p
 
 ---
 
-## ECS: Fargate Launch Type
+# ECS: Fargate Launch Type
 
 - Launch containers on AWS
 - You do not provision the infrastructure (no EC2 Instances to manage)
@@ -86,7 +68,7 @@ Amazon ECS refers to Elastic Container Service which is Amazon's own container p
 
 ---
 
-## ECS: IAM Roles for ECS Tasks
+# ECS: IAM Roles for ECS Tasks
 
 Let's take an example of an EC2 Instance running the ECS Agent on Docker
 
@@ -107,7 +89,7 @@ Let's take an example of an EC2 Instance running the ECS Agent on Docker
 
 ---
 
-## ECS: Load Balancer Integrations
+# ECS: Load Balancer Integrations
 
 - **Application Load Balancer** is supported and works for most use cases
 - **Network Load Balancer** is recommended only for very high throughput / high performance use cases, or to pair it with AWS Private Link
@@ -115,9 +97,9 @@ Let's take an example of an EC2 Instance running the ECS Agent on Docker
 
 ---
 
-## ECS: Data Persistence
+# ECS: Data Persistence
 
-### ECS: Data Volumes (EFS)
+## ECS: Data Volumes (EFS)
 
 We need Data Volumes to persist data. There are different kinds, but one of them is EFS (Elastic File System).
 
@@ -131,7 +113,19 @@ We need Data Volumes to persist data. There are different kinds, but one of them
 
 ---
 
-## ECS: Create an ECS Cluster
+# ECS: Workflow
+
+## ECS: Workflow for EC2 Launch Type
+
+1. Create a ECS Cluster
+   - Launch Type = FARGATE
+   - Launch Type = EC2 with Auto Scaling Group
+2. Create a ECS Task Definition
+3. Create a ECS Service
+
+---
+
+# ECS: Create an ECS Cluster
 
 - Go to the **[Clusters page on the ECS Console](https://ap-south-1.console.aws.amazon.com/ecs/v2/clusters?region=ap-south-1)**
 - Click the **`Create cluster`** button
@@ -173,24 +167,25 @@ We need Data Volumes to persist data. There are different kinds, but one of them
 
 ---
 
-## ECS: Create an ECS Service
+# ECS: Create an ECS Service
 
-### ECS: Steps to Create an ECS Service
+## ECS: Steps to Create an ECS Service
 
 Steps to Create an ECS Service:
 
-1. Create a Task Definition
-2. Run the Task Definition in a Service behind a Load Balancer
+1. Create a Cluster
+2. Create a Task Definition
+3. Run the Task Definition in a Service behind a Load Balancer
    - Thus we need to create two security groups:
      - Security Group for the Application Load Balancer accepting traffic on Port 80
      - Security Group for the EC2 Instances allowing the ALB's Security Group to only accept All TCP traffic from the ALB
-3. Deploy a Service on the ECS Cluster
+4. Deploy a Service on the ECS Cluster
 
 ---
 
-### ECS: Task Definition
+## ECS: Task Definition
 
-#### ECS Task Definition: Overview
+## ECS Task Definition: Overview
 
 - Task Definitions are metadata in JSON form to tell ECS how to run a Docker container
 - It contains crucial information, such as:
@@ -217,7 +212,7 @@ Steps to Create an ECS Service:
 
 ---
 
-#### ECS Task Definition: Task Roles
+## ECS Task Definition: Task Roles
 
 ECS Task Role is the IAM Role used by the ECS task itself. Use when your container wants to call other AWS services like S3, SQS, etc.
 
@@ -228,7 +223,7 @@ ECS Task Role is the IAM Role used by the ECS task itself. Use when your contain
 
 ---
 
-#### ECS Task Definition: Environment Variables
+## ECS Task Definition: Environment Variables
 
 - Environment Variables can be referenced from within the ECS Task Definition:
   - **Hardcoded**: e.g. fixed non-secret URLs
@@ -239,7 +234,7 @@ ECS Task Role is the IAM Role used by the ECS task itself. Use when your contain
 
 ---
 
-#### ECS Task Definition: Data Volumes (Bind Mounts)
+## ECS Task Definition: Data Volumes (Bind Mounts)
 
 An ECS Task can contain one container but you can also define multiple containers in the same task definition. Sometimes, your side containers (often called `sidecar`) can help you with logging, tracing, metrics and so on. But sometimes, for e.g. for logging or metrics these containers need to share some files together. Therefore we must mount a data volume onto both containers and then they will be able to share data.
 
@@ -256,7 +251,7 @@ An ECS Task can contain one container but you can also define multiple container
 
 ---
 
-#### ECS Task Definition: Create a Task Definition
+## ECS Task Definition: Create a Task Definition
 
 - Go to **[Task definitions on the ECS Console](https://ap-south-1.console.aws.amazon.com/ecs/v2/task-definitions?region=ap-south-1)**
 - Click the **`Create new task definition`** button
@@ -337,7 +332,7 @@ An ECS Task can contain one container but you can also define multiple container
 
 ---
 
-### Deploy a Service
+## Deploy a Service
 
 - Go to the ECS Cluster and click the **`Services`** Tab
 - Click on the **`Deploy`** button
@@ -402,9 +397,9 @@ An ECS Task can contain one container but you can also define multiple container
 
 ---
 
-## ECS: Service Auto Scaling
+# ECS: Service Auto Scaling
 
-### ECS Service Auto Scaling: Overview
+## ECS Service Auto Scaling: Overview
 
 - Automatically increase / decrease the desired number of ECS Tasks
 - Amazon ECS Auto Scaling uses **AWS Application Auto Scaling**
@@ -425,7 +420,7 @@ An ECS Task can contain one container but you can also define multiple container
 
 ---
 
-### ECS Service Auto Scaling: EC2 Launch Type
+## ECS Service Auto Scaling: EC2 Launch Type
 
 - Accomodate ECS Service Scaling by adding underlying EC2 Instances
 - Ways to accomplish this:
@@ -442,7 +437,7 @@ An ECS Task can contain one container but you can also define multiple container
 
 ---
 
-## ECS: Rolling Updates
+# ECS: Rolling Updates
 
 - When updating an ECS service from v1 to v2, we can control how many tasks can be started and stopped and in which order
   - The **Min running tasks** control the minimum number of tasks that must be present (This would mean all v1 tasks)
@@ -451,15 +446,81 @@ An ECS Task can contain one container but you can also define multiple container
 
 ---
 
-## ECS: Solutions Architecture
+# ECS: Troubleshooting
 
-### ECS Tasks Invoked by EventBridge
+## ASG is in an infinite loop shutting unhealthy instances and starting new instances
+
+**Debug**:
+
+1. [Ensure ECS Agent is running](#check-if-ecs-agent-is-running-on-the-instance)
+2. SSH into any running Instance and check the `docker images`. Troubleshoot if ECS Service is not downloading Docker images from DockerHub.
+3. If the above checks pass, then:
+
+**Reason**: It takes some time for an ECS Service to start a task, especially for the first time, when there is no Image cache available. It has to download the image from an image repository like DockerHub or Elastic Container Registry (ECR) and then run the container. By default, the `HealthCheckGracePeriodSeconds` parameter is set to `0`, i.e. the Health checks begin immediately. This is the reason why Health Checks maybe failing and the Auto-Scaling Group works in such a way that unhealthy instances are automatically removed and replaced by new instances on which health checks are run again. There is a chance for this to be infinitely looping because of the aforesaid reasons.
+
+**Solution:** Set the `HealthCheckGracePeriodSeconds` to `30` or above to allow some time for the ECS Service to download the image and run the container.
 
 ---
 
-## ECS: Task Placements
+## Check if ECS Agent is running on the Instance
 
-### ECS Task Placements: Overview
+1. **Login to any of the EC2 Instances started by the ASG**
+
+   ```s
+   ssh -i ec2-public-key.pem ec2-user@[EC2-PublicIPv4Address]
+   ```
+
+2. **Check if the Agent is running using the Agent Introspection API**
+
+   **Run:**
+
+   ```s
+   curl -s http://localhost:51678/v1/metadata | python -mjson.tool
+   ```
+
+   **Expected Response (if Agent is running):**
+
+   ```json
+   {
+     "Cluster": "nginx-cluster",
+     "ContainerInstanceArn": "arn:aws:ecs:ap-south-1:336463900088:container-instance/nginx-cluster/48109651b39645fea3ce8c976b8df0f8",
+     "Version": "Amazon ECS Agent - v1.67.1 (*989593e9)"
+   }
+   ```
+
+   **Error Response:**
+
+   ```s
+   No JSON object could be decoded
+   ```
+
+3. **View all running containers using `docker ps`**
+
+   **Run:**
+
+   ```s
+   docker ps
+   ```
+
+   **Expected Response:**
+
+    <!--prettier-ignore-->
+
+   | CONTAINER ID | IMAGE                          | COMMAND  | CREATED       | STATUS                 | PORTS | NAMES     |
+   | ------------ | ------------------------------ | -------- | ------------- | ---------------------- | ----- | --------- |
+   | 79a3a1fd166d | amazon/amazon-ecs-agent:latest | "/agent" | 3 minutes ago | Up 3 minutes (healthy) |       | ecs-agent |
+
+---
+
+# ECS: Solutions Architecture
+
+## ECS Tasks Invoked by EventBridge
+
+---
+
+# ECS: Task Placements
+
+## ECS Task Placements: Overview
 
 - When a task of type EC2 is launched (not Fargate), ECS must decide where to place it, with the constraints of CPU, memory and available Port
 - Similarly, when a service scales in, ECS needs to determine which task to terminate
@@ -475,7 +536,7 @@ An ECS Task can contain one container but you can also define multiple container
 
 ---
 
-### ECS Task Placements: Task Placement Strategies
+## ECS Task Placements: Task Placement Strategies
 
 1. **Binpack**
 
@@ -553,7 +614,7 @@ OR
 
 ---
 
-### ECS Task Placements: Task Placement Constraints
+## ECS Task Placements: Task Placement Constraints
 
 - **`distinctInstance`**: Place each task on a different container instance
 
@@ -582,119 +643,112 @@ OR
 
 ---
 
-# Amazon ECR
+# Deploy Using CloudFormation
 
-## ECR: Overview
+## Deploy ECS Cluster running NGINX
 
-Amazon ECR stands for Amazon Elastic Container Registry.
-
-- Used to store and manage Docker images on AWS.
-- Private and Public repository ([Amazon ECR Public Gallery](https://gallery.ecr.aws))
-- Fully integrated with ECS, backed by Amazon S3.
-- So your ECR repository may contain different Docker images and then for example, an EC2 Instance on your ECS Cluster may want to pull these images.
-
-- To make this possible:
-  - Assign an IAM Role to our EC2 Instance that allows us to pull Docker images.
-- Access to ECR is controlled through IAM (permissions errors refer to policy issues)
-- Apart from being a repository for images, it also supports Image Vulnerability Scanning, Versioning, Image Tags, Image Lifecycle.
-
----
-
-## ECR: Using AWS CLI
-
-Login Command:
-
-- Using AWS CLI v2:
+- **Create CloudFormation Stack**
 
   ```s
-  aws ecr get-login-password --region [region] | docker login --username AWS --password-stdin [aws_account_id].dkr.ecr.[region].amazonaws.com
+  aws cloudformation create-stack \
+    --stack-name ECS-with-ASG \
+    --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/ECS-with-ASG.yml \
+    --capabilities CAPABILITY_IAM
   ```
 
-- Docker commands:
+---
 
-  - Push:
+# Using the CLI
 
-    ```s
-    docker push aws_account_id.dkr.ecr.[region].amazonaws.com/[container]:[tag]
-    ```
+## [`create-cluster`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/ecs/create-cluster.html)
+
+Creates a new Amazon ECS cluster. By default, your account receives a `default` cluster when you launch your first container instance. However, you can create your own cluster with a unique name with the `CreateCluster` action.
+
+> **Note:** When you call the CreateCluster API operation, Amazon ECS attempts to create the Amazon ECS service-linked role for your account. This is so that it can manage required resources in other Amazon Web Services services on your behalf. However, if the IAM user that makes the call doesn’t have permissions to create the service-linked role, it isn’t created.
+
+**Syntax:**
+
+```s
+aws ecs create-cluster \
+  --cluster-name [ClusterName] \
+  --capacity-providers [ListOfCapacityProviders] \
+  --cli-input-json
+```
+
+**Example:**
+
+```s
+
+```
+
+**Response:**
+
+```json
+
+```
 
 ---
 
-## ECR: Create a Repository from the Console
-
-A repository is where you store your Docker or Open Container Initiative (OCI) images in Amazon ECR. Each time you push or pull an image from Amazon ECR, you specify the repository and the registry location which informs where to push the image to or where to pull it from.
-
-- Go to [Repositories](https://ap-south-1.console.aws.amazon.com/ecr/repositories?region=ap-south-1) from the Amazon ECR Console.
-- Click the `Create repository` button.
-- Enter the following configurations:
-
-  1. **General Settings**:
-
-     - **Visibility settings**: Choose the visibility setting for the repository. Once a repository is created, the visibility setting of the repository can't be changed.
-
-       - **Private**: Access is managed by IAM and repository policy permissions.
-       - **Public**: Publicly visible and accessible for image pulls.
-
-     - **Repository name**: Provide a concise name. A developer should be able to identify the repository contents by the name. 2 characters minimum. The name must start with a letter and can only contain lowercase letters, numbers, hyphens, underscores, periods and forward slashes.
-
-     - **Tag immutability**: Enable tag immutability to prevent image tags from being overwritten by subsequent image pushes using the same tag. Disable tag immutability to allow image tags to be overwritten. Default: `Disabled`
-
-  2. **Image scan settings**: Deprecation warning: ScanOnPush configuration at the repository level is deprecated in favor of registry level scan filters. For more information, see [Image scanning](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html).
-
-     - **Scan on push**: Enable scan on push to have each image automatically scanned after being pushed to a repository. If disabled, each image scan must be manually started to get scan results. Default: `Disabled`
-
-  3. **Encryption settings**: The KMS encryption settings cannot be changed or disabled after the repository is created.
-
-     - **KMS encryption**: You can use AWS Key Management Service (KMS) to encrypt images stored in this repository, instead of using the default encryption settings. Default: `Disabled`
-
-- Click `Create repository` to create a repository.
-
-> **Note**: Images need to be pushed into the repository using the **[Push commands](https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html)**
+## `create-service`
 
 ---
 
-## Amazon EKS
+## [`stop-task`](https://docs.aws.amazon.com/cli/latest/reference/ecs/stop-task.html)
 
-- Amazon EKS stands for Amazon Elastic Kubernetes Service
-- It is a way to launch and manage Kubernetes clusters on AWS
-- Kubernetes is an open-source system for automatic deployment, scaling and management (container orchestration) of containerized (usually Docker) applications
-- It's an alternative to ECS, similar goal but different API. ECS is not open source while Kubernetes is Open-Source
+Stops a running task. Any tags associated with the task will be deleted.
 
-- EKS supports two launch modes:
+When StopTask is called on a task, the equivalent of `docker stop` is issued to the containers running in the task. This results in a `SIGTERM` value and a default 30-second timeout, after which the `SIGKILL` value is sent and the containers are forcibly stopped. If the container handles the `SIGTERM` value gracefully and exits within 30 seconds from receiving it, no `SIGKILL` value is sent.
 
-  - **EC2**: To deploy worker nodes
-  - **Fargate**: To deploy serverless containers
+> **Note:** The default 30-second timeout can be configured on the Amazon ECS container agent with the `ECS_CONTAINER_STOP_TIMEOUT` variable. For more information, see [Amazon ECS Container Agent Configuration](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-config.html)
 
-- **Use Case**:
+**Syntax:**
 
-  - Your company is already using Kubernetes on-premises or in another Cloud, and wants to migrate to AWS using Kubernetes
-  - Kubernetes is Cloud-agnostic (can be used in any cloud - Azure, GCP)
+```s
+aws ecs stop-task \
+  --cluster [ClusterName] \
+  --task [TaskARN]
+```
 
-- **Node types**:
+**Example:**
 
-  - **Managed Node Groups**:
+```s
+aws ecs stop-task \
+  --cluster "nginx-cluster" \
+  --task "arn:aws:ecs:ap-south-1:336463900088:task/nginx-cluster/527441dcb06a44258cf39e90e9a95b57"
+```
 
-    - Creates and manages Nodes (EC2 instances) for you
-    - Nodes are part of an Auto-Scaling Group managed by EKS
-    - Supports On-demand or Spot Instances
+**Response:**
 
-  - **Self-Managed Nodes**:
-
-    - Nodes created by you and registered to the EKS cluster and managed by an ASG
-    - You can use prebuilt AMI - Amazon EKS Optimized AMI or build your own AMI
-    - Supports On-demand or Spot Instances
-
-  - **AWS Fargate**:
-    - No maintenance required; no nodes managed
-
-- **Data Volumes**:
-  - Can attach data volume to Amazon EKS cluster
-  - Need to specify a **StorageClass** manifest on your EKS cluster
-  - Leverages a **Container Storage Interface** (CSI) compliant driver
-  - Support for Amazon EBS (Elastic Block Storage)
-  - Support for Amazon EFS (Works with Fargate because it is a network storage type)
-  - Support for [Amazon FSx for Lustre](https://aws.amazon.com/fsx/lustre/)
-  - Support for [Amazon FSx for NetApp ONTAP](https://aws.amazon.com/fsx/netapp-ontap/)
+```json
+{
+  "task": {
+    "attachments": [],
+    "capacityProviderName": "nginx-asg",
+    "clusterArn": "arn:aws:ecs:ap-south-1:336463900088:cluster/nginx-cluster",
+    "containers": [],
+    "cpu": "512",
+    "createdAt": "2022-12-12T23:10:49.420000+05:30",
+    "desiredStatus": "STOPPED",
+    "enableExecuteCommand": false,
+    "group": "service:nginx-service",
+    "lastStatus": "PROVISIONING",
+    "launchType": "EC2",
+    "memory": "1024",
+    "overrides": {
+      "containerOverrides": [],
+      "inferenceAcceleratorOverrides": []
+    },
+    "startedBy": "ecs-svc/9946039128629145639",
+    "stopCode": "UserInitiated",
+    "stoppedReason": "Task stopped by user",
+    "stoppingAt": "2022-12-12T23:37:59.546000+05:30",
+    "tags": [],
+    "taskArn": "arn:aws:ecs:ap-south-1:336463900088:task/nginx-cluster/527441dcb06a44258cf39e90e9a95b57",
+    "taskDefinitionArn": "arn:aws:ecs:ap-south-1:336463900088:task-definition/ECS-with-ASG-ELB-ecs-nginx-app:2",
+    "version": 2
+  }
+}
+```
 
 ---
 
@@ -702,5 +756,7 @@ A repository is where you store your Docker or Open Container Initiative (OCI) i
 
 - [ECS Container Agent Configuration](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-config.html)
 - [Image Scanning](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html)
+- [Amazon ECS-optimized AMI](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html)
+- [Updating the ECS Agent](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/agent-update-ecs-ami.html)
 - [Pushing a Docker Image to ECR repository](https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html)
 - [Amazon FSx](https://aws.amazon.com/fsx/)

@@ -471,11 +471,14 @@ Resources:
     ```
 
 - [Condition Functions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-conditions.html#w2ab1c33c28c21c29)
+
   - Fn::And
   - Fn::Equals
   - Fn::If
   - Fn::Not
   - Fn::Or
+
+  > **Note:** `Fn::If` is only supported in the metadata attribute, update policy attribute, and property values in the Resources section and Outputs sections of a template.
 
 ---
 
@@ -505,7 +508,7 @@ We need to whitelist CloudFormation intrinsic functions tags. Otherwise you will
     "!ImportValue",
     "!Select",
     "!Select sequence",
-    "!Split",
+    "!Split sequence",
     "!Join sequence"
   ]
   ```
@@ -535,7 +538,6 @@ aws cloudformation create-stack \
  --timeout-in-minutes [Minutes] \
  --capabilities ["CAPABILITY_IAM"| "CAPABILITY_NAMED_IAM" | "CAPABILITY_AUTO_EXPAND"] \
  --tags [Key=string,Value=string, ...]
-
 ```
 
 **Example 1: Base Networking Stack (VPC, Subnets and Security Groups)**
@@ -594,7 +596,17 @@ aws cloudformation create-stack \
 ```s
 aws cloudformation create-stack \
  --stack-name EC2InstanceWithFrontFacingALB \
- --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/ec2-with-ALB-SG-TG.yml
+ --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/ec2-with-ALB-SG-TG.yml \
+```
+
+**Example 6: Launch ECS Cluster with ASG accessible through an Application Load Balancer**
+
+```s
+aws cloudformation create-stack \
+  --stack-name "ECS-with-ASG-ELB" \
+  --template-body file:///home/jayantasamaddar/Work/quick-reference/aws/cloudformation/templates/ECS-with-ASG.yml \
+  --capabilities "CAPABILITY_IAM" \
+  --parameters ParameterKey=ClusterName,ParameterValue="nginx-cluster"
 ```
 
 **Response:**

@@ -17,6 +17,9 @@
 - [AWS Lambda Functions: Code and Deployment](#aws-lambda-functions-code-and-deployment)
   - [Function: Overview](#function-overview)
   - [Function: Example Workflow in Node.js](#function-example-workflow-in-nodejs)
+  - [Function: Environment Variables](#function-environment-variables)
+    - [Adding Environment Variables](#adding-environment-variables)
+    - [Environment Variables: KMS Encryption](#environment-variables-kms-encryption)
   - [Function: Dependencies](#function-dependencies)
   - [Function: Deployment Package](#function-deployment-package)
     - [Create the `.zip` deployment package](#create-the-zip-deployment-package)
@@ -449,6 +452,16 @@ Where,
 - `callback`: Callback function for synchronous functions that runs after the code above is executed.
   - `error`: If there's an error, pass the error to be returned
   - `result`: The result that must be returned from the handler function.
+
+---
+
+## Function: Environment Variables
+
+### Adding Environment Variables
+
+**Max size:** `4 KB`
+
+### Environment Variables: KMS Encryption
 
 ---
 

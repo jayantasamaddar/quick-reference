@@ -1,0 +1,377 @@
+# Deploy the following resources:
+## ECS Cluster with ASG
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an ECS Cluster running containers on EC2 accessed via a Load Balancer
+
+Parameters:
+  AMI:
+    Type: AWS::EC2::Image::Id
+    Description: Region specific image
+    Default: ami-0584cc43fa900617c
+
+  ContainerImage:
+    Type: String
+    Default: nginxdemos/hello
+    Description: Docker or CodeCommit Image URI
+
+  InstanceType:
+    Description: Amazon EC2 instance type for the instances
+    Type: String
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+    Default: t2.micro
+
+  ClusterName:
+    Type: String
+    Description: Name of the ECS Cluster
+    Default: default
+
+  MinSize:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 5
+
+  DesiredCapacity:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 5
+
+  MaxSize:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 5
+
+  Role:
+    Type: String
+    Default: ''
+    # AllowedPattern: ^arn:aws:iam::([0-9]{12}):role\/+([a-zA-Z0-9])([a-zA-Z0-9@+=,._\-]{0,63})$
+
+  NotificationTargetARN:
+    Type: String
+    Default: ''
+    # AllowedPattern: ^arn:aws:s(?:q|n)s:(([a-z]{2})-(?:north|east|west|south|southeast)-([1-3]{1})):([0-9]{12}):+([a-zA-Z0-9])([a-zA-Z0-9_\-]{0,255})$
+
+  NotificationRoleARN:
+    Type: String
+    Default: ''
+    # AllowedPattern: ^arn:aws:iam::([0-9]{12}):role\/+([a-zA-Z0-9])([a-zA-Z0-9@+=,._\-]{0,63})$
+
+Conditions:
+  HasNotificationTargets: !Not [!Equals [!Ref NotificationTargetARN, '']]
+  HasNotificationRoleARN: !Not [!Equals [!Ref NotificationRoleARN, '']]
+  IsNotificationReady:
+    !And [!Condition HasNotificationRoleARN, !Condition HasNotificationTargets]
+  HasTaskRole: !Not [!Equals [!Ref Role, '']]
+
+Resources:
+  #################################################################################
+  # ECS Cluster
+  #################################################################################
+
+  # The ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 8
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 2
+
+  # ECS Capacity Provider for using Auto-Scaling Groups with ECS Cluster
+  ECSCapacityProvider:
+    Type: AWS::ECS::CapacityProvider
+    Properties:
+      AutoScalingGroupProvider:
+        AutoScalingGroupArn: !Ref ASG
+        ManagedScaling:
+          Status: ENABLED
+        ManagedTerminationProtection: DISABLED
+      Name: 'nginx-asg'
+
+  # Security Group for the Application Load Balancer
+  SecurityGroupALB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue ApSouth1Defaults-VPC
+      GroupName: nginx-cluster-alb-sg
+      GroupDescription: Security Group for ALB for nginx ECS Cluster
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic to ALB
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+
+  # Security Group for the ECS Cluster's ASG
+  SecurityGroupASG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue ApSouth1Defaults-VPC
+      GroupName: nginx-asg-sg
+      GroupDescription: Security Group for CloudFormed Instances for AutoScaling Group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow traffic out of Instance into ALB
+          IpProtocol: -1
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref SecurityGroupALB
+          Description: Allow incoming HTTP traffic from ELB only
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          Description: Allow incoming SSH traffic
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+
+  # Application Load Balancer
+  ECSLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Name: elb-for-cluster-nginx
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref SecurityGroupALB
+      Subnets: !Split [',', !ImportValue ApSouth1Defaults-Subnets]
+
+  # Target Group for Application Load Balancer
+  ECSLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: ecs-asg-tg
+      Protocol: HTTP
+      ProtocolVersion: HTTP1
+      Port: 80
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: traffic-port
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 6
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+      TargetType: instance
+      VpcId: !ImportValue ApSouth1Defaults-VPC
+
+  # HTTP Listener for Application Load Balancer
+  ECSLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref ECSLoadBalancer
+      Protocol: HTTP
+      Port: 80
+
+  # EC2 Instance Role
+  AWSEC2InstanceRoleForECS:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+
+  # EC2 Instance Profile
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+        - !Ref AWSEC2InstanceRoleForECS
+
+  # EC2 Launch Template
+  ASGLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: cloudformed-nginx-template
+      LaunchTemplateData:
+        ImageId: !Ref AMI
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        KeyName: ec2-playground
+        SecurityGroupIds:
+          - !Ref SecurityGroupASG
+        UserData:
+          Fn::Base64: !Sub |
+            #! bin/bash
+            echo ECS_CLUSTER=${ClusterName} >> /etc/ecs/ecs.config
+            echo ECS_ENABLE_TASK_IAM_ROLE=true >> /etc/ecs/ecs.config
+            echo ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true >> /etc/ecs/ecs.config
+            echo ECS_DATADIR=/data >> /etc/ecs/ecs.config
+            echo ECS_LOGFILE=/log/ecs-agent.log >> /etc/ecs/ecs.config
+            echo ECS_AVAILABLE_LOGGING_DRIVERS=["json-file","awslogs"] >> /etc/ecs/ecs.config
+            echo ECS_LOGLEVEL=info >> /etc/ecs/ecs.config
+
+  # Auto-Scaling Group
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: cloudformed-ecs-asg
+      VPCZoneIdentifier: !Split [',', !ImportValue ApSouth1Defaults-Subnets]
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ASGLaunchTemplate
+        Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+      TargetGroupARNs:
+        - !Ref ECSLoadBalancerTargetGroup
+      MinSize: !Ref MinSize
+      DesiredCapacity: !Ref DesiredCapacity
+      MaxSize: !Ref MaxSize
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      LifecycleHookSpecificationList: !If
+        - IsNotificationReady
+        - - DefaultResult: CONTINUE
+            HeartbeatTimeout: 30
+            LifecycleHookName: ASGLifecycleHookNotification-Launching
+            LifecycleTransition: autoscaling:EC2_INSTANCE_LAUNCHING
+            NotificationTargetARN: !Ref NotificationTargetARN
+            RoleARN: !Ref NotificationRoleARN
+
+          - DefaultResult: ABANDON
+            HeartbeatTimeout: 30
+            LifecycleHookName: ASGLifecycleHookNotification-Terminating
+            LifecycleTransition: autoscaling:EC2_INSTANCE_TERMINATING
+            NotificationTargetARN: !Ref NotificationTargetARN
+            RoleARN: !Ref NotificationRoleARN
+        - !Ref 'AWS::NoValue'
+
+  #################################################################################
+  # ECS Task Definition
+  #################################################################################
+
+  # ECS Task Definition
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Join ['-', [!Ref 'AWS::StackName', 'ecs-nginx-app']]
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      Cpu: 512
+      Memory: 1024
+      ExecutionRoleArn: !Ref AWSECSTaskRole
+      # TaskRoleArn: !If
+      #   - HasCustomRole
+      #   - !Ref Role
+      #   - !Ref AWS::NoValue
+      TaskRoleArn: !Ref AWSECSTaskRole
+      ContainerDefinitions:
+        - Name: nginx-demo-app
+          Essential: true
+          Image: !Ref ContainerImage
+          PortMappings:
+            - ContainerPort: 80
+              Name: nginx-80-tcp
+              Protocol: tcp
+              AppProtocol: http
+          # MountPoints:
+          #   - ContainerPath: /usr/share/nginx/html
+          #     ReadOnly: true
+          #     SourceVolume: /some/content
+          User: ec2-user
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+
+  # ECS Task Definition: Execution Role
+  AWSECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  #################################################################################
+  # ECS Service
+  #################################################################################
+
+  # ECS Service
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: ECSLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: nginx-service
+      LaunchType: FARGATE
+      DesiredCount: 1
+      Role: !Ref AWSECSServiceRole
+      TaskDefinition: !Ref ECSTaskDefinition
+      LoadBalancers:
+        - ContainerName: nginx-demo-app
+          ContainerPort: 80
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+      # NetworkConfiguration is only for Fargate and those Services that use awsvpc as Network Mode
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref SecurityGroupALB
+          Subnets: !Split [',', !ImportValue ApSouth1Defaults-Subnets]
+      HealthCheckGracePeriodSeconds: 60
+      # DeploymentConfiguration:
+      #   MaximumPercent: 200
+      #   MinimumHealthyPercent: 75
+      EnableExecuteCommand: true
+      PlacementStrategies:
+        - Type: binpack
+          Field: memory
+        - Type: spread
+          Field: host
+
+  # ECS Service Role
+  AWSECSServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: ecs-service
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+                  - 'elasticloadbalancing:DeregisterTargets'
+                  - 'elasticloadbalancing:Describe*'
+                  - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+                  - 'elasticloadbalancing:RegisterTargets'
+                  - 'ec2:Describe*'
+                  - 'ec2:AuthorizeSecurityGroupIngress'
+                Resource: '*'
