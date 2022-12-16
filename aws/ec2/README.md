@@ -5,14 +5,14 @@
 - [EC2 Sizing and Configuration Options](#ec2-sizing-and-configuration-options)
 - [EC2 User Data](#ec2-user-data)
 - [EC2 Instance Types: Brief Overview](#ec2-instance-types-brief-overview)
-- [Launching an EC2 Instance running Linux](#launching-an-ec2-instance-running-linux)
-- [EC2 Instance Information](#ec2-instance-information)
 - [EC2 Instance Types - Detailed Overview](#ec2-instance-types---detailed-overview)
   - [EC2 Instance Types: Naming Convention](#ec2-instance-types-naming-convention)
   - [EC2 Instance Types: General Purpose](#ec2-instance-types-general-purpose)
   - [EC2 Instance Types: Compute Optimized](#ec2-instance-types-compute-optimized)
   - [EC2 Instance Types: Memory Optimized](#ec2-instance-types-memory-optimized)
   - [EC2 Instance Types: Storage Optimized](#ec2-instance-types-storage-optimized)
+- [Launching an EC2 Instance: Using the Console](#launching-an-ec2-instance-using-the-console)
+- [EC2 Instance Information](#ec2-instance-information)
 - [EC2 Security Groups](#ec2-security-groups)
   - [Overview](#overview)
   - [Referencing other Security Groups](#referencing-other-security-groups)
@@ -32,6 +32,13 @@
   - [EC2 Reserved Instances](#ec2-reserved-instances)
   - [EC2 Savings Plan](#ec2-savings-plan)
   - [EC2 Spot Instances](#ec2-spot-instances)
+    - [Spot Instances: Overview](#spot-instances-overview)
+    - [Spot Instances: Launch a Spot Instance](#spot-instances-launch-a-spot-instance)
+    - [Spot Instances: Stop a Spot Instance](#spot-instances-stop-a-spot-instance)
+    - [Spot Instances: Start a Spot Instance](#spot-instances-start-a-spot-instance)
+    - [Spot Instances: Terminate a Spot Instance](#spot-instances-terminate-a-spot-instance)
+    - [Spot Instances: Cancel a Spot Instance Request](#spot-instances-cancel-a-spot-instance-request)
+    - [Spot Fleets](#spot-fleets)
   - [EC2 Dedicated Hosts](#ec2-dedicated-hosts)
   - [EC2 Dedicated Instances](#ec2-dedicated-instances)
   - [EC2 Capacity Reservations](#ec2-capacity-reservations)
@@ -64,6 +71,12 @@
     - [EFS: Create a File System](#efs-create-a-file-system)
     - [EFS: Mounting the File System to an EC2 Instance](#efs-mounting-the-file-system-to-an-ec2-instance)
   - [EBS vs EFS](#ebs-vs-efs)
+- [EC2 Instance Lifecycle](#ec2-instance-lifecycle)
+  - [EC2 Instance Lifecycle: Overview](#ec2-instance-lifecycle-overview)
+  - [EC2 Instance Lifecycle: Stop](#ec2-instance-lifecycle-stop)
+    - [Stopping an Instance: Overview](#stopping-an-instance-overview)
+    - [Stopping an Instance: Stop Protection](#stopping-an-instance-stop-protection)
+  - [EC2 Instance Lifecycle: Hibernate](#ec2-instance-lifecycle-hibernate)
 - [EC2 Instance Metadata](#ec2-instance-metadata)
 - [EC2 CLI Commands](#ec2-cli-commands)
 - [FAQs](#faqs)
@@ -133,7 +146,58 @@ We have hundreds of types of instances for EC2, but here are some examples:
 
 ---
 
-# Launching an EC2 Instance running Linux
+# [EC2 Instance Types - Detailed Overview](https://aws.amazon.com/ec2/instance-types/)
+
+You can use different types of EC2 Instances that are optimized for different use cases.
+
+## EC2 Instance Types: Naming Convention
+
+For an Instance Type of `m5.2xlarge`
+
+- **`m`** - Instance Class. In this case, a General Purpose type of an instance.
+- **`5`** - Generation of the Instance Class. So as AWS improves the hardware over time, AWS will update this value.
+- `2xlarge` - Size within the Instance Class. Values can be `nano`, `micro`, `small`, `medium`, `4xlarge` so on. This refers to the storage, CPU and RAM available to the Instance.
+
+---
+
+## EC2 Instance Types: General Purpose
+
+- Great for a diversity of workloads such as web servers or code repositories.
+- Balance between resources: **Compute**, **Memory**, **Networking**
+- The Free tier instance type available, `t2.micro` is a General Purpose EC2 Instance.
+
+## EC2 Instance Types: Compute Optimized
+
+- Great for a compute intensive workloads that require high performance processors:
+  - Batch processing workloads
+  - Media transcoding
+  - High performance web servers
+  - High performance computing (HPC)
+  - Scientific modelling and Machine learning
+  - Dedicating gaming servers
+
+## EC2 Instance Types: Memory Optimized
+
+- Fast performance for workloads that process large data sets in memory.
+- Use cases:
+  - High performance relational/non-relational databases
+  - Distributed web scale cache stores
+  - In-memory databases optimized for BI (Business Intelligence)
+  - Applications performing real time processing of big unstructured data
+
+## EC2 Instance Types: Storage Optimized
+
+- Great for storage-intensive tasks that require high sequential read and write access to large data sets on local storage.
+- Use cases:
+  - High frequency online transaction processing (OLTP) systems
+  - Relational & NoSQL Databases
+  - Cache for in-memory databases (E.g. Redis)
+  - Data warehousing applications
+  - Distributed file systems
+
+---
+
+# Launching an EC2 Instance: Using the Console
 
 Amazon EC2 allows you to create virtual machines, or instances, that run on the AWS Cloud. Quickly get started by following the simple steps below.
 
@@ -236,57 +300,6 @@ The following information is shown for every instance:
 - **Private IPv4 Address**: What other AWS services can use to access the Instance internally, i.e. within the AWS network.
 
   > **Note:** Even if an Instance is Stopped and Started again, the **Private IPv4 Address** remains unchanged.
-
----
-
-# [EC2 Instance Types - Detailed Overview](https://aws.amazon.com/ec2/instance-types/)
-
-You can use different types of EC2 Instances that are optimized for different use cases.
-
-## EC2 Instance Types: Naming Convention
-
-For an Instance Type of `m5.2xlarge`
-
-- **`m`** - Instance Class. In this case, a General Purpose type of an instance.
-- **`5`** - Generation of the Instance Class. So as AWS improves the hardware over time, AWS will update this value.
-- `2xlarge` - Size within the Instance Class. Values can be `nano`, `micro`, `small`, `medium`, `4xlarge` so on. This refers to the storage, CPU and RAM available to the Instance.
-
----
-
-## EC2 Instance Types: General Purpose
-
-- Great for a diversity of workloads such as web servers or code repositories.
-- Balance between resources: **Compute**, **Memory**, **Networking**
-- The Free tier instance type available, `t2.micro` is a General Purpose EC2 Instance.
-
-## EC2 Instance Types: Compute Optimized
-
-- Great for a compute intensive workloads that require high performance processors:
-  - Batch processing workloads
-  - Media transcoding
-  - High performance web servers
-  - High performance computing (HPC)
-  - Scientific modelling and Machine learning
-  - Dedicating gaming servers
-
-## EC2 Instance Types: Memory Optimized
-
-- Fast performance for workloads that process large data sets in memory.
-- Use cases:
-  - High performance relational/non-relational databases
-  - Distributed web scale cache stores
-  - In-memory databases optimized for BI (Business Intelligence)
-  - Applications performing real time processing of big unstructured data
-
-## EC2 Instance Types: Storage Optimized
-
-- Great for storage-intensive tasks that require high sequential read and write access to large data sets on local storage.
-- Use cases:
-  - High frequency online transaction processing (OLTP) systems
-  - Relational & NoSQL Databases
-  - Cache for in-memory databases (E.g. Redis)
-  - Data warehousing applications
-  - Distributed file systems
 
 ---
 
@@ -580,17 +593,230 @@ There's a specific type of Reserved Instances, called Convertible Reserved Insta
 
 ## EC2 Spot Instances
 
-- Most aggressive discounts - Can get a Discount upto 90% compared to On-demand
-- Instances that you can "lose" at any point of time if your max price is less than the current spot price.
+### Spot Instances: Overview
+
 - The MOST cost-efficient instances in AWS.
+
+- Most aggressive discounts: Can get a Discount upto 90% compared to On-demand.
+
+- Define **Max Spot price** and get the instance while `Current spot price < Max Spot Price`
+
+  - The hourly spot price varies based on offer and capacity
+  - If the Current Spot price > Max Spot price, you can choose to **`hibernate`**, **`stop`** or **`terminate`** your instance with 2 minutes grace period to decide.
+
+- Other strategy: **Spot Block**
+
+  - Block spot instance for a specified time frame (1 to 6 hours) without interruptions
+  - In rare situations, the instance may be reclaimed
+
+  > **Note**: Spot Block is no longer available to new AWS Customers from July 1, 2021 and won't be supported after December 31, 2022.
+
 - Useful for workloads that are resilient to failure
-- Use Cases maybe:
-  - Batch jobs
-  - Data analysis
-  - Image processing
-  - Any distributed workloads
-  - Workloads with a flexible start and end time
-- Not suited for critical jobs or databases
+
+  - **Use Cases**:
+
+    - Batch jobs
+    - Data analysis
+    - Image processing
+    - Any distributed workloads
+    - Workloads with a flexible start and end time
+
+  - Not suited for critical jobs or databases
+
+---
+
+### Spot Instances: Launch a Spot Instance
+
+![Spot Lifecycle](assets/spot-lifecycle.png)
+
+To use Spot Instances, you create a **Spot Instance request** that includes some launch specifications.
+If capacity is available, Amazon EC2 fulfills your request immediately. Otherwise, Amazon EC2 waits until your request can be fulfilled or until you cancel the request.
+
+A **Spot Instance request** can be in one of the following states:
+
+- `open`: The request is waiting to be fulfilled.
+- `active`: The request is fulfilled and has an associated Spot Instance.
+- `failed`: The request has one or more bad parameters.
+- `closed`: The Spot Instance was interrupted or terminated.
+- `disabled`: You stopped the Spot Instance.
+- `cancelled`: You canceled the request, or the request expired.
+
+The following illustration represents the transitions between the request states. Notice that the transitions depend on the request type (one-time or persistent).
+
+![Transition between Spot Request States](assets/spot-request-states.png)
+
+With a **Spot Instance request**, we are defining the following:
+
+- **Maximum price**
+- **Desired number of instances**
+- **Availability Zone**: Select a particular availability zone to launch spot instances in.
+
+  ```json
+  {
+    "ImageId": "ami-0abcdef1234567890",
+    "KeyName": "my-key-pair",
+    "SecurityGroupIds": ["sg-1a2b3c4d5e6f7g8h9"],
+    "InstanceType": "m5.medium",
+    "Placement": {
+      "AvailabilityZone": "us-west-2a"
+    },
+    "IamInstanceProfile": {
+      "Arn": "arn:aws:iam::123456789012:instance-profile/my-iam-role"
+    }
+  }
+  ```
+
+- **Subnet**: Launch across all AZs in a Subnet
+
+  - When launching in a default VPC, you can select the Subnet you want to launch in and a default IPv4 Address will be attached.
+  - If the VPC is a nondefault VPC, the instance does not receive a public IPv4 address by default.
+  - `SubnetId` and `SecurityGroupIds` have to be mentioned as follows:
+
+  ```json
+  {
+    "ImageId": "ami-0abcdef1234567890",
+    "SecurityGroupIds": ["sg-1a2b3c4d5e6f7g8h9"],
+    "InstanceType": "m5.medium",
+    "SubnetId": "subnet-1a2b3c4d",
+    "IamInstanceProfile": {
+      "Arn": "arn:aws:iam::123456789012:instance-profile/my-iam-role"
+    }
+  }
+  ```
+
+- **NetworkInterfaces**: To assign a public IPv4 address to an instance in a nondefault VPC, specify the AssociatePublicIpAddress field as shown in the following example.
+
+  - When you specify a network interface, you must include the `SubnetId` and security group IDs as `Groups` using the network interface, rather than using the `SubnetId` and `SecurityGroupIds` fields shown in the previous code block.
+
+  ```json
+  {
+    "ImageId": "ami-0abcdef1234567890",
+    "KeyName": "my-key-pair",
+    "InstanceType": "m5.medium",
+    "NetworkInterfaces": [
+      {
+        "DeviceIndex": 0,
+        "SubnetId": "subnet-1a2b3c4d5e6f7g8h9",
+        "Groups": ["sg-1a2b3c4d5e6f7g8h9"],
+        "AssociatePublicIpAddress": true
+      }
+    ],
+    "IamInstanceProfile": {
+      "Arn": "arn:aws:iam::123456789012:instance-profile/my-iam-role"
+    }
+  }
+  ```
+
+- **Tenancy**: Launch a dedicated spot instance.
+
+  - A Dedicated Spot Instance must be launched in a VPC.
+  - All instance families support Dedicated Spot Instances except T instances.
+  - For each supported instance family, only the largest instance size or metal size supports Dedicated Spot Instances.
+
+  ```json
+  {
+    "ImageId": "ami-0abcdef1234567890",
+    "KeyName": "my-key-pair",
+    "SecurityGroupIds": ["sg-1a2b3c4d5e6f7g8h9"],
+    "InstanceType": "c5.8xlarge",
+    "SubnetId": "subnet-1a2b3c4d5e6f7g8h9",
+    "Placement": {
+      "Tenancy": "dedicated"
+    }
+  }
+  ```
+
+- **Request type**:
+
+  - **One-time**:
+
+    - A one-time Spot Instance request remains active until Amazon EC2 launches the Spot Instance, the request expires, or you cancel the request.
+    - If capacity is not available, your Spot Instance is terminated and the Spot Instance request is closed.
+
+  - **Persistent**:
+
+    - A persistent Spot Instance request remains active until it expires or you cancel it, even if the request is fulfilled.
+    - If capacity is not available, your Spot Instance is interrupted. After your instance is interrupted, when capacity becomes available again, the Spot Instance is started if stopped or resumed if hibernated.
+    - You can stop a Spot Instance and start it again if capacity is available.
+    - If the Spot Instance is terminated (irrespective of whether the Spot Instance is in a stopped or running state), the Spot Instance request is opened again and Amazon EC2 launches a new Spot Instance.
+
+- **Valid from**: Used to define the start of the Spot Block (to be deprecated on December 31, 2022)
+- **Valid until**: Used to define the end of the Spot Block (to be deprecated on December 31, 2022)
+
+---
+
+### Spot Instances: Stop a Spot Instance
+
+If you don’t need your Spot Instances now, but you want to restart them later without losing the data persisted in the Amazon EBS volume, you can stop them. The steps for stopping a Spot Instance are similar to the steps for stopping an On-Demand Instance.
+
+**Limitations:**
+
+- You can **ONLY** stop a Spot Instance if the Spot Instance was launched from a **persistent** Spot Instance request.
+
+- You can **NOT** stop a Spot Instance if the associated Spot Instance request is `cancelled`. When the Spot Instance request is cancelled, you can only terminate the Spot Instance.
+
+- You can **NOT** stop a Spot Instance if it is part of a fleet or launch group, or Availability Zone group.
+
+---
+
+### Spot Instances: Start a Spot Instance
+
+If you don’t need your Spot Instances now, but you want to restart them later without losing the data persisted in the Amazon EBS volume, you can stop them. The steps for stopping a Spot Instance are similar to the steps for stopping an On-Demand Instance.
+
+**Prerequisites:**
+
+You can only start a Spot Instance if:
+
+- You manually stopped the Spot Instance.
+- The Spot Instance is an EBS-backed instance.
+- Spot Instance capacity is available.
+- The Spot price is lower than your maximum price.
+
+**Limitations:**
+
+- You can **NOT** start a Spot Instance if it is part of a fleet or launch group, or Availability Zone group.
+
+---
+
+### Spot Instances: Terminate a Spot Instance
+
+- If you terminate a `running` or `stopped` Spot Instance that was launched by a persistent Spot Instance request, the Spot Instance request transitions to the `open` state so that a new Spot Instance can be launched. To ensure that no new Spot Instance is launched, you must first **[Cancel the Spot Instance request](#spot-instances-cancel-the-spot-instance-request)**.
+
+- If you cancel an `active` Spot Instance request that has a `running` Spot Instance, the running Spot Instance is **NOT automatically** `terminated`. **You must manually terminate the Spot Instance**.
+
+- If you cancel a `disabled` Spot Instance request that has a `stopped` Spot Instance, the stopped Spot Instance is automatically `terminated` by the Amazon EC2 Spot service. There might be a short lag between when you cancel the Spot Instance request and when the Spot service terminates the Spot Instance.
+
+---
+
+### Spot Instances: Cancel a Spot Instance Request
+
+If you no longer want your Spot Instance request, you can cancel it. You can only cancel Spot Instance requests that are in the `open`, `active`, or `disabled` state.
+
+- Your Spot Instance request is `open` when your request has not yet been fulfilled and no instances have been launched.
+
+- Your Spot Instance request is `active` when your request has been fulfilled and Spot Instances have launched as a result.
+
+- Your Spot Instance request is `disabled` when you stop your Spot Instance.
+
+> **Note**: If your Spot Instance request is `active` and has an associated running Spot Instance, cancelling the request does not terminate the instance. **You must manually terminate the Spot Instance**.
+
+---
+
+### Spot Fleets
+
+- Spot Fleets: Set of Spot Instances + (optional) On-Demand Instances
+
+- The Spot Fleet will try to meet the target capacity with price constraints
+
+  - Define possible launch pools: Instance Type (E.g. `m5.large`), OS, Availability Zone
+  - Can have multiple launch pools, so that the fleet can choose
+  - Spot Fleet stops launching instances when reaching capacity or max cost
+
+- Strategies to allocate Spot Instances
+
+  - `lowestPrice`: from among the pool with the lowest price (cost optimization, short workload)
+  - `diversified`: distributed across pools (great for availability, long workloads)
+  - `capacityOptimized`: pool with the optimal capacity for the number of instances
 
 ---
 
@@ -1111,6 +1337,125 @@ Amazon Elastic File System (Amazon EFS) is a Network File System that can be mou
 
 ---
 
+# EC2 Instance Lifecycle
+
+## [EC2 Instance Lifecycle: Overview](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html)
+
+An Amazon EC2 instance transitions through different states from the moment you launch it through to its termination.
+
+The following illustration represents the transitions between instance states. Notice that you can't stop and start an instance store-backed instance.
+
+![EC2: Instance Lifecycle](assets/ec2-instance-lifecycle.png)
+
+The following table provides a brief description of each instance state and indicates whether it is billed or not.
+
+<!--prettier-ignore-->
+| Instance State  | Description                                           | Instance usage billing |
+| --------------- | ----------------------------------------------------- | ---------------------- |
+| `pending`       | The instance is preparing to enter the running state. | Not billed             |
+| `running`       | The instance is running and ready for use.            | Billed                 |
+| `stopping`      | The instance is preparing to be stopped or stop-hibernated. | Billed only if preparing to hibernate |
+| `stopped`       | The instance is shut down and needs to be restarted for use. | Not billed            |
+| `shutting-down` | The instance is preparing to be terminated.           | Not billed             |
+| `terminated`    | The instance has been permanently deleted and cannot be started. | Not billed except for Reserved instances which continue to be billed until end of term |
+
+> **Note**: Rebooting an instance doesn't start a new instance billing period because the instance stays in the running state.
+
+---
+
+## EC2 Instance Lifecycle: Stop
+
+### Stopping an Instance: Overview
+
+- You can stop and start your instance if it has an Amazon EBS volume as its root device.
+- When a stop command is issued, The instance status changes to `stopping` and then `stopped`.
+- While the instance is stopped, you can treat its root volume like any other volume, detach and reattach to a running instance and modify it (for example, repair file system problems or update software), detach from the running instance and reattach it to the stopped instance.
+- When detaching and reattaching, make sure that you reattach it using the storage device name that's specified as the root device in the block device mapping for the instance.
+
+- You can modify the following attributes of an instance only when it is stopped:
+
+  - Instance type
+  - User data
+  - Kernel
+  - RAM disk
+
+  If you try to modify these attributes while the instance is running, Amazon EC2 returns the IncorrectInstanceState error.
+
+- If your instance is in an Auto Scaling group, the Amazon EC2 Auto Scaling service marks the stopped instance as `unhealthy`, and might terminate it and launch a replacement instance.
+
+- If the instance OS does not shut down cleanly within a few minutes, a hard shutdown is performed.
+
+- **Persistence:**
+
+  - When you stop an instance, the following is **_lost_**:
+
+    - Data stored in the RAM.
+
+    - Data stored in the EC2 Instance Store volumes.
+
+    - **The Public IPv4 address** that Amazon EC2 automatically assigned to the instance on launch or start. (To retain a public IPv4 address that never changes, you can associate an Elastic IP address with your instance.)
+
+    - (EC2-Classic) With EC2-Classic, Elastic IP addresses are dissociated from your instance. For more information, see EC2-Classic.
+
+  - When you stop an instance, the following **_persists_**:
+
+    - Data stored in the Amazon EBS volumes. The EBS volumes remain attached to the instance.
+    - Private IPv4 addresses.
+    - IPv6 addresses.
+    - Elastic IP addresses associated with the instance. Note that when the instance is stopped, AWS starts charging you for the associated Elastic IP addresses.
+
+### Stopping an Instance: Stop Protection
+
+**Stop Protection** prevents your instance from being accidentally stopped or terminated.
+
+- The **`DisableApiStop`** attribute controls whether the instance can be stopped using the Amazon EC2 console, AWS CLI, or API.
+
+- The **`DisableApiStop`** attribute **DOES NOT** prevent you from stopping an instance by initiating shutdown from the instance (using an operating system command for system shutdown).
+
+- Enabling stop protection does not prevent AWS from stopping the instance when the instance has a scheduled event that stops the instance.
+
+- Enabling stop protection does not prevent Amazon EC2 Auto Scaling from terminating an instance when the instance is unhealthy or during scale-in events.
+
+- You cannot enable stop protection for instance store-backed instances.
+
+- You cannot enable stop protection for Spot Instances.
+
+- The Amazon EC2 API follows an [eventual consistency model](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/query-api-troubleshooting.html#eventual-consistency) when you enable or disable stop protection. This means that the result of an API command you run that affects your Amazon EC2 resources might not be immediately visible to all subsequent commands you run.
+
+---
+
+## EC2 Instance Lifecycle: Hibernate
+
+- When you hibernate an instance, Amazon EC2 signals the operating system to perform hibernation (suspend-to-disk).
+
+- Hibernation saves the contents from the instance memory (RAM) to your Amazon Elastic Block Store (Amazon EBS) root volume.
+
+- Amazon EC2 persists the instance's EBS root volume and any attached EBS data volumes.
+
+- You can hibernate an instance only if it's **enabled for hibernation** and it meets the **[hibernation prerequisites](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html)**.
+
+- You can't enable or disable hibernation for an instance after you launch it.
+
+- You can enable Hibernation by:
+
+  - **[Enable Hibernation for an Instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enabling-hibernation.html)**
+  - **[Configure an AMI to support Hibernation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernation-enabled-AMI.html)**
+
+- When you hibernate your instance, it enters the `stopping` state, and then the `stopped` state.
+
+- When you `start` your instance from a hibernated state:
+
+  - The EBS root volume is restored to its previous state
+  - The RAM contents are reloaded
+  - The processes that were previously running on the instance are resumed
+  - Previously attached data volumes are reattached and the instance retains its instance ID
+
+- **Billing**:
+  - AWS doesn't charge usage for a hibernated instance when it is in the `stopped` state, but you are charged while it is in the `stopping` state, unlike when you stop an instance without hibernating it.
+  - AWS doesn't charge usage for data transfer fees. You are charged for the storage for any Amazon EBS volumes, including storage for the RAM data.
+
+---
+
 # EC2 Instance Metadata
 
 - The EC2 Instance Metadata refers to the information about the EC2 Instance.
@@ -1125,6 +1470,7 @@ Amazon Elastic File System (Amazon EFS) is a Network File System that can be mou
 
 | Command                      | Function                                                    |
 | ---------------------------- | ----------------------------------------------------------- |
+| `aws ec2 run-instances`      | Launches EC2 Instances                                      |
 | `aws ec2 describe-instances` | Lists running instances for the default EC2 Region          |
 | `aws ec2 describe-subnets`   | Find a list of available subnets for the default EC2 Region |
 
