@@ -62,6 +62,7 @@
       - [EBS Snapshots: Recycle Bin](#ebs-snapshots-recycle-bin)
       - [EBS Snapshots: Archiving](#ebs-snapshots-archiving)
     - [EBS: Multi-Attach - io1 / io2 family](#ebs-multi-attach---io1--io2-family)
+    - [EBS: Encryption](#ebs-encryption)
   - [AMI](#ami)
     - [AMI: Overview](#ami-overview)
     - [AMI: Creating an AMI](#ami-creating-an-ami)
@@ -78,6 +79,10 @@
     - [Stopping an Instance: Stop Protection](#stopping-an-instance-stop-protection)
   - [EC2 Instance Lifecycle: Hibernate](#ec2-instance-lifecycle-hibernate)
 - [EC2 Instance Metadata](#ec2-instance-metadata)
+- [EC2: Networking](#ec2-networking)
+  - [Public vs Private vs Elastic IP](#public-vs-private-vs-elastic-ip)
+  - [Placement Groups](#placement-groups)
+  - [Elastic Network Interfaces (ENI)](#elastic-network-interfaces-eni)
 - [EC2 CLI Commands](#ec2-cli-commands)
 - [FAQs](#faqs)
 - [References](#references)
@@ -1161,6 +1166,72 @@ By default the Storage tier for EBS Volumes is `Standard`. We can move the Stora
 
 ---
 
+### EBS: Encryption
+
+- When you create an encrypted volume, you get the following:
+  - Data at rest is encrypted inside the volume
+  - All the data in-flight moving between the instance and the volume is encrypted
+  - All snapshots are encrypted
+  - All volumes created from the snapshot are encrypted
+- Encryption and decryption is handled by EC2-EBS behind the scenes
+- Encryption has a minimum impact on latency and is recommended
+- EBS Encryption leverages keys from KMS (`AES256`)
+- Copying an unencrypted snapshot allows encryption
+
+**Workflows:**
+
+1. **Encrypting an unencrypted EBS Volume**:
+
+   - Create an EBS Snapshot of the volume
+   - Encrypt the EBS Snapshot (using the `copy snapshot` function)
+   - Create new EBS volume from the Snapshot (the volume will also be encrypted)
+   - Attach the encrypted volume to the original instance
+
+2. **Cross-Account, Cross-Region copying of encrypted EBS Snapshots**:
+
+   - Ensure the Source and Target accounts have the following permissions:
+
+     - **Source Account**:
+
+       - The IAM user or role in the source account needs to be able to call the following EBS action:
+
+         - `ModifySnapshotAttribute` function and to perform the operations on the key associated with the original snapshot.
+
+       - The IAM user or role in the source account needs to be able perform the following actions on the key associated with the original snapshot:
+
+         - `DescribeKey`
+         - `ReEncypt`
+
+     - **Target Account**:
+
+       - The IAM user or role in the target account needs to be able perform the following actions on the key associated with the original snapshot:
+
+         - `DescribeKey`
+         - `CreateGrant`
+         - `Decrypt`
+
+       - The IAM user or role in the target account must also be able to perform the following operations on the key associated with the call to `CopySnapshot`.
+
+         - `CreateGrant`
+         - `Encrypt`
+         - `Decrypt`
+         - `DescribeKey` and
+         - `GenerateDataKeyWithoutPlaintext`
+
+   - **In the Source Account**:
+
+     - Create an EBS Snapshot of an Encrypted EBS Volume (snapshot will be encrypted as well).
+     - Share the Custom KMS Key associated with the snapshot with the target account.
+     - Share the encrypted EBS snapshot with the target account.
+
+   - **In the Target Account**:
+
+     - In the context of the target account, locate the shared snapshot and make a copy of it.
+     - During the copy, encrypt it with a new encryption key and select the Region you want to have the EBS Volume in. Using a new key for the copy provides an additional level of isolation between the two accounts. As part of the copy operation, the data will be re-encrypted using the new key.
+     - Use the newly created snapshot copy to create a new volume.
+
+---
+
 ## AMI
 
 ### AMI: Overview
@@ -1428,9 +1499,13 @@ The following table provides a brief description of each instance state and indi
 
 - When you hibernate an instance, Amazon EC2 signals the operating system to perform hibernation (suspend-to-disk).
 
-- Hibernation saves the contents from the instance memory (RAM) to your Amazon Elastic Block Store (Amazon EBS) root volume.
+- Hibernation saves the contents from the instance memory (RAM) to your Amazon Elastic Block Store (Amazon EBS) root volume (preserves in-memory state).
+
+- The Instance memory size must be less than `150 GB`.
 
 - Amazon EC2 persists the instance's EBS root volume and any attached EBS data volumes.
+
+- The Root Volume **MUST** be an encrypted Amazon EBS volume. The Volume size must be large enough to store the RAM contents, OS, applications.
 
 - You can hibernate an instance only if it's **enabled for hibernation** and it meets the **[hibernation prerequisites](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html)**.
 
@@ -1441,7 +1516,11 @@ The following table provides a brief description of each instance state and indi
   - **[Enable Hibernation for an Instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enabling-hibernation.html)**
   - **[Configure an AMI to support Hibernation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernation-enabled-AMI.html)**
 
+- An instance can **NOT** be more than `60 days`.
+
 - When you hibernate your instance, it enters the `stopping` state, and then the `stopped` state.
+
+- Instance started from a `hibernate-stop` state boots up faster than when an instance is started from a `stopped` state with no hibernation enabled. This is because the contents of the instance memory that was saved to the EBS volume prior to hibernate-stop will be written back to memory and speed up boot.
 
 - When you `start` your instance from a hibernated state:
 
@@ -1450,9 +1529,18 @@ The following table provides a brief description of each instance state and indi
   - The processes that were previously running on the instance are resumed
   - Previously attached data volumes are reattached and the instance retains its instance ID
 
+- Not supported for bare metal instances
+
 - **Billing**:
+
   - AWS doesn't charge usage for a hibernated instance when it is in the `stopped` state, but you are charged while it is in the `stopping` state, unlike when you stop an instance without hibernating it.
   - AWS doesn't charge usage for data transfer fees. You are charged for the storage for any Amazon EBS volumes, including storage for the RAM data.
+
+- **Use Cases:**
+
+  - Long-running processes that do not need to run 24/7 365 days a year
+  - Necessary to save the RAM state
+  - Services that take time to initialize
 
 ---
 
@@ -1463,6 +1551,139 @@ The following table provides a brief description of each instance state and indi
 - The URL is http://169.254.169.254/latest/meta-data. `169.254.169.254` is an Internal IP to AWS, it will not work from your local computer. It will only work when logged into the EC2 Instance.
 - You can retrieve the IAM Role name from the metadata, but you CANNOT retrieve the IAM Policy.
 - The only way to test the policy is to use the **[AWS Policy Simulator](https://policysim.aws.amazon.com/)** or the `--dry-run` flag with a command.
+
+---
+
+# EC2: Networking
+
+## Public vs Private vs Elastic IP
+
+- **Public IP**:
+
+  - Must be unique globally
+  - Public IP means the machine can be identified on the internet (www)
+  - Must be unique across the whole web (not two machines can have the same public IP)
+  - Can be geo-located easily
+
+- **Private IP**:
+
+  - Private IP means the machine can be identified only on a private network
+  - The IP must be unique across the private network
+  - Two different private networks (two companies) can have the same private IPs
+  - Machines connect to www using an internet gateway (a proxy)
+  - Only a specified range of IPs can be used as private IP
+
+- **Elastic IP**:
+
+  - When you stop and start an EC2 Instance, it can change it's Public IP
+  - If you need to have a fixed public IP for your instance, you need an Elastic IP
+  - An Elastic IP is a public IPv4 address you own as long as you don't delete it
+  - You can attach it to only one Instance or one Network Interface at a time
+  - With an Elastic IP Address, you can mask the failure of an instance or software by rapidly remapping the address to another instance in your account. (Uncommon pattern)
+  - You can only have 5 Elastic IP in your account (you can ask AWS to increase that limit)
+  - Overall, try to avoid using Elastic IP:
+    - They often reflect poor architectural decisions
+    - Instead, use a random public IP and register a DNS name for it
+    - Or use a Load Balancer and not use a public IP (Best pattern)
+
+---
+
+## Placement Groups
+
+When you launch a new EC2 instance, the EC2 service attempts to place the instance in such a way that all of your instances are spread out across underlying hardware to minimize correlated failures. You can use placement groups to influence the placement of a group of interdependent instances to meet the needs of your workload.
+
+- Depending on the type of workload, you can create a placement group using one of the following **Placement Strategies**:
+
+  1. **Cluster**:
+
+     - Packs instances close together on the same rack inside a single Availability Zone. A cluster placement group can't span multiple Availability Zones.
+     - This strategy enables workloads to achieve the low-latency (`10 Gbps` bandwidth) network performance necessary for tightly-coupled node-to-node communication that is typical of high-performance computing (HPC) applications.
+     - Network traffic to the internet and over an AWS Direct Connect connection to on-premises resources is limited to `5 Gbps`.
+     - The maximum network throughput speed of traffic between two instances in a cluster placement group is limited by the slower of the two instances.
+     - **Use Cases**:
+       - Big data job that needs to be completed fast
+       - Applications that needs extremely low latency and high network throughput.
+     - The drawback is, if the rack fails, all instances fail at the same time.
+     - You can launch multiple instance types into a cluster placement group. However, this reduces the likelihood that the required capacity will be available for your launch to succeed. AWS recommends using the same instance type for all instances in a cluster placement group.
+
+  2. **Partition**:
+
+     - Spreads your instances across logical partitions such that groups of instances in one partition do not share the underlying hardware with groups of instances in different partitions. Each partition can be thought of as a rack.
+     - A partition placement group can have partitions in multiple Availability Zones in the same Region.
+     - A partition placement group can have a maximum of `7 partitions / Availability Zone`. The number of instances that can be launched into a partition placement group is limited only by the limits of your account (so we can have 100s of instances).
+     - A partition placement group with **[Dedicated Instances](#ec2-dedicated-instances)** can have a maximum of `2 partitions`.
+     - You can't use **[Capacity Reservations](#ec2-capacity-reservations)** to reserve capacity in a partition placement group.
+     - Partition failures can affect multiple Instances but won't affect other partitions.
+     - A partition placement group offers visibility into the partitions - you can see which instances are in which partitions.
+     - You can share this information with topology-aware applications, such as HDFS, HBase, and Cassandra. These applications use this information to make intelligent data replication decisions for increasing data availability and durability.
+     - This strategy is typically used by large distributed and replicated workloads, such as Hadoop, Cassandra, and Kafka.
+     - Partition information can be accessed from [EC2 Instance metadata](#ec2-instance-metadata).
+
+  3. **Spread**:
+
+     - Strictly places a small group of instances across distinct underlying hardware to reduce correlated failures.
+     - Maximum: `7 EC2 Instances / placement group group / Availability Zone`. Typically used for critical applications.
+     - In a Single Availability Zone: The seven instances are placed on seven different racks, each rack has its own network and power source.
+     - In a Multi-Availability Zone: The seven instances are placed on seven different racks, each rack has its own network and power source across the multiple Availability Zones available.
+     - Spread placement groups are not supported for **[Dedicated Instances](#ec2-dedicated-instances)**.
+     - You can't use **[Capacity Reservations](#ec2-capacity-reservations)** to reserve capacity in a partition placement group.
+     - Host spread level placement groups are only available with **AWS Outposts**. For host spread level placement groups, there are no restrictions for running instances per Outposts. For more information, see **Placement groups on AWS Outposts**.
+     - This strategy is perfect for applications that need high availability and reduced risk:
+       - E.g. Critical applications where each instance must be isolated from failure from one another
+
+- There is no charge for creating a Placement Group.
+- The name that you specify for a placement group must be unique within your AWS account for the Region.
+- You can create a maximum of `500` Placement Groups per account in each Region.
+- An instance can be launched in one Placement Group at a time; it cannot span multiple Placement Groups.
+- You can't merge Placement Groups.
+- You cannot launch **[Dedicated Hosts](#ec2-dedicated-hosts)** in Placement Groups.
+
+---
+
+## [Elastic Network Interfaces (ENI)](https://aws.amazon.com/blogs/aws/new-elastic-network-interfaces-in-the-virtual-private-cloud/)
+
+- Logical component in a VPC that represents a **virtual network card**
+
+- For EC2 Instances, an ENI gives them access to the internet. ENIs are also used outside of EC2.
+
+- Each ENI lives within a particular subnet of the VPC and hence are bounded to a specific AZ. You can **NOT** attach an ENI to an EC2 instance in a different AZ.
+
+- An ENI has the following attributes:
+
+  - A Primary private IPv4 and one or more secondary IPv4
+  - One Elastic IP (IPv4) per private IPv4
+  - One Public IPv4
+  - Security Group(s)
+  - A MAC address
+  - Source/Destination Check Flag
+  - **Delete on Termination**: Ensures the ENI is deleted when EC2 Instance it is attached to is terminated. By default AWS creates an ENI for you at launch time if you don’t specify one, and sets the Delete on Terminate flag so you won’t have to manage.
+
+- Similar to an EBS volume, ENIs have a lifetime that is independent of any particular EC2 instance.
+- ENIs are also truly elastic. You can create them ahead of time, and then associate one or two of them with an instance at launch time.
+- You can also attach an ENI to an instance while it is running (we sometimes call this a **"hot attach"**).
+
+- ENIs give us control over our EC2 Networking:
+
+  - A very important consequence of using ENIs is that the idea of launching an EC2 instance on a particular VPC subnet is effectively obsolete. A single EC2 instance can now be attached to two ENIs, each one on a distinct subnet. The ENI (not the instance) is now associated with a subnet.
+
+- **Use Cases:**
+
+  1. **Management Network / Backnet**: You can create a dual-homed environment for your web, application, and database servers.
+
+  - The instance’s first ENI would be attached to a public subnet, routing 0.0.0.0/0 (all traffic) to the VPC’s Internet Gateway.
+  - The instance’s second ENI would be attached to a private subnet, with 0.0.0.0 routed to the VPN Gateway connected to your corporate network.
+  - You would use the private network for SSH access, management, logging, and so forth.
+  - You can apply different security groups to each ENI so that traffic port 80 is allowed through the first ENI, and traffic from the private subnet on port 22 is allowed through the second ENI.
+
+  2. **Multi-Interface Applications**: You can host load balancers, proxy servers, and NAT servers on an EC2 instance, carefully passing traffic from one subnet to the other. In this case you would clear the Source/Destination Check Flag to allow the instances to handle traffic that wasn’t addressed to them. AWS expects vendors of networking and security products to start building AMIs that make use of two ENIs.
+
+  3. **MAC-Based Licensing**: If you are running commercial software that is tied to a particular MAC address, you can license it against the MAC address of the ENI. Later, if you need to change instances or instance types, you can launch a replacement instance with the same ENI and MAC address.
+
+  4. **Low-Budget High Availability**: Attach an ENI to an instance; if the instance dies launch another one and attach the ENI to it. Traffic flow will resume within a few seconds.
+
+  Here is a picture to show you how all of the parts — VPC, subnets, routing tables, and ENIs fit together:
+
+      ![VPC, subnets, routing tables, and ENIs fitting together](assets/eni-vpc-multi-vif-arch.png)
 
 ---
 
