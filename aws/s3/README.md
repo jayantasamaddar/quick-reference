@@ -19,10 +19,11 @@
     - [Example: Controlling access from VPC endpoints with bucket policies](#example-controlling-access-from-vpc-endpoints-with-bucket-policies)
   - [S3 Security: Access Control Lists (ACL)](#s3-security-access-control-lists-acl)
   - [S3 Security: Encryption](#s3-security-encryption)
-    - [Encryption: Object Encryption](#encryption-object-encryption)
-    - [Encryption: Encryption in Transit](#encryption-encryption-in-transit)
-    - [Encryption: Implement Server-Side Encryption](#encryption-implement-server-side-encryption)
-    - [Encryption: Default Encryption vs Bucket Policies](#encryption-default-encryption-vs-bucket-policies)
+    - [S3 Encryption: Object Encryption](#s3-encryption-object-encryption)
+    - [S3 Encryption: Encryption in Transit](#s3-encryption-encryption-in-transit)
+    - [S3 Glacier: Encryption](#s3-glacier-encryption)
+    - [S3 Encryption: Implement Server-Side Encryption](#s3-encryption-implement-server-side-encryption)
+    - [S3 Encryption: Default Encryption vs Bucket Policies](#s3-encryption-default-encryption-vs-bucket-policies)
   - [S3 Security: CORS](#s3-security-cors)
     - [CORS: Overview](#cors-overview)
     - [CORS: Amazon S3](#cors-amazon-s3)
@@ -37,6 +38,7 @@
   - [S3 Security: Object Lambda](#s3-security-object-lambda)
   - [S3 Security: Object Lock](#s3-security-object-lock)
     - [Object Lock: Overview](#object-lock-overview)
+    - [S3 Security: Glacier Vault Lock](#s3-security-glacier-vault-lock)
 - [S3: Static Website Hosting](#s3-static-website-hosting)
 - [S3: Versioning](#s3-versioning)
 - [S3: Replication](#s3-replication)
@@ -55,7 +57,10 @@
   - [S3 Event Notifications: Create an S3 Event Notification](#s3-event-notifications-create-an-s3-event-notification)
   - [S3 Event Notifications: Setup Amazon EventBridge](#s3-event-notifications-setup-amazon-eventbridge)
 - [S3: Performance](#s3-performance)
+- [S3: Requester Pays](#s3-requester-pays)
 - [S3: S3 Select \& Glacier Select](#s3-s3-select--glacier-select)
+- [S3: Batch Operations](#s3-batch-operations)
+- [S3: Consistency Model](#s3-consistency-model)
 - [S3: Using the CLI](#s3-using-the-cli)
   - [S3 API](#s3-api)
     - [`mb`](#mb)
@@ -328,6 +333,8 @@ Security is a shared responsibility between AWS and you. For Amazon S3, your res
 
 **Pre-requisite**: Ensure `AccountB` can access S3, including this particular S3 bucket by setting IAM Role and/or user permissions for `AccountB`
 
+**S3 Bucket Policy in AccountA:**
+
 ```json
 {
   "Version": "2012-10-17",
@@ -417,9 +424,11 @@ Amazon S3 access control lists (ACLs) enable you to manage access to buckets and
 
 ## S3 Security: Encryption
 
-### Encryption: Object Encryption
+### S3 Encryption: Object Encryption
 
-You can encrypt objects in Amazon S3 using one of 4 Methods
+You can encrypt objects in Amazon S3 using one of 4 Methods.
+
+> **Note**: Metadata, which can be included with the object, is not encrypted while being stored on Amazon S3. Therefore, AWS recommends that customers not place sensitive information in Amazon S3 metadata.
 
 - **Server-Side Encryption (SSE)**
 
@@ -465,7 +474,7 @@ You can encrypt objects in Amazon S3 using one of 4 Methods
 
 ---
 
-### Encryption: Encryption in Transit
+### S3 Encryption: Encryption in Transit
 
 - Encryption in flight is also called SSL/TLS
 - Amazon S3 exposes two endpoints:
@@ -507,7 +516,14 @@ You can encrypt objects in Amazon S3 using one of 4 Methods
 
 ---
 
-### Encryption: Implement Server-Side Encryption
+### S3 Glacier: Encryption
+
+- Amazon S3 Glacier automatically encrypts data at rest using Advanced Encryption Standard (AES) 256-bit symmetric keys
+- Supports secure transfer of your data over Secure Sockets Layer (SSL) or Client-side encryption.
+
+---
+
+### S3 Encryption: Implement Server-Side Encryption
 
 1. **Using the Console:**
 
@@ -528,7 +544,7 @@ You can encrypt objects in Amazon S3 using one of 4 Methods
 
 ---
 
-### Encryption: Default Encryption vs Bucket Policies
+### S3 Encryption: Default Encryption vs Bucket Policies
 
 - One way to force encryption is to use a bucket policy and refuse any API call to PUT an S3 object without encryption headers
 
@@ -614,7 +630,7 @@ MFA won't be required to:
 
 - To use MFA Delete, Versioning must be enabled on the bucket.
 - MFA delete is an extra protection to prevent against the accidental permanent deletion of specific object versions.
-- Only the bucket owner (root account) can enable/disable MFA Delete. The root account should have MFA enabled.
+- **Only the bucket owner (root account) can enable/disable MFA Delete. The root account should have MFA enabled.**
 - The Amazon CLI must be used to perform a MFA Delete operation as it cannot be done via the Console
 - **To enable MFA Delete, using the AWS CLI**
 
@@ -652,6 +668,8 @@ MFA won't be required to:
 - The log format is at https://docs.aws.amazon.com/AmazonS3/latest/dev/LogFormat.html
 
 > **Warning:** NEVER EVER set your logging bucket to be the same as the bucket you are monitoring or we will end up triggering an infinite loop.
+
+> **Note**: AWS recommends that you use **AWS CloudTrail** for logging bucket and object-level actions for your Amazon S3 resources, as it provides more options to store, analyze and act on the log information.
 
 ---
 
@@ -737,7 +755,7 @@ S3 Object Lock allows to store objects using a **write-once-read-many (WORM) mod
 
 For example, suppose that you place a legal hold on an object version while the object version is also protected by a retention period. If the retention period expires, the object doesn't lose its WORM protection. Rather, the legal hold continues to protect the object until an authorized user explicitly removes it. Similarly, if you remove a legal hold while an object version has a retention period in effect, the object version remains protected until the retention period expires.
 
-4. **Bucket configuration**: To use Object Lock, you must enable it for a bucket. You can also optionally configure a default retention mode and period that applies to new objects that are placed in the bucket.
+4. **Bucket configuration**: To use Object Lock, you must `enable` it for a bucket. You can also optionally configure a default retention mode and period that applies to new objects that are placed in the bucket.
 
 5. **Required permissions**: Object Lock operations require specific permissions. Depending on the exact operation you are attempting, you might need any of the following permissions:
 
@@ -748,6 +766,15 @@ For example, suppose that you place a legal hold on an object version while the 
    - `s3:PutBucketObjectLockConfiguration`
    - `s3:PutObjectLegalHold`
    - `s3:PutObjectRetention`
+
+---
+
+### [S3 Security: Glacier Vault Lock](https://docs.aws.amazon.com/amazonglacier/latest/dev/vault-lock.html)
+
+S3 Glacier Vault Lock helps you to easily deploy and enforce compliance controls for individual S3 Glacier vaults with a Vault Lock policy. You can specify controls such as "write once read many" (WORM) in a Vault Lock policy and lock the policy from future edits.
+
+- After a Vault Lock policy is locked, the policy can no longer be changed or deleted.
+- This is similar to the S3 Object Lock when Retention Mode is set to `Compliance` but for S3 Glacier.
 
 ---
 
@@ -784,11 +811,19 @@ For example, suppose that you place a legal hold on an object version while the 
   - Protects against unintended deletes (ability to restore a version)
   - Easy roll back to previous version
 - Any file that is not versioned prior to enable versioning will have version: `null`
-- If you suspend versioning, it does not delete the previous version (safe operation)
 
-- Go to your S3 Bucket and click the **`Properties`** tab.
-- Scroll down to find the **`Bucket Versioning`** section. Click **`Edit`**.
-- Click **`Enable`** to enable the bucket versioning, and click **`Save changes`**.
+- **Enabling versioning from the S3 Console**:
+
+  - Go to your S3 Bucket and click the **`Properties`** tab.
+  - Scroll down to find the **`Bucket Versioning`** section. Click **`Edit`**.
+  - Click **`Enable`** to enable the bucket versioning, and click **`Save changes`**.
+
+- Can also be `Enabled` or `Suspended` using the **`PutBucketVersioning`** API.
+
+- **Suspend versioning**:
+
+  - Suspending versioning stops accruing new versions of the same object in the bucket.
+  - If you suspend versioning, it does not delete the previous versions (safe operation). What changes is no new versions will be created by Amazon S3.
 
 ---
 
@@ -822,6 +857,12 @@ For example, suppose that you place a legal hold on an object version while the 
   - Use Cases:
     - Log Aggregation
     - Live replication between production and test accounts
+
+- **Encryption**: The encryption of the objects in the destination bucket varies depending on whether the objects in the source bucket are encrypted or not:
+
+  - **If objects in the source bucket are NOT ENCRYPTED**: This results in the `ETag` of the source object being different from the `ETag` of the replica object. You must update applications that use the `ETag` to accommodate for this difference.
+
+  - **If objects in the source bucket are ENCRYPTED using SSE-S3 or SSE-KMS**: The replica objects in the destination bucket use the same encryption as the source object encryption. The default encryption settings of the destination bucket are not used.
 
 ---
 
@@ -898,13 +939,15 @@ We have two buckets `jayanta-s3-origin-bucket` and `jayanta-s3-destination-bucke
 
 **Durability**: Durability represents how many times an object is going to be lost by Amazon S3.
 
-- **High Durability**: 99.999999999% (11 9s) of objects across Multi-AZ
-- If you store 10,000,000 objects with Amazon S3, you can on average expect to incur a loss of a single object, once every 10,000 years
-- Same for all storage classes
+- **High Durability**:
 
-**Availability**: Measures how readily available a service is
+  - 99.999999999% (11 9s) of objects data durability across Multi-AZ
+  - If you store 10,000,000 objects with Amazon S3, you can on average expect to incur a loss of a single object, once every 10,000 years
+  - Same for all storage classes
 
-- Varies depends on the storage class.
+- **Availability**: Measures how readily available a service is
+
+  - Varies depends on the storage class.
   - E.g. S3 Standard has 99.99% availability = not availability 53 minutes a year
 
 ---
@@ -927,42 +970,69 @@ We have two buckets `jayanta-s3-origin-bucket` and `jayanta-s3-destination-bucke
    - For data that is less frequently accessed, but requires rapid access when needed
    - Lower cost than S3 Standard but there's a cost on retrieval
    - 99.9% Availability (bit less available than S3 Standard)
-   - Use Cases:
+   - **Use Cases**:
+
      - Disaster Recovery
      - Backups
 
-3. **Amazon S3 One Zone-Infrequent Access**
+   - **Minimum capacity charge per object**: `128 KB`
+   - **Minimum storage duration**: `30 days`
+
+3. **Amazon S3 One Zone-Infrequent Access (One-Zone IA)**
 
    - High durability (99.999999999%) in a Single-AZ; data lost when AZ destroyed
    - 99.5% Availability (lesser than Standard-Infrequent Access)
-   - Use Cases:
+   - **Use Cases**:
+
      - Storing Secondary backup copies of on-premise data
      - Data you can recreate
 
+   - **Minimum capacity charge per object**: `128 KB`
+   - **Minimum storage duration**: `30 days`
+
 4. **Amazon S3 Glacier Instant Retrieval**
 
+   - 99.9% Availability (Same as S3 Standard-Infrequent Access) backed by Amazon S3 SLA.
+   - High durability (99.999999999%) of objects across multiple AZs.
    - Low-cost object storage meant for archiving / backup
    - Pricing: Price for storage + object retrieval cost
    - Millisecond retrieval, great for data accessed once a quarter
-   - Minimum storage duration is 90 days
+   - **Minimum storage duration**: `90 days`
+   - **Minimum capacity charge per object**: `128 KB`
+   - Supports SSL for data in transit and encryption of data at rest (using AES-256 symmetric keys)
+   - Save up to `68%` on storage costs compared to using the S3 Standard-Infrequent Access (S3 Standard-IA) storage class
 
 5. **Amazon S3 Glacier Flexible Retrieval**
 
    - Lower-cost object storage meant for archiving / backup
-   - Three flexibility tiers:
+   - **Three flexibility tiers**:
+
      - `Expedited`: 1-5 minutes
      - `Standard`: 3-5 hours
      - `Bulk`: 5-12 hours (FREE)
-   - Minimum storage duration is 90 days
+
+   - **Minimum storage duration**: `90 days`
+   - **Minimum capacity charge per object**: `40 KB`
+   - Supports SSL for data in transit and encryption of data at rest (using AES-256 symmetric keys)
 
 6. **Amazon S3 Glacier Deep Archive**
 
-   - Meant for Long term storage
-   - Lowest cost
-   - Two flexibility tiers:
+   - Meant for Long term storage .
+   - Lowest cost storage class designed for long-term retention of data.
+
+   - **Two flexibility tiers**:
+
      - `Standard`: 12 hours
      - `Bulk`: 48 hours
-   - Minimum storage duration is 180 days
+
+   - - **Use Cases**:
+
+     - Archive data that maybe accessed 1-2 times a year.
+     - Industries like health, banking, public sectors that retain data upto 7-10 years to meet compliance requirements.
+     - Ideal alternative to magnetic tape libraries
+
+   - **Minimum storage duration**: `180 days`
+   - **Minimum capacity charge per object**: `40 KB`
 
 7. **Amazon S3 Glacier Intelligent-Tiering**
 
@@ -985,6 +1055,7 @@ We have two buckets `jayanta-s3-origin-bucket` and `jayanta-s3-destination-bucke
 A lifecycle configuration is a set of rules that define actions that Amazon S3 applies to a group of objects. With lifecycle configuration rules, you can tell Amazon S3 to transition objects to less expensive storage classes, archive them, or delete them.
 
 - Move objects between storage classes automatically based on Lifecycle Rules
+- The minimum storage duration is `30 days` before you can transition objects from S3 Standard to S3 One Zone-IA or S3 Standard-IA.
 - Lifecycle Rules:
 
   - **Transition Actions**: Configure objects to transition to another storage class
@@ -1055,7 +1126,7 @@ A lifecycle configuration is a set of rules that define actions that Amazon S3 a
 
 - Help you decide when to transition objects to the right storage class
 - Recommendations for **`Standard`** and **`Standard IA`**. Does not work for **`One-Zone IA`** or **`Glacier`**
-- S3 Analytics run on top of the S3 bucket and creates a CSV report that gives recommendations and statistics
+- **S3 Analytics** run on top of the S3 bucket and creates a CSV report that gives recommendations and statistics
 - Report is updated daily
 - 24 to 48 hours to start seeing data analysis
 
@@ -1069,9 +1140,15 @@ You can use the Amazon S3 Event Notifications feature to receive notifications w
 
 - E.g. `S3:ObjectCreated`, `S3:ObjectRemoved`, `S3:ObjectRestore`, `S3:Replication`
 - Object name filtering possible (e.g. `*.jpg`)
-- Use case: Generate thumbnails of images uploaded to S3
+- **Use case**: Generate thumbnails of images uploaded to S3
+
+- **Workflow**:
+
   - Create an Event Notification
-  - Send it to SNS, SQS, a Lambda function or Amazon EventBridge (and send to over 18 AWS services as destinations from EventBridge)
+  - Send it to SNS, SQS, a Lambda function or Amazon EventBridge (and send to over 18 AWS services as destinations from EventBridge).
+
+    > **Note**: **SQS FIFO Queue and SNS FIFO Topic are NOT allowed.**
+
 - Can create as many S3 events as desired
 - Amazon S3 event notifications are designed to be delivered at least once.
 - S3 event notifications typically deliver events in seconds but can sometimes take a minute or longer
@@ -1209,6 +1286,7 @@ You can use the Amazon S3 Event Notifications feature to receive notifications w
     - The Edge location transfers the file from the edge location to the S3 bucket in Australia over private AWS network
     - The idea is to minimize the public network the file has to be transferred through and maximize the fast private network the file is transferred through
   - Compatible with multi-part upload
+  - **Pricing**: There is a charge on accelerated transfers but if there is no accelerated transfer then there are no charges for the transfer (AWS uses a speed comparison tool to determine whether an acceleration occured)
 
 - **S3 Byte-Range Fetches**:
 
@@ -1222,11 +1300,67 @@ You can use the Amazon S3 Event Notifications feature to receive notifications w
 
 ---
 
+# S3: Requester Pays
+
+In general, bucket owners pay for all Amazon S3 storage and data transfer costs that are associated with their bucket. However, you can configure a bucket to be a Requester Pays bucket.
+
+- With Requester Pays buckets, the requester instead of the bucket owner pays the cost of the request and the data download from the bucket.
+- The bucket owner always pays the cost of storing data.
+- Typically, you configure buckets to be Requester Pays buckets when you want to share data but not incur charges associated with others accessing the data.
+
+- **Use Case**:
+
+  - You might use Requester Pays buckets when making available large datasets, such as zip code directories, reference data, geospatial information, or web crawling data.
+
+- Requester Pays buckets do not support the following:
+  - Anonymous requests (must be authenticated in AWS)
+  - SOAP requests
+  - Using a Requester Pays bucket as the target bucket for end-user logging, or vice versa. However, you can turn on end-user logging on a Requester Pays bucket where the target bucket is not a Requester Pays bucket.
+
+---
+
 # S3: S3 Select & Glacier Select
 
 - Retrieve less data using SQL by performing server-side filtering
 - Can filter by rows and columns (simple SQL filtering)
 - Less network transfer; less CPU cost client-side
+
+---
+
+# S3: Batch Operations
+
+- Perform bulk operations on existing S3 objects with a single request.
+
+- **Examples**:
+
+  - Modify object metadata and properties
+  - Copy objects between S3 objects
+  - Encrypt unencrypted objects
+  - Modify ACL Tags
+  - Restore objects from S3 Glacier
+  - Invoke Lambda function to perform custom action on each object
+
+- A batch job consists of:
+
+  - A list of objects
+  - The action to perform
+  - Optional parameters
+
+- S3 Batch Operations manages retries, tracks progress, sends completion notifications, generate reports etc.
+
+- You can use **S3 Inventory** to get Object List and use **S3 Select** to filter your objects and then pass the filtered list to a S3 batch job
+
+---
+
+# [S3: Consistency Model](https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/)
+
+- **S3 is Strongly Consistent** - what you write is what you read.
+
+- There are two types of consistency models for large-scale distributed systems:
+
+  - **Eventually Consistent**: After a call to an UPDATE API call that stores or modifies data, there’s a small time window where the data has been accepted and durably stored, but not yet visible to all GET or LIST requests. S3 used to be eventually consistent until 2020.
+
+  - **Strongly Consistent**: In a strongly consistent model, all WRITE operations are immediately reflected - what you write is what you read. S3 is strongly consistent and all **S3** **`GET`**, **`PUT`**, and **`LIST`** operations, as well as operations that change **object tags**, **ACLs**, or **metadata**, are now strongly consistent. The results of a `LIST` will be an accurate reflection of what’s in the bucket.
 
 ---
 
@@ -1262,6 +1396,8 @@ make_bucket: jayanta-s3-bucket
 
 Copies a local file(s) or S3 object(s) to another location locally or in S3.
 
+When copying an object, you can preserve all metadata (default) or specify new metadata. However, the ACL is not preserved and is set to private for the user making the request. To override the default ACL setting, specify a new ACL when generating a copy request.
+
 - Can Copy Local file(s) to S3
 - Can Copy S3 file(s) to Local Disk
 - Can Copy Files within the same S3 bucket
@@ -1289,6 +1425,7 @@ aws s3 cp [source] [destination] \
   --copy-props [none|metadata-directive|default] \
   --expected-size [bytes] \
   --only-show-errors \
+  --metadata [KeyName1=string,KeyName2=string] \
   --request-payer requester # Confirms that the requester knows that they will be charged for the request
 ```
 
@@ -1835,7 +1972,7 @@ In order to enable MFA Delete, you must be the bucket owner. If you are the buck
 ```s
 aws s3api put-bucket-versioning \
  --bucket [BucketName] \
- --versioning-configuration MFADelete=["Enabled"|"Disabled"],Status=["Enabled"|"Disabled"] \
+ --versioning-configuration MFADelete=["Enabled"|"Disabled"],Status=["Enabled"|"Suspended"] \
  --mfa [DeviceSerialNumber AuthenticationCode] # Required if versioning is configured with MFA enabled
 ```
 

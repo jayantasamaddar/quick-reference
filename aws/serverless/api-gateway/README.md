@@ -69,8 +69,9 @@ There are three ways to deploy your API Gateway:
 
 1. **Edge-Optimized (default): For Global clients**
 
-   - Requests are routed through the CloudFront Edge locations (improves latency)
-   - The API Gateway still lives in only one region (but it's accessible from every CloudFront Edge location)
+   - Requests are routed to the nearest CloudFront Edge locations which improves latency
+   - The API Gateway still lives in only one AWS Region (but it's accessible from every CloudFront Edge location)
+   - Best for geographically distributed clients
 
 2. **Regional**
 
@@ -141,13 +142,13 @@ There are three ways to deploy your API Gateway:
 
 # API Gateway: Caching
 
-- Caching reduces the number of calls to the backend.
+- You can enable API caching in Amazon API Gateway to cache your endpoint's responses **reducing the number of calls to the endpoint** and also **improve the latency of requests to your API**.
 
 - **TTL**:
 
-  - Default: 300 secs
-  - Min: 0 sec
-  - Max: 3600 secs
+  - **Default**: `300 secs`
+  - **Minimum**: `0 sec` (Caching is disabled)
+  - **Maximum**: `3600 secs`
 
 - **Caches are defined per stage**
 - Possible to override cache settings per method

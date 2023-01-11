@@ -65,6 +65,7 @@ Amazon ECS refers to Elastic Container Service which is Amazon's own container p
 - You just create task definitions to define our ECS Tasks
 - AWS just runs ECS Tasks for you based on the CPU / RAM you need
 - To scale, just increase the number of tasks. Simple - no more EC2 instances
+- When Amazon ECS uses Fargate for compute, it incurs no costs when the application is idle.
 
 ---
 

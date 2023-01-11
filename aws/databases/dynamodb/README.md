@@ -4,7 +4,7 @@
 - [Why NoSQL Database?](#why-nosql-database)
 - [DynamoDB: Overview](#dynamodb-overview)
 - [DynamoDB: Basics](#dynamodb-basics)
-  - [Components](#components)
+  - [Tables](#tables)
   - [Primary Keys](#primary-keys)
 - [DynamoDB: Read/Write Capacity Modes](#dynamodb-readwrite-capacity-modes)
   - [Read/Write Capacity Modes: Overview](#readwrite-capacity-modes-overview)
@@ -108,17 +108,21 @@ Amazon DynamoDB is a fully managed, serverless, key-value NoSQL database designe
 
 # DynamoDB: Basics
 
-## Components
+## Tables
 
 - DynamoDB is made of **Tables**
 - Each Table has a **primary key** (must be decided at creation time)
 - Each table can have an infinite number of **rows** / **items**
 - Each row / item has **attributes** (can be added over time / can be null)
 - Each row / item can have a maximum size of `400 KB`
-- Data types supported are:
+
+- **Data types** supported are:
+
   - **Scalar types**: String, Number, Boolean, Binary, Null
   - **Document types**: List, Map
   - **Set types**: String sets, Number sets, Binary sets
+
+- **[Auto-Scaling](https://aws.amazon.com/blogs/database/amazon-dynamodb-auto-scaling-performance-and-cost-optimization-at-any-scale/)**: When a DynamoDB Table is created the default capacity setting is auto-scaling. For a table where it auto-scaling is not active, you can enable it.
 
 ---
 
@@ -153,12 +157,20 @@ Amazon DynamoDB is a fully managed, serverless, key-value NoSQL database designe
   - You specify the number of reads/writes per second
   - You need to plan capacity beforehand
   - Pay for provisioned read and write capacity units
+  - **Use Cases**:
+    - You have predictable application traffic.
+    - You run applications whose traffic is consistent or ramps gradually.
+    - You can forecast capacity requirements to control costs.
 
 - **On-Demand Mode**
 
   - Read/write automatically scale up/down with your workloads
   - No Capacity planning needed
   - Pay for exactly what you use; more expensive.
+  - **Use Cases**:
+    - You create new tables with unknown workloads.
+    - Recommended when there is unpredictable application traffic.
+    - You prefer the ease of paying for only what you use.
 
 - You can switch between read/write capacity modes once every 24 hours. The only exception to this is if you switch a provisioned mode table to on-demand mode, you can switch back to provisioned mode in the same 24-hour period.
 
@@ -597,7 +609,11 @@ DAX is a fully managed, highly available, seamless in-memory cache for DynamoDB
 
   - VPC Endpoints available to access DynamoDB without using the Internet
   - Access fully controlled by IAM
-  - Encryption at rest using AWS KMS or in-transit using SSL/TLS
+  - Encryption at rest using AWS KMS.
+    - By default, all DynamoDB tables are encrypted under an AWS owned customer master key (CMK), which do not write to CloudTrail logs.
+    - There is no option to enable or disable encryption.
+    - However, you can select an option to encrypt some or all of your tables under a customer-managed CMK or the AWS managed CMK for DynamoDB in your account.
+  - Encryption in-transit using SSL/TLS
 
 - **Back and Restore**
 
@@ -605,7 +621,7 @@ DAX is a fully managed, highly available, seamless in-memory cache for DynamoDB
   - No performance impact
   - Alternatively, can do normal backup and restore
   - On-demand backups
-  - Export to S3 without using RCU within the Point-in-time window of 35 days and import from S3 without using WCU
+  - Export to S3 without using RCU within the Point-in-time window of 35 days (PITR must be enabled) and import from S3 without using WCU
 
 - **Global Tables**
 

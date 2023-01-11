@@ -49,6 +49,9 @@
 - [ELB: Connection Draining / Deregistration Delay](#elb-connection-draining--deregistration-delay)
 - [Auto-Scaling Groups (ASGs)](#auto-scaling-groups-asgs)
   - [ASG: Overview](#asg-overview)
+  - [ASG: Health Checks](#asg-health-checks)
+    - [ASG Health Checks: Overview](#asg-health-checks-overview)
+    - [ASG Health Checks: ELB Health Checks](#asg-health-checks-elb-health-checks)
   - [ASG: Using Elastic Load Balancing across Instances in the ASG](#asg-using-elastic-load-balancing-across-instances-in-the-asg)
     - [Using ELB across Instances in the ASG: Overview](#using-elb-across-instances-in-the-asg-overview)
     - [Using ELB across Instances in the ASG: Workflow](#using-elb-across-instances-in-the-asg-workflow)
@@ -56,33 +59,44 @@
   - [ASG: Automatic Scaling Policies](#asg-automatic-scaling-policies)
     - [Dynamic Scaling](#dynamic-scaling)
     - [Predictive Scaling](#predictive-scaling)
+  - [ASG: Termination](#asg-termination)
+    - [ASG Termination: Default Termination Policy](#asg-termination-default-termination-policy)
+    - [ASG Termination: Scenarios for Termination Policy use](#asg-termination-scenarios-for-termination-policy-use)
   - [ASG: Lifecycle Hooks](#asg-lifecycle-hooks)
+  - [ASG: Warm Pools](#asg-warm-pools)
+    - [ASG Warm Pools: Core Concepts](#asg-warm-pools-core-concepts)
   - [ASG: Notifications](#asg-notifications)
     - [ASG Notifications: Overview](#asg-notifications-overview)
     - [ASG Notifications: Send Notification to SQS Queue](#asg-notifications-send-notification-to-sqs-queue)
   - [ASG: Monitoring](#asg-monitoring)
     - [Notable Scaling Metrics](#notable-scaling-metrics)
     - [Custom Metrics using CloudWatch](#custom-metrics-using-cloudwatch)
-  - [Auto-Scaling Group - Scaling Cooldowns](#auto-scaling-group---scaling-cooldowns)
+  - [ASG: Scaling Cooldowns](#asg-scaling-cooldowns)
+  - [ASG: Troubleshooting](#asg-troubleshooting)
+    - [Failure to terminate unhealthy instance](#failure-to-terminate-unhealthy-instance)
+    - [Failure to provision replacement instance](#failure-to-provision-replacement-instance)
+- [Solutions Architecture](#solutions-architecture)
+  - [Dynamic Scaling in an Auto Scaling Group when SQS traffic increases](#dynamic-scaling-in-an-auto-scaling-group-when-sqs-traffic-increases)
 - [Using the CLI](#using-the-cli)
-  - [`create-load-balancer`](#create-load-balancer)
-  - [`create-target-group`](#create-target-group)
-  - [`register-targets`](#register-targets)
-  - [`deregister-targets`](#deregister-targets)
-  - [`create-listener`](#create-listener)
-  - [`create-rule`](#create-rule)
-  - [`modify-load-balancer-attributes`](#modify-load-balancer-attributes)
-    - [`modify-load-balancer-attributes`: Overview and Syntax](#modify-load-balancer-attributes-overview-and-syntax)
-    - [Example 1: Deletion Protection Enabled](#example-1-deletion-protection-enabled)
-    - [Example 2: Enable Access Logs and provide permission to access them](#example-2-enable-access-logs-and-provide-permission-to-access-them)
-  - [`modify-target-group-attributes`](#modify-target-group-attributes)
-    - [`modify-target-group-attributes`: Overview and Syntax](#modify-target-group-attributes-overview-and-syntax)
-    - [Example 1: Modify the deregistration delay timeout](#example-1-modify-the-deregistration-delay-timeout)
-    - [Example 2: Apply sticky sessions and modify the stickiness settings of an ALB](#example-2-apply-sticky-sessions-and-modify-the-stickiness-settings-of-an-alb)
-  - [`delete-rule`](#delete-rule)
-  - [`delete-listener`](#delete-listener)
-  - [`delete-load-balancer`](#delete-load-balancer)
-  - [`delete-target-group`](#delete-target-group)
+  - [`elbv2`](#elbv2)
+    - [`create-load-balancer`](#create-load-balancer)
+    - [`create-target-group`](#create-target-group)
+    - [`register-targets`](#register-targets)
+    - [`deregister-targets`](#deregister-targets)
+    - [`create-listener`](#create-listener)
+    - [`create-rule`](#create-rule)
+    - [`modify-load-balancer-attributes`](#modify-load-balancer-attributes)
+      - [`modify-load-balancer-attributes`: Overview and Syntax](#modify-load-balancer-attributes-overview-and-syntax)
+      - [Example 1: Deletion Protection Enabled](#example-1-deletion-protection-enabled)
+      - [Example 2: Enable Access Logs and provide permission to access them](#example-2-enable-access-logs-and-provide-permission-to-access-them)
+    - [`modify-target-group-attributes`](#modify-target-group-attributes)
+      - [`modify-target-group-attributes`: Overview and Syntax](#modify-target-group-attributes-overview-and-syntax)
+      - [Example 1: Modify the deregistration delay timeout](#example-1-modify-the-deregistration-delay-timeout)
+      - [Example 2: Apply sticky sessions and modify the stickiness settings of an ALB](#example-2-apply-sticky-sessions-and-modify-the-stickiness-settings-of-an-alb)
+    - [`delete-rule`](#delete-rule)
+    - [`delete-listener`](#delete-listener)
+    - [`delete-load-balancer`](#delete-load-balancer)
+    - [`delete-target-group`](#delete-target-group)
 - [References](#references)
 
 ---
@@ -100,12 +114,14 @@ There are two kinds of scalability:
   - Vertical scalability is very common for non-distributed systems, such as a database.
   - RDS, ElastiCache are services that can scale vertically by upgrading the underlying instance type.
   - There's usually a hardware limit till which you can vertically scale.
+  - The terms used are **scale-up** (extend) or **scale-down** (shrink).
 
 - **Horizontal Scalability / Elasticity**
 
   - Horizontal scalability means increasing the number of instances / systems for your application. It implies distributed systems. For example: Sharding a database, Auto Scaling Group, Load Balancers.
   - Common for modern, web applications.
   - Nowadays, it's easy to horizontally scale, thanks to cloud offerings like, Amazon EC2.
+  - The terms used are **scale-out** (extend) or **scale-in** (shrink).
 
 Scalability is linked but different from [High Availability](#high-availability).
 
@@ -479,15 +495,28 @@ Health checks are done at the Target Group level.
   - Less latency: `~100 ms` (vs ~400 ms for ALB)
 
 - Unlike ALB, which provides only static DNS name, **NLB provides both static DNS name and static IP**. NLB has **one static IP per AZ** and supports assigning Elastic IP (helpful for whitelisting specific IP). The reason being that AWS wants your Elastic Load Balancer to be accessible using a static endpoint, even if the underlying infrastructure that AWS manages changes.
+
+- **Request Routing and IP Addresses**:
+
+  - **If you specify targets using an instance ID**: Traffic is routed to instances using the primary private IP address specified in the primary network interface for the instance. The load balancer rewrites the destination IP address from the data packet before forwarding it to the target instance.
+  - **If you specify targets using IP addresses**: You can route traffic to an instance using any private IP address from one or more network interfaces. This enables multiple applications on an instance to use the same port. Note that each network interface can have its security group. The load balancer rewrites the destination IP address before forwarding it to the target.
+
 - NLBs are used for extreme performance, TCP or UDP traffic.
+
 - Not included in the AWS Free Tier
 
-**Working mechanism:**
+- **Working mechanism:**
 
-1. Your client makes a request to your application.
-2. The load balancer receives the request either directly or through an endpoint for private connectivity (via AWS PrivateLink).
-3. The listeners in your load balancer receive requests of matching protocol and port, and route these requests based on the default action that you specify. You can use a TLS listener to offload the work of encryption and decryption to your load balancer.
-4. Healthy targets in one or more target groups receive traffic according to the flow hash algorithm.
+  1. Your client makes a request to your application.
+  2. The load balancer receives the request either directly or through an endpoint for private connectivity (via AWS PrivateLink).
+  3. The listeners in your load balancer receive requests of matching protocol and port, and route these requests based on the default action that you specify. You can use a TLS listener to offload the work of encryption and decryption to your load balancer.
+  4. Healthy targets in one or more target groups receive traffic according to the flow hash algorithm.
+
+- **Use Cases**:
+
+  - **Optimize the performance of your backend application servers**: Offload the decryption/encryption of TLS traffic from your application servers to the Network Load Balancer while keeping your workloads secure.
+
+  - **[Source IP Preservation while TLS Termination](https://aws.amazon.com/blogs/aws/new-tls-termination-for-network-load-balancers/)**: Network Load Balancers preserve the source IP of the clients to the back-end applications, while terminating TLS on the load balancer. (**Note**: Application Load Balancer also supports TLS Termination and Classic Load Balancer supports SSL Termination)
 
 ---
 
@@ -610,13 +639,15 @@ There are two types of cookies you can have:
 
 ## Sticky Sessions: Applying Sticky Sessions to Existing Load Balancer
 
+**Using the Console**:
+
 - Go to Target Groups and select the Target Group of the Load Balancer
 - Click **`Actions`** ---> **`Edit attributes`**
 - Toggle the **`Stickiness`** option on
 - Select **Stickiness type**:
   - Load balancer generated cookie - Cookie name generated by Load Balancer
   - Application-based cookie - Cookie name generated by application which must be entered below
-- Select **Stickiness duration**: between 1 second to 7 days
+- Select **Stickiness duration**: between `1 second` to `7 days`
 
 ---
 
@@ -688,6 +719,7 @@ USERS                               LOAD BALANCER                            EC2
 - You can manage certificates in AWS using AWS Certificate Manager (ACM)
 - You can upload your own certificates to ACM alternatively
 - When you set an HTTPS Listener:
+
   - You must specify a default certificate
   - You can add an optional list of certificates to support multiple domains
   - Clients can use SNI (Server Name Indication) to specify the hostname they reach
@@ -734,13 +766,13 @@ This feature has two names:
 - **Connection Draining**: For Classic Load Balancer
 - **Deregistration Delay**: For Application Load Balancer & Network Load Balancer
 
-The idea behind the concept is that, it will give some time for your Instances to complete the inflight request or the active request while the instance is being de-registered or marked unhealthy.
+- The idea behind the concept is that, it will give some time for your Instances to complete the in-flight requests or the active requests to the target while the instance is being de-registered or marked unhealthy.
 
-Once the connection is being drained, the ELB will stop sending the request to the EC2 Instance that is being drained while being de-registered.
+- Once the connection is being drained, the ELB will stop sending the request to the EC2 Instance that is being drained while being de-registered.
 
-The default is `300` seconds. We can set this between `1` - `3600` seconds
+- The default is `300` seconds. We can set this between `1` - `3600` seconds
 
-Can be disabled altogether by setting the value to 0.
+- Can be disabled altogether by setting the value to 0.
 
 ---
 
@@ -757,6 +789,61 @@ So when we deploy an application, the load can change over time because we may h
 - Automatically register new instances that are part of the ASG to the Load Balancer
 - Re-create an EC2 Instance in case a previous one is terminated (ex: if unhealthy)
 - Auto-Scaling Groups are free, we only pay for EC2 Instances
+
+---
+
+## [ASG: Health Checks](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html#elastic-load-balancing-health-checks)
+
+### ASG Health Checks: Overview
+
+There are three types of Health Checks available for an Auto Scaling Group:
+
+1. **Amazon EC2 Status Checks and Scheduled Events (default)**:
+
+- Checks that the instance is running.
+- Checks for underlying hardware or software issues that might impair the instance.
+- This is the default health check type for an Auto Scaling Group.
+
+- For EC2 Instances on `Standby` state:
+
+  - Amazon EC2 Auto Scaling does not perform health checks on instances that are in a `Standby` state.
+  - While the instance is in a standby state, its health status reflects the status that it had before you put it on standby.
+  - Amazon EC2 Auto Scaling does not perform a health check on the instance until you put it back in service. Hence, if a `healthy` instance was put on `Standby` and then terminated, it continues to be reported as `healthy`. If you attempt to put a `Terminated` instance that was on `Standby` back in service, Amazon EC2 Auto Scaling performs a health check on the instance, determines that it is `terminating` and `unhealthy`, and launches a replacement instance.
+
+- **Scheduled Events**:
+
+  - Amazon EC2 can occasionally schedule events on your instances to be run after a particular timestamp.
+  - If one of your instances is affected by a scheduled event, Amazon EC2 Auto Scaling considers the instance to be unhealthy and replaces it.
+  - The instance doesn't start terminating until the date and time specified in the timestamp is reached.
+
+2. **ELB Health Checks**
+
+   - Checks whether the ELB reports the instance as healthy, confirming whether the instance is available to handle requests
+   - Must be enabled for the ASG.
+
+3. **Custom Health Checks**: Checks for any other problems that might indicate instance health issues, according to your custom health checks
+
+---
+
+### ASG Health Checks: ELB Health Checks
+
+- When you enable ELB health checks for your ASG, Amazon EC2 Auto Scaling can use the results of those health checks to determine the health status of an instance.
+
+- **Pre-requisites**:
+
+  - Set up an ELB and configure a health check for it to use to determine if your instances are healthy.
+  - Attach the ELB to your ASG.
+
+- **After the pre-requisite actions the following occurs**:
+
+  - Amazon EC2 Auto Scaling registers the instances in the ASG with the ELB.
+  - After an instance finishes registering, it enters the `InService` state and becomes available for use with the ELB.
+
+- **By default, Amazon EC2 Auto Scaling ignores the results of the ELB health checks.**
+
+- You need to enable these health checks for your ASG. After you do this, when the ELB reports a registered instance as `unhealthy`, the ASG marks the instance as `unhealthy` on its next periodic health check and replaces it.
+
+- If **connection draining (deregistration delay)** is enabled for your ELB, Amazon EC2 Auto Scaling waits for either in-flight requests to complete or the maximum timeout to expire before it terminates unhealthy instances.
 
 ---
 
@@ -827,17 +914,43 @@ aws cloudformation create-stack \
 1. **Target Tracking Scaling:**
 
    - Most simple and easy to set up
-   - Example: I want the average ASG CPU to stay at around 40%
+   - Metrics that decrease when capacity increases and increase when capacity decreases can be used to proportionally scale out or in the number of instances using target tracking.
+
+   - **Examples**:
+
+     - Configure a target tracking policy to keep the average aggregate CPU utilization of your ASG to stay at 40%.
+     - Configure a target tracking policy to keep the `RequestCountPerTarget` metric of your ALB target group at 1000 for your ASG.
 
 2. **Simple / Step Scaling**
 
-   - When a CloudWatch alarm is triggered (Example: CPU > 70%), then add 2 units
-   - When a CloudWatch alarm is triggered (Example: CPU < 30%), then remove 1 unit
+   - Both Simple and Step Scaling require you to create CloudWatch alarms for the scaling policies.
+   - Both require you to specify the high and low thresholds for the alarms.
+   - Both require you to define whether to add or remove instances, and how many, or set the group to an exact size.
+   - The main difference between the policy types is the step adjustments that you get with step scaling policies. When step adjustments are applied, and they increase or decrease the current capacity of your Auto Scaling group, the adjustments vary based on the size of the alarm breach.
+   - In most cases, step scaling policies are a better choice than simple scaling policies, even if you have only a single scaling adjustment.
+   - In step scaling the policy can continue to respond to additional alarms, even while a scaling activity or health check replacement is in progress unlike simple scaling.
 
-3. **Scheduled Actions**
+   - **Examples**:
+
+     - When a CloudWatch alarm is triggered (Example: CPU > 70%), then add 2 units
+     - When a CloudWatch alarm is triggered (Example: CPU < 30%), then remove 1 unit
+
+3. **Scheduled Scaling**
 
    - Anticipate a scaling based on known usage patterns
-   - Example: Increase the minimum capacity to 10 at 5 pm on Fridays
+
+   - To use scheduled scaling, you create **_scheduled actions_**.
+
+     - Scheduled actions are performed automatically as a function of date and time.
+     - When you create a scheduled action, you specify when the scaling activity should occur and the new desired, minimum, and maximum sizes for the scaling action.
+     - You can create scheduled actions that scale **one time only** or that scale on a **recurring schedule**.
+
+   - **Examples**:
+
+     - Increase the minimum capacity to 10 at 5 pm on Fridays
+     - Increase the maximum capacity on Wednesday and decrease maximum capacity on Friday.
+
+   - **Suspend and Resume**: You can temporarily turn off scheduled scaling for an Auto Scaling group by suspending the `ScheduledActions` process. This helps you prevent scheduled actions from being active without having to delete them. You can then resume scheduled scaling when you want to use it again.
 
 ---
 
@@ -845,6 +958,76 @@ aws cloudformation create-stack \
 
 - Continuously forecast load and schedule scaling ahead. The historical load will be analyzed over time and then a forecast is going to be created, and then based on that forecast we will be scaling actions ahead of time.
 - This is the future as this is machine learning powered and is a hands-off approach
+
+---
+
+## [ASG: Termination](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-instance-termination.html)
+
+### ASG Termination: Default Termination Policy
+
+- The default termination policy is designed to help ensure that your instances span Availability Zones evenly for high availability. The default policy is kept generic and flexible to cover a range of scenarios.
+
+- **The default termination policy behavior is as follows**:
+
+  1. Determine which Availability Zones have the most instances and at least one instance that is not protected from scale-in.
+
+  2. Determine which instances to terminate to align the remaining instances to the allocation strategy for the On-Demand or Spot Instance that is terminating.
+
+  3. Determine whether any of the instances use the oldest launch template or configuration:
+
+     - Determine whether any of the instances use the oldest launch template unless there are instances that use a launch configuration.
+     - Determine whether any of the instances use the oldest launch configuration.
+
+  4. After applying all of the above criteria, if there are multiple unprotected instances to terminate, determine which instances are closest to the next billing hour.
+
+---
+
+### ASG Termination: Scenarios for Termination Policy use
+
+The following sections describe the scenarios in which Amazon EC2 Auto Scaling uses termination policies:
+
+1. **Scale-In Events**: A scale-in event occurs when there is a new value for the desired capacity of an Auto Scaling group that is lower than the current capacity of the group.
+
+   - **Scale-in events occur in the following scenarios**:
+
+     - When using dynamic scaling policies, the size of the ASG decreases as a result of metric value changes.
+     - When using scheduled scaling, the size of the ASG decreases as a result of a scheduled action.
+     - When you manually decrease the size of the group.
+
+   - How termination policies work when there is a scale-in event:
+
+     - **Scenario**: ASG in this example has `1` instance type, `2` AZs, and a desired capacity of `2` instances and has dynamic scaling policy that adds or removes instances based on resource utilization.
+
+       - The 2 instances in this ASG are thus distributed across the two Availability Zones.
+
+       - When the ASG scales out, Amazon EC2 Auto Scaling launches a new instance. The ASG now has three instances, distributed across the `2` AZs. Either one of the 2 AZs now has 2 instances while the other has 1.
+
+       - When the ASG scales in, Amazon EC2 Auto Scaling terminates one of the instances.
+
+       - If you did not assign a specific termination policy to the group, Amazon EC2 Auto Scaling uses the default termination policy. It selects the AZ with `2` instances, and terminates the instance that was launched from the oldest launch template or launch configuration. If the instances were launched from the same launch template or launch configuration, Amazon EC2 Auto Scaling selects the instance that is closest to the next billing hour and terminates it.
+
+2. **Instance Refreshes**: You start instance refreshes in order to update the instances in your Auto Scaling group. During an instance refresh, Amazon EC2 Auto Scaling terminates instances in the group and then launches replacements for the terminated instances. The termination policy for the Auto Scaling group controls which instances are replaced first.
+
+3. **Availability Zone rebalancing**: After certain actions occur, your ASG can become unbalanced between AZs (one AZ has fewer instances than the others). Amazon EC2 Auto Scaling compensates by rebalancing the AZs.
+
+   - **Reasons for ASG getting unbalanced and a Rebalancing occurs**:
+
+     - **Removing instances**:
+
+       - You detach instances from your ASG.
+
+       - You put an instance that is in the `InService` state into the `Standby` state and specify the desired capacity is not decremented (Default behaviour: The specified desired capacity is decremented). This scenario arises when you want to update or troubleshoot the instance before returning it to service again, at the same time maintaining the same number of available instances.
+
+       - You explicitly terminate instances and decrement the desired capacity, which prevents replacement instances from launching.
+
+     - **Using different AZs than originally specified**:
+
+       - You expand your ASG to include additional AZs
+       - You change which Availability Zones are used
+
+     - **Availability outage**: Availability outages are rare. However, if one AZ becomes unavailable and recovers later, your ASG can become unbalanced between AZs.
+
+   - **Rebalancing Workflow**: When rebalancing, Amazon EC2 Auto Scaling first launches new instances before terminating the old ones, so that rebalancing does not compromise the performance or availability of your application.
 
 ---
 
@@ -885,6 +1068,25 @@ We can modify the following configuration.
 - **NotificationTargetARN**: The Amazon Resource Name (ARN) of the notification target that Amazon EC2 Auto Scaling sends notifications to when an instance is in a wait state for the lifecycle hook. You can specify an Amazon SNS topic or an Amazon SQS queue.
 
 - **RoleARN**: The ARN of the IAM role that allows the Auto Scaling group to publish to the specified notification target. Valid only if the notification target is an Amazon SNS topic or an Amazon SQS queue.
+
+---
+
+## [ASG: Warm Pools](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-warm-pools.html)
+
+### ASG Warm Pools: Core Concepts
+
+- **Warm Pool**: A **warm pool** is a pool of pre-initialized EC2 instances that sits alongside an Auto Scaling group. Whenever your application needs to scale out, the Auto Scaling group can draw on the warm pool to meet its new desired capacity. This helps you to ensure that instances are ready to quickly start serving application traffic, accelerating the response to a scale-out event. As instances leave the warm pool, they count toward the desired capacity of the group. This is known as a **_warm start_**.
+
+- **Warm Pool Size**: By default, the size of the warm pool is calculated as the difference between the Auto Scaling group's maximum capacity and its desired capacity. For example, if the desired capacity of your Auto Scaling group is `6` and the maximum capacity is `10`, the size of your warm pool will be `4` when you first set up the warm pool and the pool is initializing.
+
+- **Minimum warm pool size**: Consider using the minimum size setting to statically set the minimum number of instances to maintain in the warm pool. There is no minimum size set by default.
+
+- **Warm pool instance state**: You can keep instances in the warm pool in one of three states: `Stopped`, `Running`, or `Hibernated`. Keeping instances in a `Stopped` state is an effective way to minimize costs. Alternatively, you can keep instances in a `Hibernated` state to stop instances without deleting their memory contents (RAM).
+
+- **Instance reuse policy**: By default, Amazon EC2 Auto Scaling terminates your instances when your Auto Scaling group scales in. Then, it launches new instances into the warm pool to replace the instances that were terminated.
+
+  If you want to return instances to the warm pool instead, you can specify an instance reuse policy.
+  This lets you reuse instances that are already configured to serve application traffic. To make sure that your warm pool is not over-provisioned, Amazon EC2 Auto Scaling can terminate instances in the warm pool to reduce its size when it is larger than necessary based on its settings.
 
 ---
 
@@ -999,21 +1201,117 @@ You can enable the monitoring of group metrics of an Auto Scaling group. By defa
 
 ---
 
-## Auto-Scaling Group - Scaling Cooldowns
+## ASG: Scaling Cooldowns
 
-After a scaling activity happens, you enter a cooldown period.
+- After a scaling activity happens, you enter a cooldown period.
 
-**Default:** `300 seconds`
+- **Default:** `300 seconds`
 
-During the cooldown period the ASG will not launch additional instances or terminate instances (to allow for metrics to stabilize)
+- During the cooldown period the ASG will not launch additional instances or terminate instances (to allow for metrics to stabilize)
 
 > **Tip**: Use a ready-to-use AMI to reduce configuration time in order to be serving requests faster and reduce the cooldown period.
 
 ---
 
+## ASG: Troubleshooting
+
+### [Failure to terminate unhealthy instance](https://aws.amazon.com/premiumsupport/knowledge-center/auto-scaling-terminate-instance/)
+
+- Amazon EC2 Auto Scaling is able to automatically determine the health status of an instance using:
+
+  - Amazon EC2 status checks
+  - Elastic Load Balancing (ELB) health checks.
+
+- All scaling actions of an Amazon EC2 Auto Scaling group are logged in Activity History on the Amazon EC2 console. Sometimes you can't determine why Amazon EC2 Auto Scaling didn't terminate an unhealthy instance from Activity History alone.
+
+  You can find further details about an unhealthy instance's state, and how to terminate that instance, within the Amazon EC2 console. Check the following settings:
+
+  - Health check grace period
+  - Suspended processes
+  - Instance state in the EC2 console
+  - Instance state in Auto Scaling groups
+  - ELB health checks
+
+- **Resolution**:
+
+  - **Instance State in ASG**: Note the State of the Instance in the EC2 Auto Scaling Group
+  - **Health Check Grace Period**: Amazon EC2 Auto Scaling doesn't terminate an instance that came into service based on EC2 status checks and ELB health checks until the health check grace period expires.
+
+  - **Suspended processes**: The suspension of processes such as `HealthCheck`, `ReplaceUnhealthy`, or `Terminate` affects Amazon EC2 Auto Scaling's capability to detect, replace, or terminate unhealthy instances.
+
+  - **Instance State in Amazon EC2 Console**:
+
+    - **`Impaired`**: Amazon EC2 Auto Scaling does not immediately terminate instances with an `Impaired` status. Instead, Amazon EC2 Auto Scaling waits a few minutes for the instance to recover.
+
+    - **`Insufficient Data`**: Amazon EC2 Auto Scaling might also delay or not terminate instances that fail to report data for status checks. This usually happens when there is insufficient data for the status check metrics in Amazon CloudWatch. These instances need to be manually terminated.
+
+  - **Instance State in Auto Scaling Group**:
+
+    - **`Standby`**: Amazon EC2 Auto Scaling does not perform health checks on instances in the Standby state. These instances have to manually set back to the`InService` state.
+
+    - Amazon EC2 Auto Scaling waits to terminate an instance if it is waiting for a lifecycle hook to complete. If the status is `terminating:wait`, you can check the heartbeat timeout and then run completing-lifecycle-action to complete the lifecycle hook.
+
+    - If Amazon EC2 Auto Scaling is waiting for an ELB connection draining / deregistration delay period to complete, it waits to terminate the instance.
+
+  - **ELB Health Checks**:
+
+    - ELB settings can affect health checks and instance replacements. Note the instance's status in on the ELB console.
+    - Amazon EC2 Auto Scaling doesn't use the results of ELB health checks to determinate an instance's health status when the group's health check configuration is set to `EC2`. As a result, Amazon EC2 Auto Scaling doesn't terminate instances that fail ELB health checks.
+    - If an instance's status is `OutofService` on the ELB console, but the instance's status is `Healthy` on the Amazon EC2 Auto Scaling console, confirm that the health check type is set to ELB.
+
+    - If the group's health check type is already ELB and the instance's status on the ELB console is `OutofService`, use the status description that you noted earlier to determine further steps:
+
+      - **Instance registration is still in progress**: wait for load balancer to complete instance registration and for the instance to enter the `InService` state.
+
+      - **Instance is in the Amazon EC2 Availability Zone for which LoadBalancer is not configured to route traffic to**: Edit the subnets of the Auto Scaling group or load balancer to be sure they are same as the instance's subnets.
+
+      - **Instance hasn't passed the configured `HealthyThreshold` number of health checks consecutively**: Wait for ELB to complete health checks and the instance to enter the `InService` state.
+
+---
+
+### Failure to provision replacement instance
+
+**Problem:**
+
+A streaming solutions company is building a video streaming product by using an Application Load Balancer (ALB) that routes the requests to the underlying EC2 instances. The engineering team has noticed a peculiar pattern. The ALB removes an instance from its pool of healthy instances whenever it is detected as unhealthy but the Auto Scaling group fails to kick-in and provision the replacement instance.
+
+**Resolution:**
+
+- If the Auto Scaling group (ASG) is using EC2 as the health check type and the Application Load Balancer (ALB) is using its in-built health check, there may be a situation where the ALB health check fails because the health check pings fail to receive a response from the instance.
+
+- At the same time, ASG health check can come back as successful because it is based on EC2 based health check.
+
+- Therefore, in this scenario, the ALB will remove the instance from its inventory, however, the ASG will fail to provide the replacement instance. This can lead to the scaling issues mentioned in the problem statement.
+
+---
+
+# Solutions Architecture
+
+## [Dynamic Scaling in an Auto Scaling Group when SQS traffic increases](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-using-sqs-queue.html)
+
+**Problem**: An e-commerce company runs its web application on EC2 instances in an Auto Scaling group and it's configured to handle consumer orders in an SQS queue for downstream processing. The DevOps team has observed that the performance of the application goes down in case of a sudden spike in orders received.
+
+**Solution**:
+
+Use a **[target tracking scaling policy](#dynamic-scaling)** based on a custom Amazon SQS queue metric
+
+If you use a target tracking scaling policy based on a custom Amazon SQS queue metric, dynamic scaling can adjust to the demand curve of your application more effectively. You may use an existing CloudWatch Amazon SQS metric like `ApproximateNumberOfMessagesVisible` for target tracking but you could still face an issue so that the number of messages in the queue might not change proportionally to the size of the Auto Scaling group that processes messages from the queue. The solution is to use a backlog per instance metric with the target value being the acceptable backlog per instance to maintain.
+
+To calculate your backlog per instance, divide the `ApproximateNumberOfMessages` queue attribute by the number of instances in the `InService` state for the Auto Scaling group. Then set a target value for the Acceptable backlog per instance.
+
+To illustrate with an example, let's say that the current `ApproximateNumberOfMessages` is `1500` and the fleet's running capacity is `10`. If the average processing time is` 0.1` seconds for each message and the longest acceptable latency is `10` seconds, then the acceptable backlog per instance is `10 / 0.1`, which equals `100`. This means that `100` is the target value for your target tracking policy. If the backlog per instance is currently at `150 (1500 / 10)`, your fleet scales out, and it scales out by `5` instances to maintain proportion to the target value.
+
+**Scaling Based on Amazon SQS**:
+
+![SQS as custom metric](assets/sqs-as-custom-metric-diagram.png)
+
+---
+
 # [Using the CLI](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/index.html#cli-aws-elbv2)
 
-## [`create-load-balancer`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-load-balancer.html)
+## `elbv2`
+
+### [`create-load-balancer`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-load-balancer.html)
 
 **Syntax:**
 
@@ -1082,7 +1380,7 @@ aws elbv2 create-load-balancer \
 
 ---
 
-## [`create-target-group`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-target-group.html)
+### [`create-target-group`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-target-group.html)
 
 **Syntax:**
 
@@ -1127,7 +1425,7 @@ aws elbv2 create-load-balancer \
 
 ---
 
-## [`register-targets`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/register-targets.html)
+### [`register-targets`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/register-targets.html)
 
 Registers the specified targets with the specified target group.
 
@@ -1159,7 +1457,7 @@ None
 
 ---
 
-## [`deregister-targets`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/deregister-targets.html)
+### [`deregister-targets`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/deregister-targets.html)
 
 Deregisters the specified targets from the specified target group. After the targets are deregistered, they no longer receive traffic from the load balancer.
 
@@ -1185,7 +1483,7 @@ None
 
 ---
 
-## [`create-listener`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-listener.html)
+### [`create-listener`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-listener.html)
 
 Creates a listener for the specified Application Load Balancer, Network Load Balancer, or Gateway Load Balancer.
 
@@ -1245,7 +1543,7 @@ aws elbv2 create-listener \
 }
 ```
 
-## [`create-rule`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-rule.html)
+### [`create-rule`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/create-rule.html)
 
 Creates a rule for the specified listener. The listener must be associated with an Application Load Balancer.
 
@@ -1290,9 +1588,9 @@ aws elbv2 create-rule \
 
 ---
 
-## [`modify-load-balancer-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/modify-load-balancer-attributes.html)
+### [`modify-load-balancer-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/modify-load-balancer-attributes.html)
 
-### `modify-load-balancer-attributes`: Overview and Syntax
+#### `modify-load-balancer-attributes`: Overview and Syntax
 
 Modifies the specified attributes of the specified Application Load Balancer, Network Load Balancer, or Gateway Load Balancer.
 
@@ -1369,7 +1667,7 @@ Where,
 
 ---
 
-### Example 1: Deletion Protection Enabled
+#### Example 1: Deletion Protection Enabled
 
 ```s
 aws elbv2 modify-load-balancer-attributes \
@@ -1379,7 +1677,7 @@ aws elbv2 modify-load-balancer-attributes \
 
 ---
 
-### Example 2: Enable Access Logs and provide permission to access them
+#### Example 2: Enable Access Logs and provide permission to access them
 
 ```s
 aws elbv2 modify-load-balancer-attributes \
@@ -1389,9 +1687,9 @@ aws elbv2 modify-load-balancer-attributes \
 
 ---
 
-## [`modify-target-group-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/modify-target-group-attributes.html)
+### [`modify-target-group-attributes`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/modify-target-group-attributes.html)
 
-### `modify-target-group-attributes`: Overview and Syntax
+#### `modify-target-group-attributes`: Overview and Syntax
 
 Modifies the specified attributes of the specified target group.
 
@@ -1469,7 +1767,7 @@ Where,
 
 ---
 
-### Example 1: Modify the deregistration delay timeout
+#### Example 1: Modify the deregistration delay timeout
 
 This example sets the deregistration delay timeout to the specified value for the specified target group. [Read more about Deregistration delay](#elb-connection-draining--deregistration-delay)
 
@@ -1494,7 +1792,7 @@ aws elbv2 modify-target-group-attributes \
 
 ---
 
-### Example 2: Apply sticky sessions and modify the stickiness settings of an ALB
+#### Example 2: Apply sticky sessions and modify the stickiness settings of an ALB
 
 This example enables the sticky sessions and modifies the stickiness type and duration. [Read more about Applying Sticky Sessions](#sticky-sessions-applying-sticky-sessions-to-existing-load-balancer)
 
@@ -1550,7 +1848,7 @@ Response:
 
 ---
 
-## [`delete-rule`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-rule.html)
+### [`delete-rule`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-rule.html)
 
 Deletes the specified rule.
 
@@ -1574,7 +1872,7 @@ None
 
 ---
 
-## [`delete-listener`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-listener.html)
+### [`delete-listener`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-listener.html)
 
 Deletes the specified listener.
 
@@ -1596,7 +1894,7 @@ aws elbv2 delete-listener \
 
 ---
 
-## [`delete-load-balancer`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-load-balancer.html)
+### [`delete-load-balancer`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-load-balancer.html)
 
 Deletes the specified Application Load Balancer, Network Load Balancer, or Gateway Load Balancer. Deleting a load balancer also deletes its listeners.
 
@@ -1624,7 +1922,7 @@ None
 
 ---
 
-## [`delete-target-group`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-target-group.html)
+### [`delete-target-group`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/elbv2/delete-target-group.html)
 
 Deletes the specified target group.
 

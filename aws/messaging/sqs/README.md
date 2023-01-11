@@ -2,15 +2,16 @@
 
 - [Table of Contents](#table-of-contents)
 - [Messaging: Primer](#messaging-primer)
-- [Overview](#overview)
-- [Visibility Timeouts](#visibility-timeouts)
-- [Dead Letter Queue (DLQ)](#dead-letter-queue-dlq)
+- [SQS: Overview](#sqs-overview)
+- [SQS: Visibility Timeouts](#sqs-visibility-timeouts)
+- [SQS: Dead Letter Queue (DLQ)](#sqs-dead-letter-queue-dlq)
   - [DLQ: Overview](#dlq-overview)
   - [DLQ: Redrive to Source](#dlq-redrive-to-source)
-- [Delay Queues](#delay-queues)
-- [Long-Polling](#long-polling)
+- [SQS: Delay Queues](#sqs-delay-queues)
+- [SQS: Temporary Queues](#sqs-temporary-queues)
+- [SQS: Long-Polling](#sqs-long-polling)
 - [SQS Extended Client](#sqs-extended-client)
-- [FIFO Queues](#fifo-queues)
+- [SQS: FIFO Queues](#sqs-fifo-queues)
   - [FIFO Queues: Overview](#fifo-queues-overview)
   - [FIFO Queues: De-duplication](#fifo-queues-de-duplication)
   - [FIFO Queues: Message Grouping](#fifo-queues-message-grouping)
@@ -36,25 +37,30 @@
 
 ---
 
-# Overview
+# SQS: Overview
 
 **Amazon SQS** is a reliable, highly-scalable hosted queue for storing messages as they travel between applications or microservices. Amazon SQS moves data between distributed application components and helps you decouple these components.
 
-**An Amazon SQS message has three basic states:**
+- **An Amazon SQS message has three basic states:**
 
-1. Sent to a queue by a producer.
-2. Received from the queue by a consumer.
-3. Deleted from the queue.
+  1. Sent to a queue by a producer.
+  2. Received from the queue by a consumer.
+  3. Deleted from the queue.
 
-**Basic Workflow:**
+- **Basic Workflow:**
 
-1. Create a Queue with an Access Policy allowing Producer to write to Queue
-2. Create notification(s) from the Producer
-3. Create a Consumer that polls the queue for messages
+  1. Create a Queue with an Access Policy allowing Producer to write to Queue
+  2. Create notification(s) from the Producer
+  3. Create a Consumer that polls the queue for messages
+
+- **Throughput**:
+
+  - **Normal Queues**: `3000 messages/second without batching`, unlimited with batching
+  - **FIFO Queues**: `300 messages/sec without batching`, `3000 messages/sec with batching` (maxed at 10 messages per transaction)
 
 ---
 
-# Visibility Timeouts
+# SQS: Visibility Timeouts
 
 When a consumer receives and processes a message from a queue, the message remains in the queue. Amazon SQS doesn't automatically delete the message. Because Amazon SQS is a distributed system, there's no guarantee that the consumer actually receives the message (for example, due to a connectivity issue, or due to an issue in the consumer application). Thus, the consumer must delete the message from the queue after receiving and processing it.
 
@@ -66,7 +72,7 @@ Immediately after a message is received, it remains in the queue. To prevent oth
 
 ---
 
-# Dead Letter Queue (DLQ)
+# SQS: Dead Letter Queue (DLQ)
 
 ## DLQ: Overview
 
@@ -92,7 +98,7 @@ If a consumer fails to process a message within the visibility timeout the mesag
 
 ---
 
-# Delay Queues
+# SQS: Delay Queues
 
 Delay queues let you postpone the delivery of new messages to consumers for a number of seconds.
 
@@ -110,7 +116,29 @@ Delay queues are similar to visibility timeouts because both features make messa
 
 ---
 
-# Long-Polling
+# [SQS: Temporary Queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-temporary-queues.html)
+
+- Temporary queues help you save development time and deployment costs when using common message patterns such as request-response.
+- You can use the Temporary Queue Client to create high-throughput, cost-effective, application-managed temporary queues.
+- The client maps multiple temporary queues—application-managed queues created on demand for a particular process—onto a single Amazon SQS queue automatically.
+- This allows your application to make fewer API calls and have a higher throughput when the traffic to each temporary queue is low.
+- When a temporary queue is no longer in use, the client cleans up the temporary queue automatically, even if some processes that use the client aren't shut down cleanly.
+
+- **Benefits**:
+
+  - They serve as lightweight communication channels for specific threads or processes.
+  - They can be created and deleted without incurring additional costs.
+  - They are API-compatible with static (normal) Amazon SQS queues. This means that existing code that sends and receives messages can send messages to and receive messages from virtual queues.
+
+- To better support short-lived, lightweight messaging destinations, AWS recommends Amazon SQS **[Temporary Queue Client](https://aws.amazon.com/blogs/compute/simple-two-way-messaging-using-the-amazon-sqs-temporary-queue-client/)**.
+  - This client makes it easy to create and delete many temporary messaging destinations without inflating your AWS bill.
+  - The key concept behind the client is the virtual queue.
+  - Virtual queues let you multiplex many low-traffic queues onto a single SQS queue.
+  - Creating a virtual queue only instantiates a local buffer to hold messages for consumers as they arrive; there is no API call to SQS and no costs associated with creating a virtual queue.
+
+---
+
+# SQS: Long-Polling
 
 When the wait time for the **`ReceiveMessage`** API action is greater than `0`, long polling is in effect.
 
@@ -123,13 +151,13 @@ When the wait time for the **`ReceiveMessage`** API action is greater than `0`, 
 
 # SQS Extended Client
 
-The default message size limit is `256 KB`, but we need to send large messages, say over 1 GB. We can do so using the SQS Extended Client which is a Java Library.
+The default message size limit is `256 KB`, but we need to send large messages, say over 1 GB. We can do so using the **SQS Extended Client** which is a Java Library.
 
 ![SQS Extended Client](assets/sqs-extended-client.png)
 
 ---
 
-# FIFO Queues
+# SQS: FIFO Queues
 
 ## FIFO Queues: Overview
 
@@ -147,7 +175,7 @@ FIFO queues have all the capabilities of the standard queues, but are designed t
 - **Educational institutes**: Preventing a student from enrolling in a course before registering for an account
 - **Online ticketing system**: Where tickets are distributed on a first come first serve basis
 
-> **Note**: FIFO queues also provide **exactly-once processing**, but have a limited number of transactions per second (TPS). By default this is: 300 messages/s without batching and 3000 messages/s with batching. You can use Amazon SQS high throughput mode with your FIFO queue to increase your transaction limit. For details on using high throughput mode, see High throughput for FIFO queues. For information on throughput quotas, see Quotas related to messages.
+> **Note**: FIFO queues also provide **exactly-once processing**, but have a limited number of transactions per second (TPS). By default this is: `300 messages/s without batching` and `3000 messages/s with batching`. You can use Amazon SQS high throughput mode with your FIFO queue to increase your transaction limit. For details on using high throughput mode, see High throughput for FIFO queues. For information on throughput quotas, see Quotas related to messages.
 
 ---
 

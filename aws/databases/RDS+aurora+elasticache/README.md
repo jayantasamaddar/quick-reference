@@ -15,12 +15,17 @@
   - [Aurora: Overview](#aurora-overview)
   - [Aurora: DB Cluster Infrastructure](#aurora-db-cluster-infrastructure)
   - [Aurora: Features](#aurora-features)
-  - [Aurora: Custom Endpoints](#aurora-custom-endpoints)
+  - [Aurora: Endpoints](#aurora-endpoints)
+    - [Cluster Endpoint](#cluster-endpoint)
+    - [Reader Endpoints](#reader-endpoints)
+    - [Custom Endpoints](#custom-endpoints)
+    - [Instance Endpoint](#instance-endpoint)
   - [Aurora: Aurora Serverless](#aurora-aurora-serverless)
   - [Aurora: Aurora Multi-Master](#aurora-aurora-multi-master)
   - [Aurora: Aurora Global](#aurora-aurora-global)
   - [Aurora: Machine Learning](#aurora-machine-learning)
   - [Aurora: Aurora Database Cloning](#aurora-aurora-database-cloning)
+  - [Aurora: Backtracking](#aurora-backtracking)
 - [RDS and Aurora: Backup and Monitoring](#rds-and-aurora-backup-and-monitoring)
   - [RDS Backups](#rds-backups)
   - [Aurora Backups](#aurora-backups)
@@ -97,8 +102,26 @@ Amazon RDS is a managed Relational Database Service that uses SQL as a query lan
 
 - **Security**:
 
-  - Authentication through IAM, integration with Secrets Manager to manage database credentials
-  - Security Groups, KMS, Encryption in transit (SSL)
+  - **Authentication through AWS IAM Database Authentication**.
+
+    - IAM database authentication works with **MySQL** and **PostgreSQL**.
+    - With this authentication method, you don't need to use a password when you connect to a DB instance. Instead, you use an authentication token.
+    - An authentication token is a unique string of characters that Amazon RDS generates on request.
+    - Authentication tokens are generated using AWS Signature Version 4.
+    - Each token has a lifetime of 15 minutes.
+    - You don't need to store user credentials in the database, because authentication is managed externally using IAM.
+    - You can also still use standard database authentication.
+
+    - **Benefits of Authentication through IAM Database Authentication**:
+
+      - Network traffic to and from the database is encrypted in-transit using SSL.
+      - You can use IAM to centrally manage access to your database resources, instead of managing access individually on each DB instance.
+      - For applications running on Amazon EC2, you can use profile credentials specific to your EC2 instance to access your database instead of a password, for greater security.
+
+  - **Integration with Secrets Manager to manage database credentials**
+  - **Security Groups**
+  - **KMS**
+  - **Encryption in transit (SSL)**
 
 - **Customization**:
 
@@ -110,7 +133,7 @@ Amazon RDS is a managed Relational Database Service that uses SQL as a query lan
 ## RDS: Storage Auto Scaling
 
 - Helps you dynamically increase storage on your RDS DB instance dynamically
-- When RDS detects you are running out of free database storage, it scales automatically
+- When RDS detects you are running out of free database storage, it scales automatically. Scales upto 64 TiB for most databases.
 - Avoid manually scaling your database storage.
 - You have to set a **Maximum Storage Threshold** (maximum limit for DB storage)
 - Automatically modify storage if:
@@ -148,21 +171,52 @@ In AWS there's a network cost when data goes from one AZ to another but there ar
 
 ## RDS Multi AZ: Disaster Recovery (DR)
 
-Multi AZ is mainly used for Disaster Recovery.
+- Multi AZ is mainly used for Disaster Recovery.
 
-- Synchronous replication to a standby instance in another AZ. So that means, when the application writes to the Master, that change needs to also be replicated in the standby to be accepted.
-- One DNS name - automatic app failover to standby if Master fails
-- Increase availability
-- Failover in case of loss of AZ, loss of network, instance or storage failure - the standby database will become the new Master
-- No manual intervention in apps necessary
-- Not used for scaling - the standby database is just for standby, you cannot write to it, you cannot read from it, it's just here as a failover.
+- **Increased Availability**:
+
+  - Amazon RDS automatically provisions and maintains a synchronous standby replica in a different Availability Zone.
+  - Each AZ runs on its own physically distinct, independent infrastructure, and is engineered to be highly reliable.
+
+- **Synchronous replication** to a standby instance in another AZ. So that means, when the application writes to the Master, that change needs to also be replicated in the standby to be accepted.
+
+- **Not used for scaling**: The standby database is just for standby, you cannot write to it, you cannot read from it, it's just here as a failover.
+
+- Failover in case of loss of AZ, loss of network, instance or storage failure - the standby database will become the new Master. Failover times are typically `60-120 seconds`.
+
+- **Single DNS Name (URL)** - Automatic app failover to standby if Master fails. The CNAME record will be updated to point to the standby DB, which is in turn promoted to become the new primary.
+
+- No manual intervention in apps necessary.
+
 - The Read Replicas CAN be set-up as Multi AZ for Disaster Recovery (DR)
+
 - Going from Single AZ to Multi AZ is a zero-downtime operation (no need to stop the DB)
-- Simply click **`Modify`** for the Database and **`Enable Multi AZ`**
-- Internally this is what happens:
-  - A snapshot is taken quickly of the Master database
-  - The new standby database will be restored from this snapshot in a new AZ
-  - Synchronization is established between the two databases
+
+- **Workflow using Console**: Simply click **`Modify`** for the Database and **`Enable Multi AZ`**
+
+- **Maintenance**:
+
+  - **Maintenance in RDS (OS updates) with Multi-AZ occurs in the following flow**:
+
+    - Perform maintenance on the standby.
+    - Promote the standby to primary.
+    - Perform maintenance on the old primary, which becomes the new standby.
+    - For OS updates, the database engine for the entire Multi-AZ deployment is shut down during the upgrade.
+
+  - **Database Engine update with Multi-AZ occurs in the following flow**:
+
+    - Amazon RDS upgrades both the primary and secondary DB instances at the same time.
+
+- **Internal workflow for Failover**:
+
+  - A snapshot is taken quickly of the Master database.
+  - The new standby database is restored from this snapshot in a new AZ.
+  - Synchronization is established between the two databases.
+
+  - Amazon RDS uses several different technologies to provide failover support:
+
+    - Multi-AZ deployments for MariaDB, MySQL, Oracle, and PostgreSQL DB instances use Amazon's failover technology.
+    - SQL Server DB instances use SQL Server Database Mirroring (DBM) or Always On Availability Groups (AGs).
 
 ---
 
@@ -214,17 +268,32 @@ Amazon RDS Custom is a managed database service for applications that require cu
   - Auto-Scaling of Read Replicas
   - Failover in Aurora is instantaneous, which makes it much faster than Multi-AZ on MySQL on RDS.
 
-  - **High Availability**: `6` copies of your data across `3 AZ`
+- **High Availability**: `6` copies of your data across `3 AZ`
 
-    - Master is the only instance that takes writes. It also accepts Reads.
-    - `4` copies out of `6` needed for writes (including Master)
-    - `3` copies out of `6` needed for reads (including Master)
-    - Self-healing with peer-to-peer replication (i.e. if some data is corrupted then it does self-healing)
-    - Storage is stripped across 100s of volumes (managed by AWS), which reduces risk of data loss
-    - Automated failover for Master in less than `30 seconds`
-    - **Aurora Global**: Master + upto `15` Read Replicas to serve Reads (any of these replicas can also become Master)
-    - Custom endpoints: one endpoint each for all Reader(s) and the Writer instance
-    - **Aurora Multi-Master** for continuous write failover (High-write availability)
+  - Master is the only instance that takes writes. It also accepts Reads.
+  - `4` copies out of `6` needed for writes (including Master)
+  - `3` copies out of `6` needed for reads (including Master)
+  - Self-healing with peer-to-peer replication (i.e. if some data is corrupted then it does self-healing)
+  - Storage is stripped across 100s of volumes (managed by AWS), which reduces risk of data loss
+  - Automated failover for Master in less than `30 seconds`
+  - **Aurora Global**: Master + upto `15` Read Replicas to serve Reads (any of these replicas can also become Master)
+  - Custom endpoints: one endpoint each for all Reader(s) and the Writer instance
+  - **Aurora Multi-Master** for continuous write failover (High-write availability)
+
+- **Fault Tolerance**: If the primary instance in a DB cluster using single-master replication fails, Aurora automatically fails over to a new primary instance in one of two ways:
+
+  - **By promoting an existing Aurora Replica to the new primary instance** (if there is one or more Aurora Replicas in the Cluster) - faster than creating a new primary instance
+  - **By creating a new primary instance** (if there are no Aurora Replicas) - slower than promotion
+
+- **Priorities for Promoting**:
+
+  - You can customize the order in which your Aurora Replicas are promoted to the primary instance after a failure by assigning each replica a priority.
+  - Priorities range from `0` for the first priority to `15` for the last priority.
+
+  - **Promotion Tiers**: More than one Aurora Replica can share the same priority, resulting in promotion tiers.
+
+    - **Two or more Aurora Replicas share the same priority**: Amazon RDS promotes the replica that is largest in size.
+    - **Two or more Aurora Replicas share the same priority and size**: Amazon RDS promotes an arbitrary replica in the same promotion tier.
 
 - **Security / Monitoring / Maintenance**: Same as RDS
 
@@ -248,10 +317,67 @@ Amazon RDS Custom is a managed database service for applications that require cu
 
 ---
 
-## Aurora: Custom Endpoints
+## [Aurora: Endpoints](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.Endpoints.html)
 
-- Define a Subset of Aurora Instances as Custom Endpoints
-- Use Case: Run analytical queries on specific replicas that may use more powerful hardware
+An endpoint is represented as an Aurora-specific URL that contains a **host address** and a **port**. The following types of endpoints are available from an Aurora DB cluster:
+
+### Cluster Endpoint
+
+- A **cluster / writer endpoint** for an Aurora DB cluster connects to the current primary DB instance for that DB cluster.
+- This endpoint is the only one that can perform write operations such as DDL statements.
+- Because of this, the cluster endpoint is the one that you connect to when you first set up a cluster or when your cluster only contains a single DB instance.
+- Each Aurora DB cluster has one cluster endpoint and one primary DB instance.
+- You use the cluster endpoint for all write operations on the DB cluster, including inserts, updates, deletes, and DDL changes.
+- You can also use the cluster endpoint for read operations, such as queries.
+
+- **Example**: `mydbcluster.cluster-123456789012.us-east-1.rds.amazonaws.com:3306`
+
+---
+
+### Reader Endpoints
+
+- A **reader endpoint** for an Aurora DB cluster provides load-balancing support for read-only connections to the DB cluster.
+- Use the reader endpoint for read operations, such as queries.
+- By processing those statements on the read-only Aurora Replicas, this endpoint reduces the overhead on the primary instance.
+- It also helps the cluster to scale the capacity to handle simultaneous SELECT queries, proportional to the number of Aurora Replicas in the cluster.
+- Each Aurora DB cluster has one reader endpoint.
+- If the cluster contains one or more Aurora Replicas, the reader endpoint load-balances each connection request among the Aurora Replicas.
+- If the cluster only contains a primary instance and no Aurora Replicas, the reader endpoint connects to the primary instance. In that case, you can perform write operations through the endpoint.
+
+- **Example**: `mydbcluster.cluster-ro-123456789012.us-east-1.rds.amazonaws.com:3306`
+
+---
+
+### Custom Endpoints
+
+- Define a Subset of Aurora Instances as **Custom Endpoints**.
+- When you connect to the endpoint, Aurora performs load balancing and chooses one of the instances in the group to handle the connection.
+- You can create up to `5` custom endpoints for each provisioned Aurora cluster or Aurora Serverless v2 cluster.
+- You can't use custom endpoints for Aurora Serverless v1 clusters.
+- The connection can go to any DB instance (randomly) that is associated with the custom endpoint.
+
+  - **Recommendation**: Make sure that all the DB instances within that group share some similar characteristic. Doing so ensures that the performance, memory capacity, and so on, are consistent for everyone who connects to that endpoint.
+
+- **Use Case**: Run analytical queries on specific replicas that may use more powerful hardware
+
+- **Example**: `myendpoint.cluster-custom-123456789012.us-east-1.rds.amazonaws.com:3306`
+
+---
+
+### Instance Endpoint
+
+- An instance endpoint connects to a specific DB instance within an Aurora cluster.
+
+- Each DB instance in a DB cluster has its own unique instance endpoint.
+
+  - There is one instance endpoint for the current primary DB instance of the DB cluster, and
+  - There is one instance endpoint for each of the Aurora Replicas in the DB cluster.
+
+- The instance endpoint provides direct control over connections to the DB cluster, for scenarios where using the cluster endpoint or reader endpoint might not be appropriate.
+
+- **Use Case**: Your client application might require more fine-grained load balancing based on workload type. In this case, you can configure multiple clients to connect to different Aurora Replicas in a DB cluster to distribute read workloads.
+
+- **Example**: `mydbinstance.123456789012.us-east-1.rds.amazonaws.com:3306 `
 
 ---
 
@@ -278,8 +404,10 @@ Amazon RDS Custom is a managed database service for applications that require cu
 
   - Useful for disaster recovery
   - Simple to put in place
+  - Independent endpoints in an Aurora DB Cluster, used for scaling Read Operations
+  - Up to `15` Aurora Replicas can be distributed across the Availability Zones that a DB cluster spans within an AWS Region
 
-- **Aurora Global Database (recommneded)**
+- **Aurora Global Database (recommended)**
 
   - 1 x Primary Region (Read-write)
   - Up to 5 secondary (read-only) regions, replication lag is less than 1 second
@@ -312,6 +440,38 @@ Amazon RDS Custom is a managed database service for applications that require cu
 - The new DB cluster uses the same cluster volume and data as the original but will change when the data updates are made to the newly cloned database.
 - Very fast and cost effective
 - Does not affect the source database
+
+---
+
+## [Aurora: Backtracking](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraMySQL.Managing.Backtrack.html)
+
+You can backtrack a **Aurora MySQL DB Cluster** to a specific time, without restoring data from a backup. Backtrack is not available for **Aurora PostgreSQL**.
+
+- Helps easily undo mistakes. If you mistakenly perform a destructive action, such as a DELETE without a WHERE clause, you can backtrack the DB cluster to a time before the destructive action with minimal interruption of service.
+
+- **Minimal downtime**:
+
+  - Restoring a DB cluster to a point in time launches a new DB cluster and restores it from backup data or a DB cluster snapshot, which can take **_hours_**.
+  - Backtracking a DB cluster doesn't require a new DB cluster and rewinds the DB cluster in **_minutes_**.
+
+- You can explore earlier data changes. You can repeatedly backtrack a DB cluster back and forth in time to help determine when a particular data change occurred.
+
+  - **Example**: You can backtrack a DB cluster three hours and then backtrack forward in time one hour. In this case, the backtrack time is two hours before the original time.
+
+- **Backtrack window**: With backtracking, there is a target backtrack window and an actual backtrack window:
+
+  - **Target backtrack window**: The amount of time you want to be able to backtrack your DB cluster. E.g. You might specify a target backtrack window of 24 hours if you want to be able to backtrack the DB cluster one day.
+  - **Actual backtrack window**: The actual amount of time you can backtrack your DB cluster, which can be smaller than the target backtrack window. The actual backtrack window is based on your workload and the storage available for storing information about database changes, called **_change records_**.
+
+- **Limitations**:
+
+  - Backtracking is only available for DB clusters that were created with the Backtrack feature enabled during creation or when restored from a snapshot of a MySQL DB Cluster.
+  - The limit for a backtrack window is `72 hours`.
+  - Backtracking isn't supported with binary log (binlog) replication. Cross-Region replication must be disabled before you can configure or use backtracking.
+  - Backtracking affects the entire DB cluster. For example, you can't selectively backtrack a single table or a single data update.
+  - You can't restore a cross-Region snapshot of a backtrack-enabled cluster in an AWS Region that doesn't support backtracking.
+  - You can't use the Backtrack feature with Aurora Multi-Master clusters.
+  -
 
 ---
 
@@ -358,6 +518,7 @@ Amazon RDS Custom is a managed database service for applications that require cu
     - You want to stop a database for a long time and save costs. Stopping a database means we still pay for database storage costs. Hence we should take a snapshot and restore it later when we require it. Snapshot storage costs way less.
 
 - **Restore Options:**
+
   - Restoring a snapshot creates a new database.
   - Restore a MySQL Aurora cluster from S3:
     - Create a backup of your on-premises database using Percona XtraBackup (it only works with this for now).
@@ -386,7 +547,7 @@ Amazon RDS Custom is a managed database service for applications that require cu
 
 ---
 
-# RDS and Aurora: RDS Proxy
+# [RDS and Aurora: RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/rds-proxy.html)
 
 - Fully managed database proxy for Amazon RDS.
 - Allows apps to pool and share DB connections established with the database.
@@ -395,11 +556,31 @@ Amazon RDS Custom is a managed database service for applications that require cu
 
 - Improve database efficiency by reducing the stress on database resources (e.g. CPU, RAM) and minimize open connections and timeouts.
 - Serverless, auto-scaling (no need to manage capacity), highly available (multi-AZ).
-- Reduced RDS and Aurora Failover time by upto 66%.
+- Bypasses Domain Name System (DNS) caches to reduce failover times by up to 66% for RDS and Aurora Multi-AZ databases.
 - Supports RDS (MySQL,PostgreSQL, MariaDB) and Aurora (MySQL, PostgreSQL)
 - No code change required for most apps, just instead of connecting to the database instance, we connect to the RDS Proxy
 - Enforces IAM authentication for Databases and securely store credentials in AWS Secrets Manager
 - The RDS Proxy is never publicly accessible (must be accessed from VPC)
+
+- **Use Case**:
+
+  - Build applications that can transparently tolerate database failures without needing to write complex failure handling code.
+
+- **Limitations**:
+
+  - You can have `20` proxies for each AWS Account ID. (Additional proxies can be requested by opening a ticket with AWS Support)
+  - Each proxy can have up to 200 associated Secrets Manager secrets.
+  - Each proxy can connect up to 200 different user accounts at the same time.
+  - You can create, view, modify and delete up to 20 endpoints for each proxy. These endpoints are in addition to the default endpoint that's automatically created for each proxy.
+  - In an Aurora cluster, all the connections using the default proxy endpoint are handled by the Aurora Writer instance.
+  - You can use RDS Proxy with Aurora Serverless v2 Clusters, but not with Aurora Serverless v1 Clusters.
+  - Your RDS Proxy must be in the same VPC as the database.
+  - The RDS Proxy is not publicly accessible (but the database can be)
+  - You cannot use the RDS Proxy with a VPC that has its tenancy set to `dedicated`
+  - If you use RDS Proxy with an RDS DB instance or Aurora DB Cluster that has IAM authentication enabled, check user authentication. Make sure that all users who connect through a proxy authenticate through user names and passwords.
+  - You cannot use RDS Proxy with custom DNS.
+  - Each proxy can be associated with a single target DB instance or cluster. However, you can associate multiple proxies with the same DB instance or cluster.
+  - Any statement with a text size greater than 16 KB causes the proxy to pin the session to the current connection.
 
 ---
 
@@ -417,6 +598,7 @@ Amazon RDS Custom is a managed database service for applications that require cu
   - Helps reduce load off of databases for read intensive workloads. The idea is that the common queries are going to be cached and the database will not be queried every time, just your cache can be used everytime to retrieve the result of these queries.
   - Helps make your application stateless by putting the state of your application into ElastiCache
   - AWS takes care of OS maintenance / patching, optimizations, setup, configuration, monitoring, failure recovery and backups
+  - Both ElastiCache for Redis and Memcached are **HIPAA Compliant**
 
 - **Security**:
 
@@ -459,9 +641,10 @@ Amazon RDS Custom is a managed database service for applications that require cu
   - **On-demand Nodes**: Hourly billing without any long-term commitments. More expensive.
   - **Reserved nodes**: Commitment of `1` or `3` years. Get a significant discount. Based on whether payment is upfront or not, further discount possible.
 
-- **Use Cases**:
+- **Use Cases**
 
-  - Gaming Leaderboards that are computationally complex
+  - **Read-heavy application workloads** (such as social networking, gaming, media sharing, leaderboard, and Q&A portals)
+  - **Compute-intensive workloads** (such as a recommendation engine) by allowing you to store the objects that are often read in the cache.
   - Redis Sorted Sets guarantee cardinality (uniqueness) and element ordering
 
 > **Note**: Using Amazon ElastiCache involves heavy application code changes
@@ -798,7 +981,7 @@ Finally, it might seem as if you should only cache your heavily hit database que
 
 ## ElastiCache: Cluster Modes
 
-1. Cluster Mode Disabled:
+1. **Cluster Mode Disabled**:
 
    - One primary node, upto 5 read-only replicas. The idea is that in the failure of the Primary node, one of the replicas can be promoted to become the primary node (read-write)
    - Asynchronous Replication
@@ -808,7 +991,7 @@ Finally, it might seem as if you should only cache your heavily hit database que
    - Guard against data loss if node failure
    - Multi-AZ enabled by default for failover
 
-2. Cluster Mode Enabled:
+2. **Cluster Mode Enabled**:
 
    - Data is partitioned across many shards (helpful to scale writes). The idea is that data is going to be partially on each of the shards
    - Each shard has a primary and upto 5 replica nodes (same as Cluster Mode Disabled)
@@ -899,3 +1082,4 @@ Finally, it might seem as if you should only cache your heavily hit database que
 # References
 
 - [Caching - Best Practices](https://aws.amazon.com/caching/best-practices/)
+- [RDS now supports gp3 storage volumes](https://aws.amazon.com/about-aws/whats-new/2022/11/amazon-rds-general-purpose-gp3-storage-volumes/)

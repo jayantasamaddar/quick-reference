@@ -2,7 +2,6 @@
 
 - [Table of Contents](#table-of-contents)
 - [What is Amazon CloudFront?](#what-is-amazon-cloudfront)
-- [Difference between CloudFront and S3 Cross Region Replication](#difference-between-cloudfront-and-s3-cross-region-replication)
 - [CloudFront: Origins](#cloudfront-origins)
 - [CloudFront: Caching](#cloudfront-caching)
   - [CloudFront Caching: Overview](#cloudfront-caching-overview)
@@ -15,10 +14,15 @@
   - [Signed URL / Signed Cookies: Overview](#signed-url--signed-cookies-overview)
   - [CloudFront Signed URL vs S3 Pre-Signed URL](#cloudfront-signed-url-vs-s3-pre-signed-url)
   - [CloudFront Signed URL: Process](#cloudfront-signed-url-process)
-- [CloudFront: Pricing](#cloudfront-pricing)
 - [CloudFront: Multiple Origin](#cloudfront-multiple-origin)
 - [CloudFront: Origin Groups](#cloudfront-origin-groups)
 - [CloudFront: Field Level Encryption](#cloudfront-field-level-encryption)
+- [CloudFront: Using an SSL/TLS Certificate](#cloudfront-using-an-ssltls-certificate)
+- [CloudFront: Lambda@Edge and CloudFront Functions](#cloudfront-lambdaedge-and-cloudfront-functions)
+- [CloudFront vs S3 Cross Region Replication](#cloudfront-vs-s3-cross-region-replication)
+- [CloudFront: Content Uploads via POST, PUT and other HTTP Methods](#cloudfront-content-uploads-via-post-put-and-other-http-methods)
+- [CloudFront vs S3 Transfer Acceleration for PUT/POST](#cloudfront-vs-s3-transfer-acceleration-for-putpost)
+- [CloudFront: Pricing](#cloudfront-pricing)
 - [References](#references)
 
 ---
@@ -34,29 +38,20 @@ Amazon CloudFront is a Content Delivery Network (CDN) service built for high per
 
 ---
 
-# Difference between CloudFront and S3 Cross Region Replication
-
-| CloudFront                      | S3 Cross Region Replication                           |
-| ------------------------------- | ----------------------------------------------------- |
-| Global Edge Network             | Must be setup for each region you want replication in |
-| Files are cached for a TTL      | Files are updated in near real-time                   |
-| Great for global static content | Read-Only. Great for dynamic content in few regions   |
-
----
-
 # CloudFront: Origins
 
-- S3 Bucket
+- **S3 Bucket**
 
   - For distributing files and caching them at the edge
-  - To guarantee that only CloudFront can access your S3 buckets, enhanced security with CloudFront **`Origin Access Control (OAC)`** which replaces the **`Origin Access Identity (OAI)`**
+  - **[Restrict Access to an S3 Origin](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html)**: To guarantee that only CloudFront can access your S3 buckets, you can get enhanced security with CloudFront **`Origin Access Control (OAC)`** (replaces the **`Origin Access Identity (OAI)`**). Create an OAC and then update the S3 Bucket Policy.
   - CloudFront can also be used as an ingress (upload files to S3)
 
-- Custom Origin (HTTP)
-  - Application Load Balancer
-  - EC2 Instance
-  - S3 Website (must enable the bucket as a static S3 website)
-  - Any HTTP Backend you want
+- **Custom Origin (HTTP)**:
+
+  - **Application Load Balancer**
+  - **EC2 Instance**
+  - **S3 Website** (must enable the bucket as a static S3 website)
+  - **Any HTTP Backend you want**: HTTP server running on EC2 or on any server you manage, including On-Premise HTTP Servers
 
 ---
 
@@ -64,12 +59,14 @@ Amazon CloudFront is a Content Delivery Network (CDN) service built for high per
 
 ## CloudFront Caching: Overview
 
-- Cache based on
-  - Headers
-  - Session cookies
-  - Query string parameters
+- Cache based on:
+
+  - **Headers**
+  - **Session cookies**
+  - **Query string parameters**
+
 - The cache lives at each CloudFront Edge Location
-- Cache has a TTL expiry timer that will invalidate the cache
+- Cache has a **TTL** expiry timer that will **invalidate the cache**
 - If there is a cache miss, the request will be forwarded to the origin
 - If there is a cache hit, it is served from the cache at the edge location
 - You want to thus maximize the cache hit rate to minimize requests to the origin
@@ -199,17 +196,6 @@ To use a Signed URL or Signed Cookie:
 
 ---
 
-# CloudFront: Pricing
-
-- CloudFront Edge Locations are all around the world, hence cost of data out per edge location varies
-- You can reduce the number of edge locations for cost-reduction
-- Three price classes:
-  - Price Class All: All regions - best performance
-  - Price Class 200: Most regions but excludes most expensive regions (except South America, Australia and New Zealand)
-  - Price Class 100: Only the least expensive regions (Region 1: United States, Mexico, and Canada; Region 2: Europe and Israel)
-
----
-
 # CloudFront: Multiple Origin
 
 - To route different kinds of origins based on the content type
@@ -242,6 +228,205 @@ To use a Signed URL or Signed Cookie:
 
 ---
 
+# [CloudFront: Using an SSL/TLS Certificate](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-https-viewers-to-cloudfront.html)
+
+- If you're using the domain name that CloudFront assigned to your distribution, such as `d111111abcdef8.cloudfront.net`, you change the **Viewer Protocol Policy** setting for one or more cache behaviors to require HTTPS communication. In that configuration, CloudFront provides the SSL/TLS certificate.
+
+  - The CloudFront API to change the value of the `ViewerProtocolPolicy` element, is **`UpdateDistribution`**.
+
+- If you use a different domain name for your distribution, such as `example.com` then it's a best practice to do one of the following to avoid domain-name-related certificate warnings:
+
+  - **Request a public certificate from AWS Certificate Manager.**
+  - **Import certificates into AWS Certificate Manager.**
+
+- **If you use an Amazon issued certificate**:
+
+  - You must request the certificate in the `us-east-1` Region.
+  - You must have permission to use and request the ACM certificate.
+
+- **If you use an imported certificate with CloudFront**:
+
+  - Your key length must be `1024` or `2048` bits and cannot exceed `2048` bits.
+  - You must import the certificate in the `us-east-1` Region.
+  - You must have permission to use and import the SSL/TLS certificate.
+
+- **Workflow**:
+
+  1. Open the [CloudFront console](https://console.aws.amazon.com/cloudfront/v3/home).
+  2. In the top pane of the CloudFront console, choose the ID for the distribution that you want to update.
+  3. On the Behaviors tab, choose the cache behavior that you want to update, and then choose Edit.
+  4. Specify one of the following values for **Viewer Protocol Policy**:
+
+     - **Redirect HTTP to HTTPS**:
+
+       - Viewers can use both protocols. HTTP `GET` and `HEAD` requests are automatically redirected to HTTPS requests.
+       - CloudFront returns HTTP status code 301 (Moved Permanently) along with the new HTTPS URL.
+       - The viewer then resubmits the request to CloudFront using the HTTPS URL.
+
+       - When a viewer makes an HTTP request that is redirected to an HTTPS request, **CloudFront charges for both requests**:
+
+         - For the HTTP request, the charge is only for the request and for the headers that CloudFront returns to the viewer.
+         - For the HTTPS request, the charge is for the request, and for the headers and the object that are returned by your origin.
+
+     - **HTTPS Only**:
+
+       - Viewers can access your content only if they're using HTTPS.
+       - If a viewer sends an HTTP request instead of an HTTPS request, CloudFront returns HTTP status code `403 Forbidden` and does not return the object.
+
+  5. Choose **Yes, Edit**.
+  6. Repeat steps 3 through 5 for each additional cache behavior that you want to require HTTPS for between viewers and CloudFront.
+  7. Confirm the following before you use the updated configuration in a production environment:
+     - The path pattern in each cache behavior applies only to the requests that you want viewers to use HTTPS for.
+     - The cache behaviors are listed in the order that you want CloudFront to evaluate them in. For more information, see Path pattern.
+     - The cache behaviors are routing requests to the correct origins.
+
+- **Errors**:
+
+  - If you are missing permissions, the CloudFront console displays **Missing permission `acm:ListCertificates`** in the **Custom SSL Certificate** settings.
+  - If you don't have a certificate in the US East (N. Virginia) Region, or if your key size exceeds 2048 bits, the setting for **Custom SSL Certificate** is grayed out.
+
+- If you want to ensure that the objects that viewers get from CloudFront were encrypted when CloudFront got them from your origin, always use HTTPS between CloudFront and your origin.
+
+- If you recently changed from HTTP to HTTPS between CloudFront and your origin, we recommend that you invalidate objects in CloudFront edge locations.
+
+- CloudFront will return an object to a viewer regardless of whether the protocol used by the viewer (HTTP or HTTPS) matches the protocol that CloudFront used to get the object.
+
+---
+
+# CloudFront: Lambda@Edge and CloudFront Functions
+
+Lambda@Edge is a feature of Amazon CloudFront that lets you run code closer to users of your application, which improves performance and reduces latency.
+
+- **Edge Function**: Many modern applications want to execute some sort form of logic at the edge. An Edge Function is executable code that you write and attach to CloudFront distributions. The idea is to run these functions as close as possible to the users' locations to minimize latency.
+
+  CloudFront provides two types of functions at the Edge:
+
+  1. **CloudFront Functions**: CloudFront Native feature (manage entirely from within CloudFront)
+
+     - **Runtime Support**: `JavaScript`
+     - **Total package size**: `10 KB` (Lightweight)
+     - **Max. Memory**: `2 MB`
+     - **Number of Requests**: Scales to `millions of requests/second`
+     - **Max. Execution Time**: `< 1 ms`
+     - Used for high-scale, latency-sensitive CDN customizations
+     - Sub-ms startup times
+
+     - **Triggers**:
+
+       - **Viewer Request**: After CloudFront receives a request from a viewer
+       - **Viewer Response**: Before CloudFront forwards the response to the viewer
+
+     - **Network Access, File System Access**: Yes
+     - **Access to the Request Body**: No
+     - **Pricing**: Free tier available, 1/6th price of Lambda@Edge
+
+     - **Use Case**: < 1 ms execution functions
+
+       - **Cache Key Normalization**: Transform non-body request attributes (headers, cookies, query strings, URL) to create an optimal Cache Key
+       - **Header manipulation**: Insert / Modify / Delete HTTP Headers in the Request or Response
+       - **URL rewrites and redirects**
+       - **Request authentication & authorization**: Create and validate user-generated tokens (e.g. JWT) to allow/deny requests
+
+  2. **Lambda@Edge**: AWS Lambda Functions
+
+     - **Runtime Support**: `Node.js` or `Python`
+     - **Total package size**: `1 - 50 MB`
+     - **Max. Memory**: `128 MB - 10 GB`
+     - **Number of Requests**: Scales to `thousands of requests/second`
+     - **Triggers**:
+
+       ![Lambda@Edge triggers](assets/cloudfront-events-that-trigger-lambda-functions.png)
+
+       - **Viewer Request**: After CloudFront receives a request from a viewer
+       - **Origin Request**: Before CloudFront forwards the request to the origin
+       - **Origin Response**: After CloudFront receives the response from the origin
+       - **Viewer Response**: Before CloudFront forwards the response to the viewer
+
+     - **Network Access, File System Access**: Yes
+     - **Access to the Request Body**: Yes
+     - **Pricing**: No Free tier, charged per request and duration
+     - Author your functions in one AWS Region (`us-east-1`), then CloudFront replicates to all of its locations
+
+- **Performance**: Able to serve cached Lambda function responses on subsequent responses for the same user, from the closest edge location to the user. Get CloudFront benefits when it comes to latency.
+
+- **Serverless**: With Lambda@Edge, you don't have to provision or manage infrastructure in multiple locations around the world.
+
+- **Pricing**: You pay only for the compute time you consume - there is no charge when your code is not running.
+
+- **Event-Driven**: Lambda@Edge runs your code in response to events generated by the Amazon CloudFront content delivery network (CDN).
+
+- **Workflow**:
+
+  - Just upload your code to AWS Lambda, which takes care of everything required to run and scale your code with high availability at an AWS location closest to your end user.
+  - Set up your Lambda function to trigger from Amazon CloudFront
+
+- **Use Case**:
+  - Customize the CDN Content
+  - Website Security and Privacy
+  - Dynamic Web Application at the Edge
+  - Search Engine Optimization (SEO)
+  - Intelligently Route Across Origins and Data Centers
+  - Bot Mitigation at the Edge
+  - Real-Time Image Transformation
+  - A/B Testing
+  - User Authentication and Authorization
+  - User Prioritization
+  - User Tracking and Analytics
+
+---
+
+# CloudFront vs S3 Cross Region Replication
+
+| CloudFront                      | S3 Cross Region Replication                           |
+| ------------------------------- | ----------------------------------------------------- |
+| Global Edge Network             | Must be setup for each region you want replication in |
+| Files are cached for a TTL      | Files are updated in near real-time                   |
+| Great for global static content | Read-Only. Great for dynamic content in few regions   |
+
+---
+
+# CloudFront: Content Uploads via POST, PUT and other HTTP Methods
+
+- Support for additional HTTP Methods (like POST, PUT, PATCH) can be added to an existing distribution or enabled during the creation of a distribution by setting the **Allowed HTTP Methods** option.
+
+- Place a single CloudFront distribution in front of your site, including the dynamic or interactive portions that make use of HTML forms or accept user data in some other way.
+
+- Users can benefit from accelerated content uploads.
+
+- After you enable the additional HTTP methods for your application’s distribution, PUT and POST operations will be sent to the origin (e.g. Amazon S3) via the CloudFront edge location, with the following benefits:
+
+  - Improved efficiency
+  - Reduced latency
+  - Allow the application to benefit from the monitored, persistent connections that CloudFront maintains from the edge locations to the origin servers.
+
+- CloudFront can be used for web sites that support a resource-oriented REST-style web service API, where the GET, PUT, DELETE, and PATCH operations act on stored information.
+
+- You shouldn’t need to make any changes to your application: CloudFront simply proxies the requests for the new HTTP methods via the edge. `HEAD` and `GET` requests are cached; all others are passed along to the origin.
+
+---
+
+# CloudFront vs S3 Transfer Acceleration for PUT/POST
+
+**CloudFront** is a very powerful way of distributing static content to geographically dispersed users with low latency speeds. If you have objects that are smaller than `1GB` or if the data set is less than `1GB` in size, you should consider using Amazon CloudFront's PUT/POST commands for optimal performance.
+
+**S3 Transfer Acceleration** optimizes the TCP Protocol and adds additional intelligence between the client and the S3 bucket, making S3 Transfer Acceleration a better choice when high throughput is desired.
+
+The similarity between the two is that S3 Transfer Acceleration routes traffic through Amazon CloudFront’s globally distributed Edge Locations and over AWS backbone networks.
+
+---
+
+# CloudFront: Pricing
+
+- CloudFront Edge Locations are all around the world, hence cost of data out per edge location varies
+- You can reduce the number of edge locations for cost-reduction
+- Three price classes:
+  - Price Class All: All regions - best performance
+  - Price Class 200: Most regions but excludes most expensive regions (except South America, Australia and New Zealand)
+  - Price Class 100: Only the least expensive regions (Region 1: United States, Mexico, and Canada; Region 2: Europe and Israel)
+
+---
+
 # References
 
 - [List of Public IP of Edge Locations of CloudFront](https://d7uri8nf7uskq.cloudfront.net/tools/list-cloudfront-ips)
+- [Reducing Latency and Shifting Compute to the Edge with Lambda@Edge](https://aws.amazon.com/blogs/networking-and-content-delivery/reducing-latency-and-shifting-compute-to-the-edge-with-lambdaedge/)

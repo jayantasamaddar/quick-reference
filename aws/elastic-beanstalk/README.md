@@ -26,6 +26,8 @@
 - [Elastic Beanstalk: HTTPS](#elastic-beanstalk-https)
 - [Elastic Beanstalk: Web Server vs Worker environment](#elastic-beanstalk-web-server-vs-worker-environment)
 - [Elastic Beanstalk: Custom Platform](#elastic-beanstalk-custom-platform)
+- [Elastic Beanstalk: Solutions Architecture](#elastic-beanstalk-solutions-architecture)
+  - [Solving large installation times involving static and dynamic files generated during install](#solving-large-installation-times-involving-static-and-dynamic-files-generated-during-install)
 - [References](#references)
 
 ---
@@ -415,6 +417,22 @@ So how do we decouple RDS, if it already exists in an Elastic Beanstalk stack?
 - Custom Platform vs Custom Image (AMI)
   - Custom Image is to tweak an **`existing`** Beanstalk Platform (Python, Node.js, Java etc)
   - Custom Platform is to create **`an entirely new`** Beanstalk Platform
+
+---
+
+# Elastic Beanstalk: Solutions Architecture
+
+## Solving large installation times involving static and dynamic files generated during install
+
+**Problem**: Your company is deploying a website running on Elastic Beanstalk. The website takes over 45 minutes for the installation and contains both static as well as dynamic files that must be generated during the installation process.
+
+As a Solutions Architect, you would like to bring the time to create a new instance in your Elastic Beanstalk deployment to be less than 2 minutes.
+
+**Solution**:
+
+1. **Create a Golden AMI with the static installation components**: A Golden AMI is an AMI that you standardize through configuration, consistent security patching, and hardening. It also contains agents you approve for logging, security, performance monitoring, etc. For the given use-case, you can have the static installation components already setup via the golden AMI.
+
+2. **Use EC2 user data to customize the dynamic installation parts at boot time**: EC2 instance user data is the data that you specified in the form of a configuration script while launching your instance. You can use EC2 user data to customize the dynamic installation parts at boot time, rather than installing the application itself at boot time.
 
 ---
 

@@ -1,9 +1,9 @@
 # Table of Contents
 
 - [Table of Contents](#table-of-contents)
-- [Elastic Compute Cloud / EC2](#elastic-compute-cloud--ec2)
-- [EC2 Sizing and Configuration Options](#ec2-sizing-and-configuration-options)
-- [EC2 User Data](#ec2-user-data)
+- [EC2: Overview](#ec2-overview)
+- [EC2: Sizing and Configuration Options](#ec2-sizing-and-configuration-options)
+- [EC2: User Data](#ec2-user-data)
 - [EC2 Instance Types: Brief Overview](#ec2-instance-types-brief-overview)
 - [EC2 Instance Types - Detailed Overview](#ec2-instance-types---detailed-overview)
   - [EC2 Instance Types: Naming Convention](#ec2-instance-types-naming-convention)
@@ -11,9 +11,9 @@
   - [EC2 Instance Types: Compute Optimized](#ec2-instance-types-compute-optimized)
   - [EC2 Instance Types: Memory Optimized](#ec2-instance-types-memory-optimized)
   - [EC2 Instance Types: Storage Optimized](#ec2-instance-types-storage-optimized)
-- [Launching an EC2 Instance: Using the Console](#launching-an-ec2-instance-using-the-console)
-- [EC2 Instance Information](#ec2-instance-information)
-- [EC2 Security Groups](#ec2-security-groups)
+- [EC2: Launching an EC2 Instance using the Console](#ec2-launching-an-ec2-instance-using-the-console)
+- [EC2: Instance Information](#ec2-instance-information)
+- [EC2: Security Groups](#ec2-security-groups)
   - [Overview](#overview)
   - [Referencing other Security Groups](#referencing-other-security-groups)
   - [Overview of Classic Ports](#overview-of-classic-ports)
@@ -26,8 +26,9 @@
     - [EC2 Instance Connect: Overview](#ec2-instance-connect-overview)
     - [EC2 Instance Connect: Login](#ec2-instance-connect-login)
     - [EC2 Instance Connect: Troubleshooting](#ec2-instance-connect-troubleshooting)
-- [EC2 Instance: Roles](#ec2-instance-roles)
-- [EC2 Instance: Purchasing Options](#ec2-instance-purchasing-options)
+- [EC2: Instance Roles](#ec2-instance-roles)
+- [EC2: Instance Tenancy](#ec2-instance-tenancy)
+- [EC2: Instance Purchasing Options](#ec2-instance-purchasing-options)
   - [EC2 On-Demand](#ec2-on-demand)
   - [EC2 Reserved Instances](#ec2-reserved-instances)
   - [EC2 Savings Plan](#ec2-savings-plan)
@@ -63,9 +64,12 @@
       - [EBS Snapshots: Archiving](#ebs-snapshots-archiving)
     - [EBS: Multi-Attach - io1 / io2 family](#ebs-multi-attach---io1--io2-family)
     - [EBS: Encryption](#ebs-encryption)
+    - [EBS: RAID Configuration Options](#ebs-raid-configuration-options)
   - [AMI](#ami)
     - [AMI: Overview](#ami-overview)
     - [AMI: Creating an AMI](#ami-creating-an-ami)
+    - [AMI: Copying and Sharing AMIs](#ami-copying-and-sharing-amis)
+    - [AMI: Golden AMI](#ami-golden-ami)
   - [EC2 Instance Store](#ec2-instance-store)
   - [Amazon Elastic File System (EFS)](#amazon-elastic-file-system-efs)
     - [EFS: Overview](#efs-overview)
@@ -79,19 +83,21 @@
     - [Stopping an Instance: Stop Protection](#stopping-an-instance-stop-protection)
   - [EC2 Instance Lifecycle: Hibernate](#ec2-instance-lifecycle-hibernate)
 - [EC2 Instance Metadata](#ec2-instance-metadata)
+- [EC2: Instance Recovery](#ec2-instance-recovery)
 - [EC2: Networking](#ec2-networking)
   - [Public vs Private vs Elastic IP](#public-vs-private-vs-elastic-ip)
-  - [Placement Groups](#placement-groups)
+  - [EC2: Placement Groups](#ec2-placement-groups)
   - [Elastic Network Interfaces (ENI)](#elastic-network-interfaces-eni)
+  - [Networking Costs in AWS](#networking-costs-in-aws)
 - [EC2 CLI Commands](#ec2-cli-commands)
 - [FAQs](#faqs)
 - [References](#references)
 
 ---
 
-# Elastic Compute Cloud / EC2
+# EC2: Overview
 
-Elastic Compute Cloud or simply EC2 is one of the most popular AWS offerings. EC2 is an Infrastructure-as-a-Service where you can do the following:
+**Elastic Compute Cloud** or simply **EC2** is one of the most popular AWS offerings. EC2 is an Infrastructure-as-a-Service where you can do the following:
 
 - Rent virtual machines called EC2 Instances.
 - Storing data on virtual drives called Elastic Block Stores (EBS)
@@ -102,7 +108,7 @@ Knowing how EC2 works is fundamental to understand how the Cloud works.
 
 ---
 
-# EC2 Sizing and Configuration Options
+# EC2: Sizing and Configuration Options
 
 So what are the configuration options for the EC2 Instances that we can rent from AWS?
 
@@ -118,7 +124,7 @@ There are more configuration options in EC2 Instances but at the core of it, all
 
 ---
 
-# EC2 User Data
+# EC2: User Data
 
 It is possible to boostrap our EC2 Instance using EC2 User Data script. Boostrapping means launching commands when a machine starts, i.e. the script is only run once, when the instance first starts and never be run again.
 
@@ -202,7 +208,7 @@ For an Instance Type of `m5.2xlarge`
 
 ---
 
-# Launching an EC2 Instance: Using the Console
+# EC2: Launching an EC2 Instance using the Console
 
 Amazon EC2 allows you to create virtual machines, or instances, that run on the AWS Cloud. Quickly get started by following the simple steps below.
 
@@ -263,7 +269,7 @@ Amazon EC2 allows you to create virtual machines, or instances, that run on the 
 
         - **Interruption behaviour** (Only for Spot Instances): The behavior when a Spot Instance is interrupted. For persistent requests, valid values are `stop` and `hibernate`. For one-time requests, only `terminate` is valid. If you do not specify a value, EC2 terminates the instance on interruption. Charges for EBS volume storage apply when an instance is stopped. If no value is specified the value of the source template will still be used. If the template value is not specified then the default API value will be used.
 
-        - **Block duration** (Only for Spot Instances): Specify a Spot block of up to 360 minutes (6 hours) to prevent Spot Instance interruptions. Valid only for one-time requests. The valid values are `60`, `120`, `180`, `240`, `300`, or `360` minutes. If you do not specify a value, EC2 uses the value in the launch template. If you do not specify a value in the launch template, your Spot Instance can be interrupted.
+        - **Block duration** (Only for Spot Instances): Specify a Spot block of up to `6 hours` to prevent Spot Instance interruptions. Valid only for one-time requests. The valid values are `60`, `120`, `180`, `240`, `300`, or `360` minutes. If you do not specify a value, EC2 uses the value in the launch template. If you do not specify a value in the launch template, your Spot Instance can be interrupted.
 
       - **Domain join directory**: Domain join enables you to join your instance to a directory you've defined in AWS Directory Service, giving you a single sign-on and centralized management experience across a network of Windows and Linux instances. To join a domain, you must have an IAM role with the required permissions. Only active or impaired directories appear in the list.
 
@@ -293,7 +299,7 @@ Amazon EC2 allows you to create virtual machines, or instances, that run on the 
 
 ---
 
-# EC2 Instance Information
+# EC2: Instance Information
 
 The following information is shown for every instance:
 
@@ -308,7 +314,7 @@ The following information is shown for every instance:
 
 ---
 
-# EC2 Security Groups
+# EC2: Security Groups
 
 ## Overview
 
@@ -533,7 +539,7 @@ With the EC2 Instance Connect, a temporary SSH key is created at every login and
 
 ---
 
-# EC2 Instance: Roles
+# EC2: Instance Roles
 
 As a rule of thumb, never ever enter your Personal Access Credentials into an EC2 Instance. This is because any others logging into the EC2 Instance could retrieve those credentials. Instead, we have to use IAM Roles.
 
@@ -553,7 +559,31 @@ We will get a response with the list of IAM Users as the **`IAMReadOnlyAccess`**
 
 ---
 
-# EC2 Instance: Purchasing Options
+# EC2: Instance Tenancy
+
+- Tenancy defines how EC2 instances are distributed across physical hardware and affects pricing. There are three tenancy options available:
+
+  - **Shared (`default`)**: Multiple AWS accounts may share the same physical hardware.
+  - **Dedicated Instance (`dedicated`)**: Your instance runs on single-tenant hardware.
+  - **Dedicated Host (host)**: Your instance runs on a physical server with EC2 instance capacity fully dedicated to your use, an isolated server with configurations that you can control.
+
+- When you create a VPC, by default its tenancy attribute is set to `default`.
+
+- When using a Launch Configuration (not Launch Template), the `host` tenancy value cannot be used. Use the `default` or `dedicated` tenancy values only.
+
+- To use a tenancy value of `host`, you must use a Launch Template.
+
+- The following table summarizes the instance placement tenancy of the Auto Scaling instances launched in a VPC.
+
+  | Launch configuration tenancy | VPC tenancy = `default`  | VPC tenancy = `dedicated` |
+  | ---------------------------- | ------------------------ | ------------------------- |
+  | not specified                | shared-tenancy instances | Dedicated Instances       |
+  | `default`                    | shared-tenancy instances | Dedicated Instances       |
+  | `dedicated`                  | Dedicated Instances      | Dedicated Instances       |
+
+---
+
+# EC2: Instance Purchasing Options
 
 ## EC2 On-Demand
 
@@ -741,9 +771,10 @@ With a **Spot Instance request**, we are defining the following:
   - **Persistent**:
 
     - A persistent Spot Instance request remains active until it expires or you cancel it, even if the request is fulfilled.
-    - If capacity is not available, your Spot Instance is interrupted. After your instance is interrupted, when capacity becomes available again, the Spot Instance is started if stopped or resumed if hibernated.
+    - If capacity is not available, your Spot Instance is interrupted. After your instance is interrupted, the Spot Instance is automatically started if stopped or resumed if hibernated, as soon as capacity is available again.
     - You can stop a Spot Instance and start it again if capacity is available.
     - If the Spot Instance is terminated (irrespective of whether the Spot Instance is in a stopped or running state), the Spot Instance request is opened again and Amazon EC2 launches a new Spot Instance.
+    - If the spot request is persistent and a Spot Instance is stopped, the spot request opens only when you start the Spot Instance.
 
 - **Valid from**: Used to define the start of the Spot Block (to be deprecated on December 31, 2022)
 - **Valid until**: Used to define the end of the Spot Block (to be deprecated on December 31, 2022)
@@ -840,7 +871,7 @@ If you no longer want your Spot Instance request, you can cancel it. You can onl
 
 ## EC2 Dedicated Instances
 
-- Instances run on hardware that is dedicated to you (which is different from a physical server). i.e. Own instance on your own hardware
+- Instances run on hardware that is dedicated to you (which is different from a physical server. i.e. Own instance on your own hardware)
 - May share hardware with other instances in same account
 - No control over instance placement (can move Hardware after Stop / Start)
 
@@ -979,7 +1010,7 @@ General Purpose SSD volume that balances price performance for a wide variety of
    - **Max IOPS:GiB Ratio**: `3:1`
    - Small gp2 volumes (below 1000 GiB) can burst IOPS to 3,000
    - Size of the volume and IOPS are linked, max IOPS is 16,000
-   - 3 IOPS per GiB, means at 5,334 GiB (5.3 TB) we are at the max IOPS
+   - `3 IOPS per GiB`, means at `5,334 GiB (5.3 TB) we are at the max IOPS`
 
 2. `gp3`
 
@@ -1232,6 +1263,10 @@ By default the Storage tier for EBS Volumes is `Standard`. We can move the Stora
 
 ---
 
+### [EBS: RAID Configuration Options](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html)
+
+---
+
 ## AMI
 
 ### AMI: Overview
@@ -1260,6 +1295,66 @@ What powers our EC2 Instances is an AMI.
 
 ---
 
+### AMI: Copying and Sharing AMIs
+
+- You can copy an AMI within or across AWS Regions.
+- Copying a source AMI results in an identical but distinct target AMI with its own unique identifier.
+- With an Amazon EBS-backed AMI, each of its backing snapshots is copied to an identical but distinct target snapshot.
+- If you encrypt unencrypted backing snapshots or encrypt them to a new KMS key, the snapshots are complete (non-incremental) copies.
+- Subsequent copy operations of an AMI result in incremental copies of the backing snapshots.
+
+- **Copying an AMI Cross-Region**:
+
+  - If you copy an AMI to a new Region, the snapshots are complete (non-incremental) copies.
+  - When the new AMI is copied from Region A into Region B, it automatically creates a snapshot in Region B because AMIs are based on the underlying snapshots.
+
+  - **Benefits of Cross-Region copying**:
+
+    - **Consistent global deployment**: Copying an AMI from one Region to another enables you to launch consistent instances in different Regions based on the same AMI.
+
+    - **Scalability**: You can more easily design and build global applications that meet the needs of your users, regardless of their location.
+
+    - **Performance**: You can increase performance by distributing your application, as well as locating critical components of your application in closer proximity to your users. You can also take advantage of Region-specific features, such as instance types or other AWS services.
+
+    - **High availability**: You can design and deploy applications across AWS Regions, to increase availability.
+
+- **Costs**:
+
+  - There are no charges for copying an AMI.
+  - However, standard storage and data transfer rates apply.
+  - If you copy an EBS-backed AMI, you will incur charges for the storage of any additional EBS snapshots.
+
+- **Encryption and Copying**:
+
+  | Scenario | Description                | Support |
+  | -------- | -------------------------- | ------- |
+  | 1        | Unencrypted-to-Unencrypted | Yes     |
+  | 2        | Encrypted-to-Encrypted     | Yes     |
+  | 3        | Unencrypted-to-Encrypted   | Yes     |
+  | 4        | Encrypted-to-Unencrypted   | No      |
+
+- **[Cross-Account Copying / Sharing AMIs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sharingamis-explicit.html)**:
+
+  - You can share an AMI with another AWS account.
+  - Sharing an AMI does not affect the ownership of the AMI.
+  - The owning account is charged for the storage in the Region.
+
+  - **Resource permissions**:
+
+    - To copy an AMI that was shared with you from another account, the owner of the source AMI must grant you read permissions for the storage that backs the AMI.
+    - The storage is either the associated EBS snapshot (for an Amazon EBS-backed AMI) or an associated S3 bucket (for an instance store-backed AMI).
+    - If the shared AMI has encrypted snapshots, the owner must share the key or keys with you as well.
+
+---
+
+### AMI: Golden AMI
+
+- A Golden AMI is an AMI that you standardize through configuration, consistent security patching, and hardening for reuse.
+- It also contains agents you approve for logging, security, performance monitoring, etc.
+- Helps reduce application start time by having these pre-installed static files and services.
+
+---
+
 ## EC2 Instance Store
 
 EBS Volumes are Network drives with good but "limited" performance. But sometimes you want higher performance and that can happen through the **EC2 Instance Store**, which is a high-performance hardware disk attached onto your EC2 Instance.
@@ -1268,11 +1363,14 @@ The EC2 Instance is a virtual machine but it is obviously attached to a real har
 
 The EC2 Instance Store has the following characteristics:
 
+- Provides temporary block-level storage for your instance. This storage is located on disks that are physically attached to the host computer.
 - Better I/O performance, high throughput
 - EC2 Instance Store lose their storage if they're stopped (ephemeral) - cannot be used as a durable, long term place to store your data.
-- Good for buffer / cache / scratch data / temporary content
+- Good for buffer / cache / scratch data / temporary content, or for data that is replicated across a fleet of instances, such as a load-balanced pool of web servers.
 - Risk of data loss if hardware fails
 - Backups and Replication are your responsibility
+- Instance Store volumes are included as part of the instance's usage cost.
+- The instance store itself has no additional cost.
 
 ---
 
@@ -1285,6 +1383,7 @@ Amazon Elastic File System (Amazon EFS) is a Network File System that can be mou
 **Characteristics of Amazon EFS:**
 
 - Managed NFS (Network File System) that can be mounted on many EC2 Instances
+- POSIX compliant
 - EFS works with EC2 Instances in multi-AZ
 - Highly available, scalable, expensive (3x `gp2`), pay-per-use
 - Use cases:
@@ -1299,14 +1398,19 @@ Amazon Elastic File System (Amazon EFS) is a Network File System that can be mou
 **Performance Classes:**
 
 - **EFS Scale**
+
   - 1000s of Concurrent NFS Clients, 10 GiB+ /s throughput
   - Grow to Petabyte-scale network file system, automatically without provisioning capacity in advance
+
 - **Performance mode** (set at EFS creation time)
+
   - General purpose (default): Latency-sensitive use cases (web server, CMS, etc)
   - Max I/O: Higher latency, higher throughput, highly parallel (big data, media processing)
+
 - **Throughput mode**
-  - Bursting (1 TiB = 50 MiB/s + burst of upto 100 MiB/s)
-  - Provisioned: Set your throughput regardless regardless of storage size (e.g. 1 GiB/s for 1 TiB Storage)
+
+  - **Bursting Throughput**: With Bursting Throughput mode, throughput on Amazon EFS scales as the size of your file system in the standard storage class grows. (1 TiB = 50 MiB/s + burst of upto 100 MiB/s)
+  - **Provisioned Throughput**: With Provisioned Throughput mode, you can instantly provision the throughput of your file system (in MiB/s) independent of the amount of data stored. (e.g. 1 GiB/s for 1 TiB Storage)
 
 **Storage Classes**
 
@@ -1554,6 +1658,33 @@ The following table provides a brief description of each instance state and indi
 
 ---
 
+# [EC2: Instance Recovery](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-recover.html)
+
+- To automatically recover an instance when a system status check failure occurs, you can either:
+
+  - Use the default configuration of the instance, or
+  - **Create an Amazon CloudWatch alarm**
+
+- If an instance becomes unreachable because of of the following reasons, the instance is automatically recovered:
+
+  - Hardware issues on the physical host that impact network reachability
+
+  - A problem that requires AWS involvement to repair:
+
+    - Loss of system power
+    - Software issues on the physical host
+    - Loss of network connectivity
+
+- A recovered instance is identical to the original instance, including the instance ID, private IP addresses, Elastic IP addresses, and all instance metadata.
+
+- If the impaired instance has a public IPv4 address, the instance retains the public IPv4 address after recovery.
+
+- If the impaired instance is in a placement group, the recovered instance runs in the placement group.
+
+- During instance recovery, the instance is migrated as part of an instance reboot, and any data that is in-memory is lost.
+
+---
+
 # EC2: Networking
 
 ## Public vs Private vs Elastic IP
@@ -1585,10 +1716,15 @@ The following table provides a brief description of each instance state and indi
     - They often reflect poor architectural decisions
     - Instead, use a random public IP and register a DNS name for it
     - Or use a Load Balancer and not use a public IP (Best pattern)
+  - An Elastic IP address doesn't incur charges as long as all the following conditions are true:
+
+    - The Elastic IP address is associated with an EC2 instance.
+    - The instance associated with the Elastic IP address is running.
+    - The instance has only one Elastic IP address attached to it.
 
 ---
 
-## Placement Groups
+## EC2: Placement Groups
 
 When you launch a new EC2 instance, the EC2 service attempts to place the instance in such a way that all of your instances are spread out across underlying hardware to minimize correlated failures. You can use placement groups to influence the placement of a group of interdependent instances to meet the needs of your workload.
 
@@ -1622,7 +1758,7 @@ When you launch a new EC2 instance, the EC2 service attempts to place the instan
   3. **Spread**:
 
      - Strictly places a small group of instances across distinct underlying hardware to reduce correlated failures.
-     - Maximum: `7 EC2 Instances / placement group group / Availability Zone`. Typically used for critical applications.
+     - Maximum: `7 EC2 Instances / placement group / Availability Zone`. Typically used for critical applications.
      - In a Single Availability Zone: The seven instances are placed on seven different racks, each rack has its own network and power source.
      - In a Multi-Availability Zone: The seven instances are placed on seven different racks, each rack has its own network and power source across the multiple Availability Zones available.
      - Spread placement groups are not supported for **[Dedicated Instances](#ec2-dedicated-instances)**.
@@ -1684,6 +1820,22 @@ When you launch a new EC2 instance, the EC2 service attempts to place the instan
   Here is a picture to show you how all of the parts — VPC, subnets, routing tables, and ENIs fit together:
 
       ![VPC, subnets, routing tables, and ENIs fitting together](assets/eni-vpc-multi-vif-arch.png)
+
+---
+
+## Networking Costs in AWS
+
+- Incoming EC2 Traffic is free
+- Traffic between EC2 Instances over Private IP within the availability zone is free
+- Traffic between EC2 Instances over Public / Elastic IP between AZs is charged at `$0.02 / GB`.
+- Traffic between EC2 Instances over Private IP between AZs is charged at half price (`$0.01 / GB`)
+- Takeaway is to leverage the AWS Internal network and use Private IPs as much as possible. Better network performance and cost savings.
+- Traffic between EC2 Instances over Public / Elastic IP between Regions is charged at `$0.02 / GB`.
+- Use Same AZ for maximum savings, same region multi-AZ for High-Availability and Multi-region Multi-AZ for Maximum Availability
+
+- Minimizing Egress traffic network cost:
+
+  - Try to keep as much traffic within AWS to minimize costs
 
 ---
 

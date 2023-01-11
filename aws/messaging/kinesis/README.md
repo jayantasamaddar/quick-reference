@@ -27,6 +27,7 @@
   - [`describe-stream`](#describe-stream)
   - [`get-shard-iterator`](#get-shard-iterator)
   - [`get-records`](#get-records)
+- [References](#references)
 
 ---
 
@@ -42,11 +43,11 @@
 
    A Data Producer can be:
 
-   - Applications
-   - Clients
-   - AWS SDK
-   - Kinesis Producer Library (KPL): Supports C++, Java and is built on top of the SDK but has some advanced capabilities available through API, such as batching, compression and retries.
-   - Kinesis Agent: Built on top of the KPL, used to monitor log files and stream them into KDS.
+   - **Applications**
+   - **Clients**
+   - **AWS SDK**
+   - **Kinesis Producer Library (KPL)**: Supports C++, Java and is built on top of the SDK but has some advanced capabilities available through API, such as batching, compression and retries.
+   - **Kinesis Agent**: Built on top of the KPL, used to monitor log files and stream them into Kinesis Data Streams.
 
    The **`PutRecord`** or **`PutRecords`** (bulk, reduce costs and increase throughput) API is used by the Data Producer to send Data into Kinesis.
 
@@ -56,10 +57,10 @@
 
    A Data Consumer can be:
 
-   - Apps: Using AWS SDK or Kinesis Client Library (KCL)
-   - Lambda Functions
-   - Kinesis Data Firehose
-   - Kinesis Data Analytics
+   - **Apps**: Using AWS SDK or Kinesis Client Library (KCL)
+   - **Lambda Functions**
+   - **Kinesis Data Firehose**
+   - **Kinesis Data Analytics**
 
    Data Consumers can consume data using two models:
 
@@ -114,9 +115,9 @@
 
 5. **Data Record**: A Data Record is the unit of data stored in an Amazon Kinesis stream. A record is composed of:
 
-   - A Sequence Number,
-   - A Partition Key, and
-   - Data Blob. A data blob is the data of interest your data producer adds to a stream. The maximum size of a data blob (the data payload after Base64-decoding) is 1 megabyte (MB).
+   - **A Sequence Number**,
+   - **A Partition Key**, and
+   - **Data Blob**. A data blob is the data of interest your data producer adds to a stream. The maximum size of a data blob (the data payload after Base64-decoding) is 1 megabyte (MB).
 
 6. **Partition Key**: A partition key is typically a meaningful identifier, such as a user ID or timestamp. It is specified by your data producer while putting data into an Amazon Kinesis data stream, and useful for consumers as they can use the partition key to replay or build a history associated with the partition key. The partition key is also used to segregate and route data records to different shards of a stream. For example, assuming you have an Amazon Kinesis data stream with two shards (Shard 1 and Shard 2). You can configure your data producer to use two partition keys (Key A and Key B) so that all data records with Key A are added to Shard 1 and all data records with Key B are added to Shard 2.
 
@@ -130,8 +131,19 @@
 - Data that shares the same `partition key` goes into the same shard (key-based ordering)
 - Producers: AWS SDK, Kinesis Producer Library (KPL), Kinesis Agent
 - Consumers:
+
   - Write your own: Using Kinesis Client Library (KCL), AWS SDK
   - Managed: AWS Lambda, Kinesis Data Firehose, Kinesis Data Analytics
+
+- **Use Cases**: AWS recommends Amazon Kinesis Data Streams for use cases with requirements that are similar to the following:
+
+  - **Routing related records to the same record processor (as in streaming MapReduce)**: For example, counting and aggregation are simpler when all records for a given key are routed to the same record processor.
+
+  - **Ordering of records**: For example, you want to transfer log data from the application host to the processing/archival host while maintaining the order of log statements.
+
+  - **Concurrent Streaming**: Cases that require the ability for multiple applications to consume the same stream concurrently. For example, you have one application that updates a real-time dashboard and another that archives data to Amazon Redshift. You want both applications to consume data from the same stream concurrently and independently.
+
+  - **Ability to consume records in the same order a few hours later**: For example, you have a billing application and an audit application that runs a few hours behind the billing application. Because Amazon Kinesis Data Streams stores data for up to 365 days, you can run the audit application up to 365 days behind the billing application.
 
 ---
 
@@ -175,7 +187,7 @@
 
 ### Switching Modes
 
-- You can switch between On-Demand and Provisioned mode twice a day.
+- You can switch between On-Demand and Provisioned mode **twice** a day.
 - The shard count of your data stream remains the same when you switch from Provisioned Mode to On-Demand mode and vice versa.
 - With the switch from Provisioned to On-Demand capacity mode, your data stream retains whatever shard count it had before the transition. But from that point on, Kinesis Data Streams monitors your data traffic and scales the shard count of this On-Demand data stream up or down depending on traffic increase or decrease.
 
@@ -201,6 +213,7 @@
    - **Solution**:
      - Use a highly distributed partition key.
      - Retries with exponential backoff.
+     - Use Collection batching with `PutRecords` API and/or Aggregation batching (Storing multiple records within a single Kinesis Data Streams record)
      - Increase shards (scaling) by **[splitting shards](#shard-splitting)**.
 
 ---
@@ -297,7 +310,7 @@ Kinesis Client Library (KCL) is a Java Library that helps read records from a Ki
 
 Amazon Kinesis Data Firehose is an extract, transform, and load (ETL) service that reliably captures, transforms, and delivers streaming data to data lakes, data stores, and analytics services.
 
-- Like Kinesis Data Streams, Kinesis Data Firehose accepts a maximum incoming message size of 1 MB
+- Like Kinesis Data Streams, Kinesis Data Firehose accepts a maximum incoming message size of `1 MB`
 - Fully managed service: No administration, automated scaling, serverless
 - Pay only for data going through Firehose
 - Near real-time: Data is written in batches from Firehose to the destination
@@ -313,14 +326,14 @@ Amazon Kinesis Data Firehose is an extract, transform, and load (ETL) service th
 
 1. **Extract**: Extract Data from Producers:
 
-   - Applications running AWS SDK
-   - Applications running Kinesis Producer Library (KPL)
-   - Client
-   - Kinesis Agent
-   - Kinesis Data Streams
-   - Amazon CloudWatch (Logs and Events)
-   - Amazon EventBridge
-   - AWS IoT
+   - **Applications running AWS SDK**
+   - **Applications running Kinesis Producer Library (KPL)**
+   - **Client**
+   - **Kinesis Agent**
+   - **Kinesis Data Streams**: When a Kinesis data stream is configured as the source of a Firehose delivery stream, Firehose’s `PutRecord` and `PutRecordBatch` operations are disabled and Kinesis Agent cannot write to Firehose delivery stream directly. Data needs to be added to the Kinesis data stream through the Kinesis Data Streams `PutRecord` and `PutRecords` operations instead.
+   - **Amazon CloudWatch (Logs and Events)**
+   - **Amazon EventBridge**
+   - **AWS IoT**
 
 2. **Transform**: Transform Data using Data Transformers (_Optional_):
 
@@ -622,3 +635,7 @@ Where,
 - **`NextShardIterator`**: The `--shard-iterator` argument to use with the **`GetRecords`** API to consume from where we last stopped consuming from.
 
 ---
+
+# References
+
+- [Implementing efficient and reliable producers with the Amazon Kinesis Producer Library](https://aws.amazon.com/blogs/big-data/implementing-efficient-and-reliable-producers-with-the-amazon-kinesis-producer-library/)

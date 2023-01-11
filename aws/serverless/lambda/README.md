@@ -59,13 +59,14 @@
   - [`add-permission`](#add-permission)
   - [`create-event-source-mapping`](#create-event-source-mapping)
   - [`get-event-source-mapping`](#get-event-source-mapping)
+  - [`create-function-url-config`](#create-function-url-config)
   - [`invoke`](#invoke)
   - [`put-function-event-invoke-config`](#put-function-event-invoke-config)
   - [`update-function-invoke-config`](#update-function-invoke-config)
   - [`update-function-code`](#update-function-code)
   - [`delete-event-source-mapping`](#delete-event-source-mapping)
   - [`delete-function`](#delete-function)
-- [Serverless Workflows:](#serverless-workflows)
+- [Serverless Workflows: Examples](#serverless-workflows-examples)
 - [References](#references)
 
 ---
@@ -1133,7 +1134,7 @@ In Lambda, concurrency is the number of requests your function can handle at the
 
 - Concurrency limits apply to **ALL** functions in your accounts: If a single or a few functions get over the concurrency limit, it is possible that all your other functions get throttled.
 
-> **Note:** If you need a higher than 1000 concurrent connections, open a Support Ticket to request a higher limit.
+> **Note:** If you need a higher than `1000` concurrent connections, open a Support Ticket to request a higher limit.
 
 ---
 
@@ -1536,6 +1537,39 @@ aws lambda get-event-source-mapping --uuid "ab1afb5c-d1b0-4e6d-ad42-7ec846bd3580
 
 ---
 
+## [`create-function-url-config`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/create-function-url-config.html)
+
+Creates a Lambda function URL with the specified configuration parameters. A function URL is a dedicated HTTP(S) endpoint that you can use to invoke your function.
+
+**Syntax**:
+
+```s
+aws lambda create-function-url-config \
+  --function-name [FunctionName] \
+  --qualifier [FunctionAliasName] \
+  --auth-type ["NONE" | "AWS_IAM"] \
+  --cors AllowCredentials=[true | false],AllowHeaders=[string,string,...],AllowMethods=[string,string,...],AllowOrigins=[string,string,...],ExposeHeaders=[string,string,...],MaxAge=[Seconds] \
+  --cli-input-json | --cli-input-yaml
+```
+
+**Example**:
+
+```s
+aws lambda create-function-url-config \
+  --function-name "demo-lambda-sqs" \
+  --qualifier "demo-lambda-sqs-prod" \
+  --cors '{"AllowMethods": ["GET"], "AllowOrigins": ["*"],"MaxAge": 300}'
+  --cli-input-json
+```
+
+**Response**:
+
+```json
+
+```
+
+---
+
 ## [`invoke`](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/lambda/invoke.html)
 
 Invokes a Lambda function. You can invoke a function synchronously (and wait for the response), or asynchronously. To invoke a function asynchronously, set **`InvocationType`** to `Event` .
@@ -1825,14 +1859,15 @@ None
 
 ---
 
-# Serverless Workflows:
+# Serverless Workflows: Examples
 
 1. [Serverless HTTP(S) endpoint using AWS Lambda and ALB](./functions/helloworld)
 2. [Create a Lambda Function that Logs the Messages sent to a cross-account Amazon SQS Queue](./functions/sqsprocessor)
 3. [Run a Lambda Function that runs every hour (Integrating EventBridge)](./functions/cronevent)
 4. [Run Lambda function when you make write operations on a S3 bucket and send an email on success](./functions/lambda-s3)
-5. Invoke a Lambda Function on CodePipeline Pipeline state changes
-6. Use an Amazon S3 trigger to create Thumbnails
+5. [Using Amazon CloudFront with AWS Lambda as origin to accelerate your web applications](https://aws.amazon.com/blogs/networking-and-content-delivery/using-amazon-cloudfront-with-aws-lambda-as-origin-to-accelerate-your-web-applications/)
+6. Invoke a Lambda Function on CodePipeline Pipeline state changes
+7. Use an Amazon S3 trigger to create Thumbnails
 
 ---
 
@@ -1844,3 +1879,4 @@ None
 - [AWS Update: Improved VPC networking for AWS Lambda functions](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/)
 - [Container images in Lambda](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-images.html)
 - [Use an Amazon S3 trigger to create Thumbnails](https://docs.aws.amazon.com/lambda/latest/dg/with-s3-tutorial.html#with-s3-tutorial-create-function-createfunction)
+- [Best Practices for Developing on AWS Lambda](https://aws.amazon.com/blogs/architecture/best-practices-for-developing-on-aws-lambda/)

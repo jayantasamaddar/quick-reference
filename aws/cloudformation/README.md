@@ -801,6 +801,8 @@ aws cloudformation list-stack-resources --stack-name "basic-ec2-stack"
 
 # StackSets
 
+![Stacksets](assets/stacksets.png)
+
 - Create, update or delete stacks across multiple accounts and regions with a single operation
 - Administrator accounts can create StackSets.
 - Trusted accounts can create, update or delete stack instances from StackSets
