@@ -1,3 +1,44 @@
+# Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [What is Docker?](#what-is-docker)
+- [Why Docker?](#why-docker)
+  - [Solving the "But it runs on my machine" problem](#solving-the-but-it-runs-on-my-machine-problem)
+  - [Plug and play for a new Team Member](#plug-and-play-for-a-new-team-member)
+  - [Removing applications and their dependencies from local machines without breaking other applications](#removing-applications-and-their-dependencies-from-local-machines-without-breaking-other-applications)
+- [Virtual Machines vs Containers](#virtual-machines-vs-containers)
+- [Architecture of Docker](#architecture-of-docker)
+- [Installing Docker](#installing-docker)
+- [Development Workflow](#development-workflow)
+- [Docker in Action](#docker-in-action)
+- [CMD vs ENTRYPOINT](#cmd-vs-entrypoint)
+  - [Edge Case: What if we want to modify the ENTRYPOINT during runtime](#edge-case-what-if-we-want-to-modify-the-entrypoint-during-runtime)
+- [The Linux Command Line](#the-linux-command-line)
+  - [Linux Distributions or Linux Distros](#linux-distributions-or-linux-distros)
+  - [Running Linux](#running-linux)
+- [Images vs Containers](#images-vs-containers)
+- [Networking](#networking)
+  - [Bridge](#bridge)
+    - [Accessing the Containers](#accessing-the-containers)
+  - [None](#none)
+  - [User-Defined Networks](#user-defined-networks)
+  - [Embedded DNS](#embedded-dns)
+- [PORT Mapping](#port-mapping)
+- [Restart Policies: Start Containers Automatically](#restart-policies-start-containers-automatically)
+  - [Restart Policies: Overview](#restart-policies-overview)
+  - [Using a Restart Policy using the `--restart` flag](#using-a-restart-policy-using-the---restart-flag)
+- [Storage and Persisting Data](#storage-and-persisting-data)
+  - [How exactly does Docker store the files of an image and a container?](#how-exactly-does-docker-store-the-files-of-an-image-and-a-container)
+    - [Advantages of Docker's Layered Architecture](#advantages-of-dockers-layered-architecture)
+    - [Copy-On-Write Mechanism](#copy-on-write-mechanism)
+  - [Persisting Data](#persisting-data)
+    - [Volume Mounting - Mounting from the `/var/lib/docker/volumes` directory](#volume-mounting---mounting-from-the-varlibdockervolumes-directory)
+    - [Bind Mounting - Mounting Data from any Location on the Docker host](#bind-mounting---mounting-data-from-any-location-on-the-docker-host)
+  - [Docker and Storage Drivers](#docker-and-storage-drivers)
+- [Docker Compose](#docker-compose)
+
+---
+
 # What is Docker?
 
 **Docker** is a platform for building, running and shipping applications in a consistent manner the same way it does in development.
@@ -217,11 +258,11 @@ How do we make this change permanent? Say, we want the image to always run the s
 **Option 2:**
 We will then need to create our own image from the base Ubuntu image and specify a new command.
 
-```
+```s
 FROM Ubuntu
 
 CMD sleep 5
-// or CMD ["sleep", "5]
+# or CMD ["sleep", "5]
 ```
 
 Right now, it is hardcoded to sleep after 5 seconds. What if, we wanted to change the number of seconds after which it sleeps.
@@ -234,7 +275,7 @@ This is where the **`ENTRYPOINT`** instructions come into play. The `ENTRYPOINT`
 
 Hence if the Dockerfile has,
 
-```
+```s
 FROM Ubuntu
 ENTRYPOINT ["sleep"]
 ```
@@ -249,7 +290,7 @@ If the number of seconds is not specified at the command line, e.g. `docker run 
 
 Whereas, if the Dockerfile has,
 
-```
+```s
 FROM Ubuntu
 CMD ["sleep", "5]
 ```
@@ -267,7 +308,7 @@ As we saw in **Case 1**, we will get an error if default operand is not provided
 
 > **Note:** The ENTRYPOINT and the CMD to be used together in this manner to provide a default, must be provided in a JSON format.
 
-```
+```s
 FROM Ubuntu
 
 ENTRYPOINT ["sleep"]
@@ -287,7 +328,7 @@ What if we want to modify the ENTRYPOINT during runtime, i.e. during the time we
 
 We can do so by specifying the `--entrypoint` option in the `docker run` command:
 
-```
+```s
 docker run --entrypoint sleep2.0 ubuntu-sleeper 10
 ```
 
@@ -321,18 +362,20 @@ However we can run, `docker run ubuntu` to start a container with this image if 
 We can use, `docker run -d ubuntu` to run the image in the background. This will start the container in the background and return immediately.
 
 - **To see current running processes, we can run the command:**
-  ```
+
+  ```s
   docker ps
   ```
+
 - **To see all processes including ones' stopped, we can run the command:**
 
-  ```
+  ```s
   docker ps -a
   ```
 
 - **To start a container and interact with it, we need to run the following command:**
 
-  ```
+  ```s
   docker run -it ubuntu
   ```
 
@@ -375,13 +418,13 @@ When we install Docker, it creates three networks automatically:
 
 Bridge is the default network. For specifying any other network information, we can use the `--network` option in the `docker run` command like this,
 
-```
+```s
 docker run ubuntu --network=none
 ```
 
 or
 
-```
+```s
 docker run ubuntu --network=host
 ```
 
@@ -412,7 +455,7 @@ By default, Docker only creates one internal Bridge network. We can create our o
 
 **Syntax:**
 
-```
+```s
 docker network create --driver bridge --subnet 182.18.0.0/16 custom-isolated-network
 ```
 
@@ -453,16 +496,87 @@ There are two options:-
 - We could use the IP of the Docker host, e.g. 192.168.1.5. But for this to work, we must have mapped the port inside the Docker container to a free port on the Docker host.
   **For example:** If you want the users to access the application through Port 80 on the Docker host, we could map Port 80 of the localhost to Port 5000 of the Docker container using the `-p` flag.
 
+  **Syntax**:
+
+  ```s
+  docker run -p [HostPort] [ContainerPort] [ContainerName]
   ```
+
+  ```s
+  # Maps Port 5000 on the container to Port 80 on the Host machine
   docker run -p 80:5000 hello-docker
+
+  # Maps Port 5000 on the container to TCP Port 80 on 127.0.0.1 on the Host machine
+  docker run -p 127.0.0.1:80:5000/tcp hello-docker
   ```
 
   - The user can access the application by going to the URL, `http://192.168.1.5:80`. All traffic on Port 80 on the Docker Host will be routed to Port 5000 on the Docker Container.
     This way multiple instances of the Docker application can be run on the same Docker host on multiple ports.
 
+  ```s
+  # Maps Port 8000 on the container to Port 5000 and Port 5100 on the Host machine
+  docker run -p 5000:8000 -p 5100:8000 hello-docker
+
+  # Makes 2 x one-to-one mappings:
+  # ------------------------------
+  # Binds Port 80 on the container to Port 5000 on the Host Machine
+  # Binds Port 443 on the container to Port 5100 on the Host machine
+  docker run -p 5000:80 -p 5100:443 hello-docker
   ```
-  docker run -p 5000:8000
-  ```
+
+---
+
+# Restart Policies: Start Containers Automatically
+
+## Restart Policies: Overview
+
+Docker provides restart policies to control whether your containers start automatically when they exit, or when Docker restarts. Restart policies ensure that linked containers are started in the correct order. Docker recommends that you use restart policies and avoid using process managers to start containers.
+
+Restart policies are different from the `--live-restore` flag of the dockerd command. Using `--live-restore` allows you to keep your containers running during a Docker upgrade, though networking and user input are interrupted.
+
+This is helpful for running cron jobs or jobs that need to monitor system time, schedulers that should keep running even after a system reboot due to some system update on the host system.
+
+---
+
+## Using a Restart Policy using the `--restart` flag
+
+```s
+# Start a container and configure it to always restart if it stops. If it is manually stopped, it is only restarted when the Docker daemon restarts or the container itself is manually restarted.
+docker run -d --restart always redis
+```
+
+```s
+# Start a container and restarts it, if it exits due to an error, which manifests as a non-zero exit code. Optionally, limit the number of times the Docker daemon attempts to restart the container using the `:max-retries` option. Here it's 10 times.
+docker run -d --restart on-failure[:max-retries 10]
+```
+
+```s
+# Start a container and configure it to always restart unless it is explicitly stopped or Docker is restarted
+docker run -d --restart unless-stopped redis
+```
+
+```s
+# Changes the restart policy of an already running container named `redis`
+docker update --restart unless-stopped redis
+```
+
+```s
+# Changes the restart policies of all running containers to `unless-stopped`
+docker update --restart unless-stopped $(docker ps -q)
+```
+
+```s
+# Changes the restart policy to default `no`, i.e. Do not automatically start the container
+docker update --restart no redis
+```
+
+> **Note**:
+>
+> - A restart policy only takes effect after a container starts successfully. In this case, starting successfully means that the container is up for at least 10 seconds and Docker has started monitoring it. This prevents a container which does not start at all from going into an infinite restart loop.
+>
+> - If you manually stop a container, its restart policy is ignored until the Docker daemon restarts or the container is manually restarted. This is another attempt to prevent an infinite restart loop.
+>
+> - Restart policies only apply to containers. Restart policies for swarm devices are configured differently.
 
 ---
 
