@@ -2,9 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: myapp-deployment
-  labels:
-    app: nginx
-    tier: frontend
 spec:
   template:
     metadata:
@@ -20,3 +17,4 @@ spec:
   selector:
     matchLabels:
       app: nginx
+      tier: frontend
